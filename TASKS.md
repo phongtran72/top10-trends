@@ -17,10 +17,10 @@ When the tasks are done, open a pull request and list anything I must do by hand
 
 ## Phase 0 · Setup (week 1)
 
-- [ ] **[You]** Create the public GitHub repo, upload these four files, connect it to Claude Code and allow the data-source hosts in the cloud environment (SETUP.md §1).
+- [x] **[You]** Create the public GitHub repo, upload these four files, connect it to Claude Code and allow the data-source hosts in the cloud environment (SETUP.md §1). Done with a local Claude Code session, so no cloud environment was needed.
 - [ ] **[You]** Request Reddit Data API access and open an X developer account now, because approvals take time (SETUP.md §9, §10).
-- [ ] **[You]** Create the Supabase project and copy both pooler connection strings (SETUP.md §2).
-- [ ] **[You]** Create the Cloudflare API token and the GitHub fine-grained token for the hourly trigger (SETUP.md §5, §6).
+- [x] **[You]** Create the Supabase project and copy both pooler connection strings (SETUP.md §2).
+- [x] **[You]** Create the Cloudflare API token and the GitHub fine-grained token for the hourly trigger (SETUP.md §5, §6).
 - [x] **0.1 Scaffold.** Next.js App Router with TypeScript and ESLint, plus Vitest, tsx and `.nvmrc` set to 22. create-next-app refuses a non-empty directory, so scaffold in a temp directory and copy the files in without overwriting `CLAUDE.md` or `README.md`; if the scaffold has `AGENTS.md`, keep it and append `@AGENTS.md` to `CLAUDE.md`. Scripts: `dev`, `build`, `start`, `lint`, `typecheck`, `test`, `pipeline`, `db:generate`, `db:migrate`, `eval` (stub for now). Done when `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` pass with no environment variables set.
 - [x] **0.2 Environment.** `lib/env.ts` validates variables with zod per consumer, at first use:
     - The site needs `DATABASE_URL`; `/api/revalidate` also needs `REVALIDATE_SECRET`.
@@ -38,7 +38,7 @@ When the tasks are done, open a pull request and list anything I must do by hand
     - `migrate.yml`: on pushes to `main` that touch `db/migrations/**`, plus `workflow_dispatch`, run `npm run db:migrate` with `SESSION_DATABASE_URL`.
 - [x] **0.7 Hourly trigger.** `worker/` holds a Cloudflare Worker whose `scheduled` handler POSTs to `https://api.github.com/repos/{GH_OWNER}/{GH_REPO}/actions/workflows/collect.yml/dispatches` with body `{"ref":"main"}` and headers `Authorization: Bearer {GH_DISPATCH_TOKEN}`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28` and `User-Agent: top10-trends-cron`, and logs any non-2xx response. `wrangler.toml` sets `workers_dev = false`, `[triggers] crons = ["7 * * * *"]` and the `GH_OWNER` and `GH_REPO` vars. `deploy-worker.yml` runs on pushes to `main` that touch `worker/**`, and on `workflow_dispatch` so a renewed token can be pushed without a code change. It deploys with wrangler using `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, then sets the Worker secret `GH_DISPATCH_TOKEN` from the GitHub secret of the same name.
 - [x] **0.8 Placeholder site.** A home page that says the site is coming soon and lists the planned sources from the registry, grouped by phase; a README with the architecture summary and a pointer to SETUP.md.
-- [ ] **[You]** Merge the pull request (creating any workflow files by hand if 0.6 asked you to). Then import the repo into Vercel (SETUP.md §7), add the GitHub secrets and variables (SETUP.md §8), and run `migrate` and then `collect` once from the repo's Actions tab (GitHub Mobile works too).
+- [x] **[You]** Merge the pull request (creating any workflow files by hand if 0.6 asked you to). Then import the repo into Vercel (SETUP.md §7), add the GitHub secrets and variables (SETUP.md §8), and run `migrate` and then `collect` once from the repo's Actions tab (GitHub Mobile works too).
 
 **Gate 0.** A heartbeat lands every hour for 24 hours. In Supabase's SQL editor:
 
@@ -52,7 +52,7 @@ where source_id = 'heartbeat' and status = 'ok'
 
 ## Phase 1 · Per-platform lists (weeks 2–3)
 
-- [ ] **[You]** Add the phase 1 keys and variables: `YOUTUBE_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `REVALIDATE_SECRET`, `SITE_URL`, `COLLECTOR_USER_AGENT` (SETUP.md §3, §4, §7, §8), and redeploy on Vercel after adding `REVALIDATE_SECRET` there.
+- [x] **[You]** Add the phase 1 keys and variables: `YOUTUBE_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `REVALIDATE_SECRET`, `SITE_URL`, `COLLECTOR_USER_AGENT` (SETUP.md §3, §4, §7, §8), and redeploy on Vercel after adding `REVALIDATE_SECRET` there.
 - [ ] **1.1 Types.** `collectors/types.ts`:
 
     ```ts
