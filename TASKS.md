@@ -22,7 +22,7 @@ When the tasks are done, open a pull request and list anything I must do by hand
 - [ ] **[You]** Create the Supabase project and copy both pooler connection strings (SETUP.md §2).
 - [ ] **[You]** Create the Cloudflare API token and the GitHub fine-grained token for the hourly trigger (SETUP.md §5, §6).
 - [x] **0.1 Scaffold.** Next.js App Router with TypeScript and ESLint, plus Vitest, tsx and `.nvmrc` set to 22. create-next-app refuses a non-empty directory, so scaffold in a temp directory and copy the files in without overwriting `CLAUDE.md` or `README.md`; if the scaffold has `AGENTS.md`, keep it and append `@AGENTS.md` to `CLAUDE.md`. Scripts: `dev`, `build`, `start`, `lint`, `typecheck`, `test`, `pipeline`, `db:generate`, `db:migrate`, `eval` (stub for now). Done when `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` pass with no environment variables set.
-- [ ] **0.2 Environment.** `lib/env.ts` validates variables with zod per consumer, at first use:
+- [x] **0.2 Environment.** `lib/env.ts` validates variables with zod per consumer, at first use:
     - The site needs `DATABASE_URL`; `/api/revalidate` also needs `REVALIDATE_SECRET`.
     - The pipeline needs `SESSION_DATABASE_URL`, except with `--dry-run`. `SITE_URL` and `REVALIDATE_SECRET` are optional (without them it skips revalidation).
     - Each source's keys are optional: a missing key skips that source. `DISABLED_SOURCES` (comma-separated ids) skips sources on purpose.
