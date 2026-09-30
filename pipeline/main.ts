@@ -6,6 +6,7 @@ import { cleanEnv, pipelineEnv, type RawEnv } from "@/lib/env";
 import { createHttp } from "@/lib/http";
 import { collect, formatResults, writeResults, type ListResult } from "./collect";
 import type { Db } from "./db";
+import { purge } from "./purge";
 import { upsertSources } from "./sources";
 
 export interface RunDeps {
@@ -59,9 +60,9 @@ export function summarize(
 }
 
 // One pipeline run: collect every enabled source, then upsert sources, write
-// the lists and the heartbeat, and print a summary. A failing source is
-// recorded and never fails the run. With --dry-run nothing touches the
-// database: each list is printed instead.
+// the lists, purge old rows, write the heartbeat and print a summary. A
+// failing source is recorded and never fails the run. With --dry-run nothing
+// touches the database: each list is printed instead.
 export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps: RunDeps): Promise<void> {
   const now = deps.now ?? (() => new Date());
   const startedAt = now();
@@ -90,6 +91,8 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
     try {
       await upsertSources(db, plans);
       await writeResults(db, results);
+      const purged = await purge(db, startedAt);
+      if (purged.items > 0 || purged.runs > 0) deps.log(`purged: ${purged.items} items, ${purged.runs} runs`);
       await writeHeartbeat(db, startedAt, now());
     } finally {
       await close();
