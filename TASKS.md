@@ -73,7 +73,7 @@ where source_id = 'heartbeat' and status = 'ok'
       fetch(region: Region, ctx: { http: Http; env: Env; now: Date }): Promise<TrendItem[]>;
     }
     ```
-- [ ] **1.2 HTTP helper.** `lib/http.ts`: a 10-second timeout and one retry with jitter per request (on network errors, 429 and 5xx), User-Agent from `COLLECTOR_USER_AGENT`, JSON and XML (RSS) parsing helpers, and errors that carry only the status code, host and a short reason, never the full URL.
+- [x] **1.2 HTTP helper.** `lib/http.ts`: a 10-second timeout and one retry with jitter per request (on network errors, 429 and 5xx), User-Agent from `COLLECTOR_USER_AGENT`, JSON and XML (RSS) parsing helpers, and errors that carry only the status code, host and a short reason, never the full URL.
 - [ ] **1.3 Collectors.** Each gets a zod-validated response, a fixture in `collectors/__fixtures__/` and a unit test. Fixtures follow CLAUDE.md invariant 13: at most 5 items, only fields the schema reads, invented YouTube data, no Bluesky `actors`.
     - **Bluesky** (`global`): `GET https://public.api.bsky.app/xrpc/app.bsky.unspecced.getTrends?limit=25`. Title is `displayName` (skip items without one; `topic` is an opaque id); URL is `https://bsky.app` plus the relative `link`; metric is `postCount` (`posts`); `flags.status` is `status`, validated as any string.
     - **Google Trends** (`us`): `GET https://trends.google.com/trending/rss?geo=US`. Title is the item title; metric is `ht:approx_traffic` parsed to a number ("20000+" becomes 20000, `searches`); `matchText` holds the `ht:news_item_title` values; URL is the first `ht:news_item_url`, or a Google search link for the query (the item's own `<link>` is only the feed URL).
