@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { getSource } from "@/collectors/registry";
-import { buildDashboard, normalizeTitle } from "./dashboard";
+import { buildDashboard, itemKey, normalizeTitle } from "./dashboard";
 import type { RecentItem } from "./queries";
 
 const now = new Date("2026-09-30T12:10:00Z");
 const hoursAgo = (h: number) => new Date(now.getTime() - h * 3_600_000).toISOString();
 
 let runId = 0;
-function run(sourceId: string, region: string, at: string, titles: string[], metrics: (number | null)[] = []): RecentItem[] {
+function run(sourceId: string, region: string, at: string, titles: string[], metrics: (number | null)[] = [], urls: (string | undefined)[] = []): RecentItem[] {
   runId += 1;
   return titles.map((title, i) => ({
     runId,
@@ -16,7 +16,7 @@ function run(sourceId: string, region: string, at: string, titles: string[], met
     fetchedAt: at,
     rank: i + 1,
     title,
-    url: `https://example.com/${encodeURIComponent(title)}`,
+    url: urls[i] ?? `https://example.com/${encodeURIComponent(normalizeTitle(title))}`,
     metricValue: metrics[i] ?? null,
     metricLabel: metrics[i] === undefined || metrics[i] === null ? null : "posts",
   }));
@@ -71,6 +71,28 @@ describe("buildDashboard", () => {
     expect(single.newEntries).toEqual([]);
     expect(single.movers).toEqual([]);
     expect(single.staying).toEqual([]);
+  });
+});
+
+describe("Bluesky renames", () => {
+  it("follows a renamed Bluesky topic by its link", () => {
+    const link = "https://bsky.app/profile/trending.bsky.app/feed/example";
+    const rows = [
+      ...run("bluesky", "global", hoursAgo(2), ["Senate hearing", "Example testifies to Senate"], [], [undefined, link]),
+      ...run("bluesky", "global", hoursAgo(1), ["Sample remarks on Example", "Senate hearing"], [], [link, undefined]),
+    ];
+    const dashboard = buildDashboard(rows, now, [bluesky]);
+    expect(dashboard.newEntries).toEqual([]);
+    expect(dashboard.movers.map((m) => [m.title, m.previousRank, m.rank])).toEqual([["Sample remarks on Example", 2, 1]]);
+    expect(dashboard.staying.map((s) => [s.title, s.lists])).toEqual([
+      ["Sample remarks on Example", 2],
+      ["Senate hearing", 2],
+    ]);
+  });
+
+  it("keys other sources by normalized title", () => {
+    expect(itemKey({ sourceId: "x", title: " World  Series", url: "https://x.com/a" })).toBe("world series");
+    expect(itemKey({ sourceId: "bluesky", title: "World Series", url: "https://bsky.app/a" })).toBe("https://bsky.app/a");
   });
 });
 

@@ -93,7 +93,7 @@ describe("sourceStatuses", () => {
 });
 
 describe("spendThisMonth", () => {
-  it("prices X requests exactly and estimates Apify sources from their schedules", async () => {
+  it("prices X requests exactly and estimates Apify sources from their schedules, from each one's first run", async () => {
     const at = (h: number, sourceId: string, status: string) => ({
       sourceId,
       region: "global",
@@ -108,6 +108,7 @@ describe("spendThisMonth", () => {
       at(21, "x", "error"),
       at(22, "x", "skipped"), // never reached X
       at(24 * 40, "x", "ok"), // last month
+      at(24 * 29 + 6, "tiktok", "ok"), // Sep 1 06:10: running all month
       at(5, "tiktok", "ok"),
       at(3, "instagram", "ok"),
       at(4, "pinterest", "ok"),
@@ -117,18 +118,19 @@ describe("spendThisMonth", () => {
     const [x, tiktok, instagram, pinterest] = spend.lines;
     expect(x).toMatchObject({ service: "X", detail: "12 trend requests × $0.010" });
     expect(x.toDate).toBeCloseTo(0.12);
-    expect(x.projected).toBeCloseTo((0.12 / 29.5) * 30, 2);
-    // Daily: 30 runs so far on Sep 30 at 12:10, and 30 in September.
+    // 12 requests in the 21 hours since X's first one, at the same pace until the month ends at midnight.
+    expect(x.projected).toBeCloseTo(0.12 + (0.12 / 21) * (11 + 50 / 60), 5);
+    // Daily since Sep 1: 30 runs so far on Sep 30 at 12:10, and 30 in September.
     expect(tiktok).toMatchObject({ service: "TikTok (Apify)", detail: "about 30 runs × $0.055, estimated from the schedule" });
     expect(tiktok.toDate).toBeCloseTo(30 * 0.055);
     expect(tiktok.projected).toBeCloseTo(30 * 0.055);
-    // Every 6 hours: 119 runs by Sep 30 at 12:10, and 120 in September.
-    expect(instagram).toMatchObject({ service: "Instagram (Apify)", detail: "about 119 runs × $0.020, estimated from the schedule" });
-    expect(instagram.toDate).toBeCloseTo(119 * 0.02);
-    expect(instagram.projected).toBeCloseTo(120 * 0.02);
-    // Twice a week: 9 runs so far on Sep 30, and 9 in September.
-    expect(pinterest).toMatchObject({ service: "Pinterest (Apify)", detail: "about 9 runs × $0.030, estimated from the schedule" });
-    expect(pinterest.projected).toBeCloseTo(9 * 0.03);
+    // Every 6 hours from 09:10 today: 1 run so far, and 3 by midnight; nothing for the days before it started.
+    expect(instagram).toMatchObject({ service: "Instagram (Apify)", detail: "about 1 run × $0.020, estimated from the schedule" });
+    expect(instagram.toDate).toBeCloseTo(0.02);
+    expect(instagram.projected).toBeCloseTo(3 * 0.02);
+    // Twice a week from 08:10 today: 1 run this month.
+    expect(pinterest).toMatchObject({ service: "Pinterest (Apify)", detail: "about 1 run × $0.030, estimated from the schedule" });
+    expect(pinterest.projected).toBeCloseTo(0.03);
     // Apify's free $5 a month covers TikTok, Instagram and Pinterest, so only X is out of pocket.
     expect(spend.outOfPocket).toBeCloseTo(x.projected, 5);
   });
