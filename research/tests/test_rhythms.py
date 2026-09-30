@@ -32,6 +32,9 @@ def fetches(source, start, lists, run_start=1, metrics=None, region="global", of
 
 def test_title_key_matches_loosely():
     assert rhythms.title_key("  #World  Series ") == "world series"
+    assert rhythms.title_key("#WorldSeries2026") == "world series 2026"  # split like the pipeline
+    assert rhythms.title_key("#NBAFinals") == "nba finals"
+    assert rhythms.title_key("#meermittwoch") == "meermittwoch"
 
 
 def test_list_id_names_regional_lists():

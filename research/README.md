@@ -52,6 +52,9 @@ research/
   pyproject.toml     makes topnews/ importable
   topnews/db.py      read-only data access
   topnews/rhythms.py RQ5: turnover, novelty and flow of the stored lists by hour
+  topnews/echo.py    RQ6: cross-platform matches of the stored lists' trends, using
+                     the pipeline's own filters and model (scripts/embed-titles.ts;
+                     needs npm ci at the repo root; vectors go to data/)
   notebooks/         one notebook per question, numbered
   findings/          write-ups: rq1-lifecycle.md and so on
   tests/             pytest, no database needed

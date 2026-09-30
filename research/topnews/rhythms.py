@@ -48,9 +48,19 @@ MAX_GAP_HOURS = 1.5
 AUDIENCE_TZ = "America/New_York"
 
 
+def split_hashtag(tag: str) -> str:
+    """Splits a hashtag body into words, as lib/text.ts splitHashtag does: "WorldSeries2026" → "World Series 2026"."""
+    tag = re.sub(r"([a-z])([A-Z])", r"\1 \2", tag)
+    tag = re.sub(r"([A-Z]+)([A-Z][a-z]{2,})", r"\1 \2", tag)
+    tag = re.sub(r"([A-Za-z]{2,})(\d)", r"\1 \2", tag)
+    tag = re.sub(r"(\d)([A-Za-z]{2,})", r"\1 \2", tag)
+    return re.sub(r"_+", " ", tag)
+
+
 def title_key(title: str) -> str:
-    """Loose identity for matching one source's items across hours by title."""
-    return re.sub(r"\s+", " ", title.lower().replace("#", " ")).strip()
+    """Loose identity for matching one source's items across hours by title: hashtags split into words, lowercase."""
+    split = re.sub(r"#(\w+)", lambda m: split_hashtag(m.group(1)), title)
+    return re.sub(r"\s+", " ", split.lower().replace("#", " ")).strip()
 
 
 def list_id(source_id: str, region: str) -> str:
@@ -58,7 +68,7 @@ def list_id(source_id: str, region: str) -> str:
     return source_id if region == "global" else f"{source_id} ({region})"
 
 
-def _keyed(items: pd.DataFrame) -> pd.DataFrame:
+def keyed(items: pd.DataFrame) -> pd.DataFrame:
     """Adds list_id and key (the url for URL_IDENTITY sources, else the loose title)."""
     by_url = items["source_id"].isin(URL_IDENTITY) & items["url"].notna()
     return items.assign(
@@ -67,9 +77,9 @@ def _keyed(items: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def _runs(keyed: pd.DataFrame) -> pd.DataFrame:
+def _runs(frame: pd.DataFrame) -> pd.DataFrame:
     runs = (
-        keyed.groupby(["list_id", "source_id", "run_id"], sort=False)
+        frame.groupby(["list_id", "source_id", "run_id"], sort=False)
         .agg(fetched_at=("fetched_at", "min"), keys=("key", frozenset), size=("key", "size"))
         .reset_index()
         .sort_values(["list_id", "fetched_at"])
@@ -79,7 +89,7 @@ def _runs(keyed: pd.DataFrame) -> pd.DataFrame:
 
 def list_runs(items: pd.DataFrame, depth: int = DEPTH) -> pd.DataFrame:
     """One row per list and fetch: the fetch time and the set of item keys in its top `depth`."""
-    return _runs(_keyed(items[items["rank"] <= depth]))
+    return _runs(keyed(items[items["rank"] <= depth]))
 
 
 def comparisons(
@@ -127,7 +137,7 @@ def novelty(items: pd.DataFrame, depth: int = DEPTH) -> pd.DataFrame:
     hours still run high, because a topic that trended just before the data
     starts looks new when it comes back; the bias fades as the data grows.
     """
-    df = _keyed(items[items["rank"] <= depth])
+    df = keyed(items[items["rank"] <= depth])
     first = df.sort_values("fetched_at").drop_duplicates(["list_id", "key"])
     counts = first.groupby(["list_id", "run_id"]).size().rename("first_time")
     runs = df.groupby(["list_id", "source_id", "run_id"]).agg(fetched_at=("fetched_at", "min")).reset_index()
@@ -144,13 +154,13 @@ def flow(items: pd.DataFrame, depth: int = DEPTH, **gaps: float) -> pd.DataFrame
     resets at midnight UTC) drops that item. Lists without a metric, and those
     in FLOW_EXCLUDED, are left out.
     """
-    keyed = _keyed(items[items["metric_value"].notna() & ~items["source_id"].isin(FLOW_EXCLUDED)])
-    keyed = keyed.sort_values("rank").drop_duplicates(["list_id", "run_id", "key"])
+    frame = keyed(items[items["metric_value"].notna() & ~items["source_id"].isin(FLOW_EXCLUDED)])
+    frame = frame.sort_values("rank").drop_duplicates(["list_id", "run_id", "key"])
     columns = ["list_id", "source_id", "run_id", "fetched_at", "gap_hours", "matched", "rate", "relative"]
-    if keyed.empty:
+    if frame.empty:
         return pd.DataFrame(columns=columns)
-    pairs = comparisons(_runs(keyed), **gaps)
-    values = keyed[["list_id", "run_id", "key", "rank", "metric_value"]]
+    pairs = comparisons(_runs(frame), **gaps)
+    values = frame[["list_id", "run_id", "key", "rank", "metric_value"]]
     now = pairs.merge(values[values["rank"] <= depth], on=["list_id", "run_id"])
     before = values.drop(columns="rank").rename(columns={"run_id": "previous_run_id", "metric_value": "previous"})
     joined = now.merge(before, on=["list_id", "previous_run_id", "key"])

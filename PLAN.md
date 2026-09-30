@@ -198,6 +198,11 @@ Between refreshes the same list repeats in every hourly fetch, so those sources'
 - **Titles:** Bluesky renames a topic as the story moves on, under the same url, so research matches Bluesky and Hacker News items by url.
 - **Churn:** on the first weekday, the share of each top 10 that was new since the hour before was Google 61%, Bluesky 53%, Hacker News 26%, Mastodon 8% and Twitch 7%. An hour-of-day rhythm needs at least 3 days of data, and about a week to trust.
 
+**Echo chambers** (RQ6 first look, 2026-09-30, `research/findings/rq6-echo.md`):
+- **Most trends stay on their own platform.** Titles were matched across lists with the pipeline's own model at 0.60. Over the first day, 95–98% of each phase-1 list's trends appeared on no other list. In the first hour with every list, X (71%), Instagram (70%) and Google (78%) were the least alone, sharing sports and news names with each other. TikTok, Pinterest, Twitch and Hacker News were 91–100% alone.
+- **Breakouts are rare.** Only 2 stories reached 3 or more platforms all day, so the breakout labels will be very unbalanced; "2 or more platforms" may be worth adding as a label.
+- **Matching near 0.60 is about half right.** Short names pass it as different people ("Dom Smith" and "jack smith"). Hashtags written as one lowercase word fall below it: 47% of TikTok's titles, and "#nationalcoffeeday" against "national coffee day" scored 0.53. Evidence for task 2.9.
+
 **Outside data**, added in this order and only when a question or horizon needs it, all free:
 
 1. Wikipedia pageviews: daily attention history since 2015 from the Wikimedia REST API, no key. The best source for seasonal baselines and for how big a past topic got.
