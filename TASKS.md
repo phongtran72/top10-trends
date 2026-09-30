@@ -133,7 +133,7 @@ order by success_pct;
 - [ ] **3.4 Pinterest collector** (after app review). `GET https://api.pinterest.com/v5/trends/keywords/US/top/growing?limit=25`; keywords in rank order; handle token refresh as Pinterest's docs describe.
 - [x] **3.5 TikTok** (optional). When `TIKTOK_ENABLED=true`, run the chosen Apify actor once a day through Apify's API and read its dataset of hashtags (weight 0.5, corroborating). Disable it after 3 failed days in a row.
 - [ ] **3.6 Claude topic names** (optional). When `ANTHROPIC_API_KEY` is set, name each new topic with Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) from its member titles and headlines: a short name plus a one-line reason of at most 120 characters, stored in `topics.label` and `topics.summary`. Never rename existing topics.
-- [ ] **3.7 Spend on /status.** Show a month-to-date estimate and a projection: X requests this month × $0.010, plus topics created this month × about $0.0009 when Claude naming is on (600 input and 60 output tokens at Haiku prices).
+- [x] **3.7 Spend on /status.** Show a month-to-date estimate and a projection: X requests this month × $0.010, plus topics created this month × about $0.0009 when Claude naming is on (600 input and 60 output tokens at Haiku prices).
 
 **Gate 3.** `/status` projects the month's spend within your chosen tier (Starter about $18, Plus about $19–24).
 

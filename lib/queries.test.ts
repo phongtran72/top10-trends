@@ -3,7 +3,7 @@ import { getSource, planSources } from "@/collectors/registry";
 import { fetchRuns, trendItems } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
 import { upsertSources } from "@/pipeline/sources";
-import { platformList, recentTopItems, sourceStatuses } from "./queries";
+import { platformList, recentTopItems, sourceStatuses, spendThisMonth } from "./queries";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 const now = new Date("2026-09-30T12:10:00Z");
@@ -89,5 +89,37 @@ describe("sourceStatuses", () => {
     expect(statuses.find((s) => s.id === "youtube")).toMatchObject({ lastRunAt: null, runs24h: 0, lastError: null });
     expect(statuses.find((s) => s.id === "heartbeat")).toMatchObject({ runs24h: 1, ok24h: 1 });
     expect(statuses).toHaveLength(11);
+  });
+});
+
+describe("spendThisMonth", () => {
+  it("prices X requests exactly and estimates TikTok from the schedule", async () => {
+    const at = (h: number, sourceId: string, status: string) => ({
+      sourceId,
+      region: "global",
+      startedAt: hoursAgo(h),
+      finishedAt: hoursAgo(h),
+      status,
+      itemCount: 0,
+    });
+    await t.db.insert(fetchRuns).values([
+      ...Array.from({ length: 10 }, (_, i) => at(i + 1, "x", "ok")),
+      at(20, "x", "error"),
+      at(21, "x", "error"),
+      at(22, "x", "skipped"), // never reached X
+      at(24 * 40, "x", "ok"), // last month
+      at(5, "tiktok", "ok"),
+    ]);
+    const spend = await spendThisMonth(t.db, now);
+    expect(spend.month).toBe("2026-09");
+    const [x, tiktok] = spend.lines;
+    expect(x).toMatchObject({ service: "X", detail: "12 trend requests × $0.010" });
+    expect(x.toDate).toBeCloseTo(0.12);
+    expect(x.projected).toBeCloseTo((0.12 / 29.5) * 30, 2);
+    // Every 2 days: 15 runs so far on Sep 30, and 15 in September.
+    expect(tiktok.toDate).toBeCloseTo(15 * 0.275);
+    expect(tiktok.projected).toBeCloseTo(15 * 0.275);
+    // Apify's free $5 a month covers TikTok, so only X is out of pocket.
+    expect(spend.outOfPocket).toBeCloseTo(x.projected, 5);
   });
 });

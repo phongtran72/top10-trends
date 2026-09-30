@@ -86,7 +86,17 @@ A business account, then an app at [developers.pinterest.com](https://developers
 
 ## 12. Apify, for TikTok (optional, phase 3)
 
-Create an [Apify](https://apify.com/pricing) account (the free plan includes $5 of usage a month), copy your API token → `APIFY_TOKEN`, and set `TIKTOK_ENABLED` to `true`. TikTok's terms ban scraping, so this source is your call.
+1. Create an [Apify](https://apify.com/pricing) account. The free plan includes $5 of usage a month and blocks, rather than bills, beyond it.
+2. Copy your API token (**Settings › API & Integrations**) into the GitHub secret `APIFY_TOKEN`, and set the GitHub variable `TIKTOK_ENABLED` to `true`.
+3. Open the actor [automation-lab/tiktok-trends-scraper](https://apify.com/automation-lab/tiktok-trends-scraper) and create a **schedule** (**Schedules › Create**) that runs it every 2 days (cron `0 6 */2 * *`, UTC) with this input:
+
+    ```json
+    { "trendType": "hashtag", "countryCode": "US", "period": 7, "maxResults": 15 }
+    ```
+
+    Each run costs about $0.28 ($0.05 plus $0.015 per hashtag), so about $4 a month, inside the free $5. The pipeline only reads the latest run's results. If no run has succeeded for 72 hours, TikTok shows as failing on /status.
+
+TikTok's terms ban scraping, so this source is your call.
 
 ## 13. Anthropic and OpenAI (optional)
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { RelativeTime } from "@/components/RelativeTime";
-import { getSourceStatuses } from "@/lib/cached";
+import { getSourceStatuses, getSpend } from "@/lib/cached";
 import { successRate } from "@/lib/format";
 import type { SourceStatus } from "@/lib/queries";
 import styles from "./page.module.css";
@@ -24,6 +24,8 @@ export default async function StatusPage() {
   // refreshed by the pipeline's revalidate call.
   await connection();
   const statuses = await getSourceStatuses();
+  const spend = await getSpend();
+  const usd = (n: number) => `$${n.toFixed(2)}`;
 
   return (
     <>
@@ -80,6 +82,49 @@ export default async function StatusPage() {
           </tbody>
         </table>
       </div>
+
+      <section className={styles.spend} aria-labelledby="spend">
+        <h2 id="spend">Spend this month</h2>
+        {spend.lines.length === 0 ? (
+          <p className="muted">No paid source has run this month.</p>
+        ) : (
+          <>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th scope="col">Service</th>
+                    <th scope="col">How it&apos;s counted</th>
+                    <th scope="col">So far</th>
+                    <th scope="col">Projected</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {spend.lines.map((line) => (
+                    <tr key={line.service}>
+                      <th scope="row">{line.service}</th>
+                      <td className="muted">{line.detail}</td>
+                      <td>{usd(line.toDate)}</td>
+                      <td>{usd(line.projected)}</td>
+                    </tr>
+                  ))}
+                  <tr>
+                    <th scope="row">Total</th>
+                    <td />
+                    <td>{usd(spend.toDate)}</td>
+                    <td>{usd(spend.projected)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className={styles.spendNote}>
+              Out of pocket this month: about {usd(spend.outOfPocket)}, after Apify&apos;s free $5 of monthly usage. X is
+              exact (requests × price); TikTok is estimated from the Apify schedule. The X and Apify consoles show the
+              actual bills.
+            </p>
+          </>
+        )}
+      </section>
     </>
   );
 }
