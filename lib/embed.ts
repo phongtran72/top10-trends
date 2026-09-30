@@ -1,6 +1,6 @@
 import path from "node:path";
 import type { TrendItem } from "@/collectors/types";
-import { normalize } from "@/lib/text";
+import { normalize, type SplitOptions } from "@/lib/text";
 
 // Text embeddings for topic matching: all-MiniLM-L6-v2 run locally with
 // Transformers.js (ONNX Runtime on the CPU), 384 dimensions, English. The
@@ -15,7 +15,12 @@ export const MODEL_CACHE_DIR = path.join(process.cwd(), ".cache", "transformers"
 // Normalized vectors, one per text, in order.
 export type Embedder = (texts: readonly string[]) => Promise<number[][]>;
 
-const BATCH = 64;
+// One text at a time: the 8-bit model scales its activations over a whole
+// padded batch, so a batched text's vector depended on its batch-mates (the
+// same pair scored 0.669, 0.681 or 0.695), and a borderline match could merge
+// one hour and not the next. Unbatched is bit-identical in any order and costs
+// about 0.2 s more per run.
+const BATCH = 1;
 
 export async function createEmbedder(): Promise<Embedder> {
   // Imported here so the website and the tests never load the model runtime.
@@ -32,9 +37,13 @@ export async function createEmbedder(): Promise<Embedder> {
   };
 }
 
-// What gets embedded: the normalized title plus up to two headlines.
-export function embeddingText(item: Pick<TrendItem, "title" | "matchText">): string {
-  return [item.title, ...(item.matchText ?? []).slice(0, 2)].map(normalize).filter(Boolean).join(". ");
+// What gets embedded: the normalized title plus up to two headlines. `keep`
+// holds runs that hashtags leave whole (lib/text.ts plainWords).
+export function embeddingText(item: Pick<TrendItem, "title" | "matchText">, options: SplitOptions = {}): string {
+  return [item.title, ...(item.matchText ?? []).slice(0, 2)]
+    .map((text) => normalize(text, options))
+    .filter(Boolean)
+    .join(". ");
 }
 
 export function dot(a: readonly number[], b: readonly number[]): number {
