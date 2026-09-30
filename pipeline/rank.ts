@@ -1,4 +1,5 @@
 import { getSource, type SourceId } from "@/collectors/registry";
+import { MATCH_THRESHOLD } from "@/config/ranking";
 import type { TrendItem } from "@/collectors/types";
 import { embeddingText, type Embedder } from "@/lib/embed";
 import { prettyLabel } from "@/lib/text";
@@ -7,7 +8,7 @@ import type { Db } from "./db";
 import { filterItems, type Dropped } from "./filter";
 import { matchItems, type MatchItem, type Topic } from "./match";
 import { currentEntries, scoreTopics, writeRankings, type PlatformRow, type ScoreEntry, type TopicScore } from "./score";
-import { buildSnapshots, writeSnapshots } from "./snapshots";
+import { algoVersion, buildSnapshots, writeSnapshots } from "./snapshots";
 import { loadRecentTopics, saveMatches } from "./topics";
 
 // The rank step: filter this run's lists, embed what's left, match items to
@@ -24,6 +25,7 @@ export interface RankInput {
   embedder: Embedder;
   blocklist: ReadonlySet<string>;
   threshold?: number;
+  replay?: boolean; // rebuilding from stored lists: no headlines or flags
 }
 
 export interface RankedTopic {
@@ -52,6 +54,25 @@ export function labelFor(item: Pick<MatchItem, "title">): string {
 export function contextFor(item: Pick<MatchItem, "sourceId" | "matchText">): string | null {
   if (item.sourceId !== "google_trends") return null;
   return item.matchText?.find((headline) => headline.trim())?.trim().slice(0, 300) ?? null;
+}
+
+// Distinct Google Trends headlines attached to each topic in this run: a coarse
+// news-coverage signal (the feed carries about three per trend).
+export function newsCounts(
+  items: readonly TrendItem[],
+  keyOf: ReadonlyMap<TrendItem, number>,
+  assignments: ReadonlyMap<number, Topic>,
+): Map<number, number> {
+  const headlines = new Map<number, Set<string>>();
+  for (const item of items) {
+    if (item.source !== "google_trends" || !item.matchText?.length) continue;
+    const topic = assignments.get(keyOf.get(item)!);
+    if (topic?.id === null || topic?.id === undefined) continue;
+    const set = headlines.get(topic.id) ?? new Set<string>();
+    for (const headline of item.matchText) if (headline.trim()) set.add(headline.trim().toLowerCase());
+    headlines.set(topic.id, set);
+  }
+  return new Map([...headlines].map(([id, set]) => [id, set.size]));
 }
 
 export async function rankRun(input: RankInput): Promise<RankOutcome> {
@@ -107,7 +128,10 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
     const entries = await currentEntries(input.db, input.now);
     scores = scoreTopics(entries);
     await writeRankings(input.db, input.now, scores, platformRows);
-    const rows = buildSnapshots(entries, input.now);
+    const rows = buildSnapshots(entries, input.now, {
+      algoVersion: algoVersion(input.threshold ?? MATCH_THRESHOLD, input.replay),
+      newsCount: newsCounts(kept, keyOf, match.assignments),
+    });
     await writeSnapshots(input.db, rows);
     snapshots = rows.length;
   } else {

@@ -32,3 +32,7 @@ export const X_DAILY_REQUEST_CAP = 60;
 // inside YouTube's 30-day limit; fetch_runs 90 days.
 export const ITEM_RETENTION_DAYS = 28;
 export const FETCH_RUN_RETENTION_DAYS = 90;
+
+// Bump when weights, filters or scoring change, so analyses of stored
+// snapshots can tell methods apart (topic_snapshots.algo_version).
+export const RANKING_VERSION = "r1";

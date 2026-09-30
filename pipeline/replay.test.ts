@@ -65,7 +65,9 @@ describe("tuning in a scratch copy", () => {
     ]);
     // Hour 10: 3 topics; hour 11: world series only; hour 12: world series (still on Bluesky 11:40) and flood watch.
     expect(strict.top10Entries).toBe(6);
-    expect(await scratch.db.select().from(topicSnapshots)).not.toHaveLength(0);
+    const snaps = await scratch.db.select().from(topicSnapshots);
+    expect(snaps).not.toHaveLength(0);
+    expect(new Set(snaps.map((s) => s.algoVersion))).toEqual(new Set(["all-minilm-l6-v2.q8/t0.80/r1+replay"]));
 
     await resetDerived(scratch.db);
     expect(await scratch.db.select().from(topics)).toHaveLength(0);

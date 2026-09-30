@@ -123,6 +123,8 @@ export const topicSnapshots = pgTable(
     position: integer("position"), // place among all scored topics that hour; null without a lead platform
     score: real("score"), // combined score without YouTube; null without a lead platform
     platformCount: integer("platform_count").notNull(),
+    newsCount: integer("news_count").notNull().default(0), // distinct Google Trends headlines attached this run
+    algoVersion: text("algo_version").notNull(), // how the row was made: model, threshold, ranking version, +replay
     ranks: jsonb("ranks").$type<Record<string, number>>().notNull(), // source id → best rank
     metrics: jsonb("metrics").$type<Record<string, number>>().notNull(), // source id → metric of that item
   },

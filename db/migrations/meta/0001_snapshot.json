@@ -1,5 +1,5 @@
 {
-  "id": "cd70abce-f0c9-4ac4-89ce-bf714b68a350",
+  "id": "e1c0f988-fe1a-4d7e-be17-224fa7ebeab8",
   "prevId": "68cf19cb-3c7a-407f-941f-6175be89b5d3",
   "version": "7",
   "dialect": "postgresql",
@@ -342,6 +342,19 @@
         "platform_count": {
           "name": "platform_count",
           "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "news_count": {
+          "name": "news_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "algo_version": {
+          "name": "algo_version",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },

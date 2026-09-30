@@ -102,6 +102,7 @@ export async function replaySlots(
       embedder: options.embedder,
       blocklist: options.blocklist,
       threshold: options.threshold,
+      replay: true,
     });
     created += outcome.created;
     options.onSlot?.(index);

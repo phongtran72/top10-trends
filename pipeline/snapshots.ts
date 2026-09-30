@@ -1,5 +1,7 @@
 import { PLATFORMS, type SourceId } from "@/collectors/registry";
+import { RANKING_VERSION } from "@/config/ranking";
 import { topicSnapshots } from "@/db/schema";
+import { EMBEDDING_DTYPE, EMBEDDING_MODEL } from "@/lib/embed";
 import type { Db } from "./db";
 import { scoreTopics, type ScoreEntry } from "./score";
 
@@ -13,6 +15,15 @@ import { scoreTopics, type ScoreEntry } from "./score";
 // a permanent table, and it doesn't count toward the snapshot score.
 export const EXCLUDED_FROM_HISTORY: ReadonlySet<SourceId> = new Set<SourceId>(["youtube"]);
 
+// How a snapshot was made, e.g. "all-minilm-l6-v2.q8/t0.60/r1": the embedding
+// model and weights, the matching threshold and the ranking version, plus
+// "+replay" for hours rebuilt from stored lists (titles only: no headlines, no
+// Bluesky status filter).
+export function algoVersion(threshold: number, replay = false): string {
+  const model = EMBEDDING_MODEL.split("/").pop()!.toLowerCase();
+  return `${model}.${EMBEDDING_DTYPE}/t${threshold.toFixed(2)}/${RANKING_VERSION}${replay ? "+replay" : ""}`;
+}
+
 export interface SnapshotRow {
   takenAt: Date;
   region: string;
@@ -20,11 +31,18 @@ export interface SnapshotRow {
   position: number | null;
   score: number | null;
   platformCount: number;
+  newsCount: number;
+  algoVersion: string;
   ranks: Record<string, number>;
   metrics: Record<string, number>;
 }
 
-export function buildSnapshots(entries: readonly ScoreEntry[], takenAt: Date, region = "global"): SnapshotRow[] {
+export function buildSnapshots(
+  entries: readonly ScoreEntry[],
+  takenAt: Date,
+  options: { algoVersion: string; newsCount?: ReadonlyMap<number, number>; region?: string },
+): SnapshotRow[] {
+  const region = options.region ?? "global";
   const kept = entries.filter((e) => !EXCLUDED_FROM_HISTORY.has(e.sourceId));
   const sources = PLATFORMS.filter((p) => !EXCLUDED_FROM_HISTORY.has(p.id));
   const scores = scoreTopics(kept, sources);
@@ -55,6 +73,8 @@ export function buildSnapshots(entries: readonly ScoreEntry[], takenAt: Date, re
         position: scored?.position ?? null,
         score: scored?.score ?? null,
         platformCount: platforms.size,
+        newsCount: options.newsCount?.get(topicId) ?? 0,
+        algoVersion: options.algoVersion,
         ranks,
         metrics,
       };

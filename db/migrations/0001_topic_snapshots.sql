@@ -5,6 +5,8 @@ CREATE TABLE "topic_snapshots" (
 	"position" integer,
 	"score" real,
 	"platform_count" integer NOT NULL,
+	"news_count" integer DEFAULT 0 NOT NULL,
+	"algo_version" text NOT NULL,
 	"ranks" jsonb NOT NULL,
 	"metrics" jsonb NOT NULL,
 	CONSTRAINT "topic_snapshots_topic_id_taken_at_region_pk" PRIMARY KEY("topic_id","taken_at","region")
