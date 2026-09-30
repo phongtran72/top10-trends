@@ -1,7 +1,8 @@
-import { and, desc, eq, gt, inArray, lte } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, lte, notInArray } from "drizzle-orm";
 import { PLATFORMS, type SourceDef, type SourceId } from "@/collectors/registry";
 import { FRESH_LIST_HOURS, TOP_N } from "@/config/ranking";
 import { fetchRuns, rankings, topicItems, trendItems } from "@/db/schema";
+import { rankWindow, WINDOWED_SOURCES } from "@/lib/window";
 import type { Db } from "./db";
 
 // Combined score (CLAUDE.md invariant 7): the sum over platforms of
@@ -56,9 +57,57 @@ export function scoreTopics(entries: readonly ScoreEntry[], sources: readonly So
 // moment later, so lists up to this long after that time belong to it.
 export const RUN_LIST_MARGIN_MS = 15 * 60_000;
 
+export interface WindowRow {
+  itemId: number;
+  topicId: number;
+  region: string;
+  title: string;
+  metricValue: number | null;
+  rank: number; // 1-based, within its region's window
+  fetchedAt: Date;
+}
+
+// A windowed source's kept items (those matched to a topic) from every
+// successful list in the last `hours`, ranked per region by rankWindow.
+export async function windowedItems(db: Db, sourceId: SourceId, now: Date, hours: number): Promise<WindowRow[]> {
+  const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
+  const until = new Date(now.getTime() + RUN_LIST_MARGIN_MS);
+  const rows = await db
+    .select({
+      itemId: trendItems.id,
+      topicId: topicItems.topicId,
+      region: trendItems.region,
+      title: trendItems.title,
+      metricValue: trendItems.metricValue,
+      rank: trendItems.rank,
+      fetchedAt: trendItems.fetchedAt,
+    })
+    .from(trendItems)
+    .innerJoin(topicItems, eq(topicItems.itemId, trendItems.id))
+    .innerJoin(fetchRuns, eq(fetchRuns.id, trendItems.runId))
+    .where(
+      and(
+        eq(trendItems.sourceId, sourceId),
+        eq(fetchRuns.status, "ok"),
+        gt(fetchRuns.startedAt, since),
+        lte(fetchRuns.startedAt, until),
+      ),
+    );
+  const byRegion = new Map<string, typeof rows>();
+  for (const row of rows) byRegion.set(row.region, [...(byRegion.get(row.region) ?? []), row]);
+  return [...byRegion.values()].flatMap((regionRows) => rankWindow(regionRows).map((row, index) => ({ ...row, rank: index + 1 })));
+}
+
 // Topic ranks in each source's latest successful list from the last three
-// hours. The upper bound matters when replaying past hours.
+// hours; a windowed source (Google Trends) ranks every list in its window
+// instead. The upper bound matters when replaying past hours.
 export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS): Promise<ScoreEntry[]> {
+  const windowed: ScoreEntry[] = [];
+  for (const [sourceId, windowHours] of WINDOWED_SOURCES) {
+    for (const row of await windowedItems(db, sourceId, now, windowHours)) {
+      windowed.push({ topicId: row.topicId, sourceId, rank: row.rank, metricValue: row.metricValue });
+    }
+  }
   const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
   const until = new Date(now.getTime() + RUN_LIST_MARGIN_MS);
   const latest = await db
@@ -70,10 +119,11 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
         gt(fetchRuns.itemCount, 0),
         gt(fetchRuns.startedAt, since),
         lte(fetchRuns.startedAt, until),
+        notInArray(fetchRuns.sourceId, [...WINDOWED_SOURCES.keys()]),
       ),
     )
     .orderBy(fetchRuns.sourceId, fetchRuns.region, desc(fetchRuns.startedAt));
-  if (latest.length === 0) return [];
+  if (latest.length === 0) return windowed;
   const rows = await db
     .select({
       topicId: topicItems.topicId,
@@ -89,7 +139,7 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
         latest.map((r) => r.id),
       ),
     );
-  return rows.map((r) => ({ ...r, sourceId: r.sourceId as SourceId }));
+  return [...rows.map((r) => ({ ...r, sourceId: r.sourceId as SourceId })), ...windowed];
 }
 
 export interface PlatformRow {

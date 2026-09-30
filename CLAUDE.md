@@ -74,7 +74,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 - Reddit requires the User-Agent format `<platform>:<app ID>:<version> (by /u/<username>)`, and its API needs explicit approval first (SETUP.md).
 - Bluesky's trends endpoints are "unspecced": `link` is a relative path, `status` is free text (seen: `trending`, `saturating`, `cooling`, `stale`) and `topic` is an opaque id. Validate with zod so a schema change fails only that source.
 - YouTube's `chart=mostPopular` has no worldwide option and, since July 2025, draws from the music, movies and gaming charts.
-- Google Trends' "Trending now" RSS is per country with no worldwide feed, and each item's `<link>` is only the feed URL.
+- Google Trends' "Trending now" RSS is per country with no worldwide feed, and each item's `<link>` is only the feed URL. It lists the 10 newest trends, not the biggest, so the pipeline, the platform page and the dashboard rank its last 3 hours by approximate traffic (`lib/window.ts`, PLAN.md › Ranking › Google Trends window).
 - Keep a pipeline run under 5 minutes: cache npm and the embedding model in Actions, and fetch sources in parallel.
 
 ## How to work

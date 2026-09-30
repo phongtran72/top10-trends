@@ -123,6 +123,7 @@ order by success_pct;
 - [ ] **2.9 Tuning.** Tune `MATCH_THRESHOLD` and the weights in `config/ranking.ts` from the eval output, and record the final values and reasons in PLAN.md.
 - [x] **2.10 Topic snapshots.** Each run writes one permanent `topic_snapshots` row per current topic (position, score, platform count, news-headline count, method version, and best rank and metric per platform) as history for a future prediction model. YouTube is left out entirely (PLAN.md › Data model).
 - [x] **2.11 Replay.** `npm run replay -- tune` replays the stored hourly lists through the rank step in an in-memory copy, at several thresholds, and reports each cross-platform merge for review (input to 2.9). `npm run replay -- rebuild --threshold X --yes` rebuilds topics, rankings and snapshots from every stored list: the backfill of hours before phase 2 went live. It refuses if the stored lists no longer cover the derived data. Run the rebuild before 2026-10-28, when the first lists are purged.
+- [x] **2.12 Google Trends window.** Google's feed lists its newest trends first, not its biggest, so rank every Google trend from the last 3 hours by approximate traffic (one entry per query, at its latest sighting) for the combined score, topic snapshots, the Google Trends page and the dashboard. The collector keeps the feed's order.
 
 **Gate 2.** Run the eval for 5 hours. In each hour, at least 8 of the 10 topics make sense and none is a duplicate.
 

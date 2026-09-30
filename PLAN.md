@@ -25,7 +25,7 @@ Six sources are free and need no approval, so they form the MVP. X costs $0.010 
 | Platform | Trending signal | Access | Cost | Region | Phase |
 | --- | --- | --- | --- | --- | --- |
 | [Bluesky](https://raw.githubusercontent.com/bluesky-social/atproto/main/lexicons/app/bsky/unspecced/getTrends.json) | `app.bsky.unspecced.getTrends` on `https://public.api.bsky.app`: topic, display name, link, post count, status, up to 25 | None; the endpoint is "unspecced", so it may change | Free | Global | 1 |
-| [Google Trends](https://support.google.com/trends/answer/3076011) | "Trending now" RSS, `https://trends.google.com/trending/rss?geo=US`: query, approximate traffic, news headlines and links, about 10 items, refreshed about every 10 minutes | None; the official API is still a gated alpha | Free | Per country; no worldwide feed | 1 |
+| [Google Trends](https://support.google.com/trends/answer/3076011) | "Trending now" RSS, `https://trends.google.com/trending/rss?geo=US`: query, approximate traffic, news headlines and links; the 10 newest trends, newest first (not the 10 biggest), refreshed about every 10 minutes | None; the official API is still a gated alpha | Free | Per country; no worldwide feed | 1 |
 | [YouTube](https://developers.google.com/youtube/v3/docs/videos/list) | `videos.list?part=snippet,statistics&chart=mostPopular&regionCode=US`: title, views, likes; since July 2025 drawn from the music, movies and gaming charts | API key; stored data kept 30 days at most | Free; 1 quota unit per call of 10,000 a day | Per country; no global | 1 |
 | [Mastodon](https://docs.joinmastodon.org/methods/trends/) | `GET /api/v1/trends/tags` on mastodon.social: tag, URL, daily uses and accounts, up to 20 | None; trends are per server | Free; 300 requests per 5 minutes per IP | Per server | 1 |
 | [Hacker News](https://github.com/HackerNews/API) | `topstories.json`, then `item/{id}.json`: title, URL, score, comment count | None | Free; no rate limit | Global, tech audience | 1 |
@@ -107,7 +107,9 @@ Page caching uses Next.js 16 without Cache Components, because `next build` must
 
 Each platform's top 10 keeps that platform's own order; the combined top 10 rewards topics that rank high on several platforms, led by sources that report live trends.
 
-**Per-platform top 10.** Show the first 10 items in the order the source returns them, after filters. X, Google Trends, Bluesky, Mastodon, Twitch, Pinterest, TikTok and Instagram return ranked trend lists; Reddit, YouTube and Hacker News return ranked posts or videos, shown as they are.
+**Per-platform top 10.** Show the first 10 items in the order the source returns them, after filters. X, Bluesky, Mastodon, Twitch, Pinterest, TikTok and Instagram return ranked trend lists; Reddit, YouTube and Hacker News return ranked posts or videos, shown as they are. Google Trends is the exception, below.
+
+**Google Trends window.** Google's "Trending now" feed lists its 10 newest US trends, newest first, not its 10 biggest: on 2026-09-30 the Astros, at 50,000+ searches, sat at #7 under five trends of 500 to 5,000, and on a busy afternoon the whole list turns over within an hour (found by the predictions work, research/findings/rq5-rhythms.md). So Google's list is every trend it published in the last 3 hours (the same freshness limit as every list), one entry per query at its latest sighting, ranked by approximate traffic, then by the newer sighting, then by feed position. The collector keeps the feed's order (invariant 3); `lib/window.ts` ranks the window, and the combined score, topic snapshots, the Google Trends page and the dashboard all use it. Decided by the owner on 2026-09-30.
 
 **Combined top 10**, recomputed every run:
 

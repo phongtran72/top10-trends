@@ -4,6 +4,7 @@ import type { Region, TrendItem } from "@/collectors/types";
 import { rankings, topicItems, topicSnapshots, topics } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
 import { writeResults, type ListResult } from "./collect";
+import { platformList } from "@/lib/queries";
 import { contextFor, formatRankOutcome, labelFor, rankRun } from "./rank";
 import { upsertSources } from "./sources";
 import { wordEmbedder } from "./test-embedder";
@@ -110,6 +111,37 @@ describe("rankRun", () => {
         { sourceId: "bluesky", rank: 1 },
       ],
     });
+  });
+});
+
+describe("Google Trends window", () => {
+  const run3 = new Date("2026-10-10T12:07:00Z");
+  const run4 = new Date("2026-10-10T13:07:00Z");
+
+  it("ranks Google's lists from the last 3 hours by search volume, for the score and the page", async () => {
+    // The feed puts its newest trend first; the bigger one was published earlier.
+    await runOnce(run3, [
+      list("google_trends", "us", run3, [
+        { title: "alpha storm", metricValue: 1000 },
+        { title: "beta final", metricValue: 50000 },
+      ]),
+    ]);
+    const first = await t.db.select().from(rankings);
+    expect(first.filter((r) => r.list === "google_trends" && r.computedAt.getTime() === run3.getTime()).map((r) => r.rank)).toEqual([1, 2]);
+
+    const outcome = await runOnce(run4, [list("google_trends", "us", run4, [{ title: "gamma launch", metricValue: 2000 }])]);
+    // "beta final" left the feed at 13:07 but is still Google's biggest search in the window.
+    expect(outcome.combined.map((c) => [c.label, c.platforms])).toEqual([
+      ["beta final", [{ sourceId: "google_trends", rank: 1 }]],
+      ["gamma launch", [{ sourceId: "google_trends", rank: 2 }]],
+      ["alpha storm", [{ sourceId: "google_trends", rank: 3 }]],
+    ]);
+    const page = await platformList(t.db, getSource("google_trends"));
+    expect(page?.items.map((i) => [i.rank, i.title, i.metricValue])).toEqual([
+      [1, "beta final", 50000],
+      [2, "gamma launch", 2000],
+      [3, "alpha storm", 1000],
+    ]);
   });
 });
 

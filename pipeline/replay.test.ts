@@ -63,8 +63,9 @@ describe("tuning in a scratch copy", () => {
     expect(strict.crossPlatform.map((t) => [t.label, Object.keys(t.titles).sort()])).toEqual([
       ["world series", ["bluesky", "google_trends", "youtube"]],
     ]);
-    // Hour 10: 3 topics; hour 11: world series only; hour 12: world series (still on Bluesky 11:40) and flood watch.
-    expect(strict.top10Entries).toBe(6);
+    // Hour 10: 3 topics; hour 11: world series, plus flood watch still in Google's 3-hour window;
+    // hour 12: world series (Bluesky 11:40, and Google's window) and flood watch.
+    expect(strict.top10Entries).toBe(7);
     const snaps = await scratch.db.select().from(topicSnapshots);
     expect(snaps).not.toHaveLength(0);
     expect(new Set(snaps.map((s) => s.algoVersion))).toEqual(new Set(["all-minilm-l6-v2.q8/t0.80/r1+replay"]));
