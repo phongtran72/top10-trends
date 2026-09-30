@@ -7,6 +7,7 @@ describe("embeddingText", () => {
       embeddingText({ title: "#WorldSeries", matchText: ["Dodgers win Game 4", "What to know", "A third headline"] }),
     ).toBe("world series. dodgers win game 4. what to know");
     expect(embeddingText({ title: "flood watch" })).toBe("flood watch");
+    expect(embeddingText({ title: "#flydubai" }, { keep: new Set(["flydubai"]) })).toBe("flydubai");
   });
 });
 

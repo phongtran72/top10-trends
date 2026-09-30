@@ -18,21 +18,28 @@ export function splitHashtag(tag: string): string {
     .replace(/_+/g, " ");
 }
 
+export interface SplitOptions {
+  // Runs written as one word in the news this run ("flydubai" in "Flydubai
+  // flight diverts…"): a brand or name, so a hashtag keeps it whole too.
+  keep?: ReadonlySet<string>;
+}
+
 // Lowercase runs that a hashtag's capitals can't split, split into English
 // words: "nationalcoffeeday" → "national coffee day" (lib/segment.ts).
-function splitRuns(text: string): string {
-  return text.replace(/\b[a-z]+\b/g, (run) => segmentRun(run));
+function splitRuns(text: string, options: SplitOptions): string {
+  return text.replace(/\b[a-z]+\b/g, (run) => (options.keep?.has(run) ? run : segmentRun(run)));
 }
 
-function splitHashtags(text: string): string {
-  return text.replace(/#([\p{L}\p{N}_]+)/gu, (_, body: string) => splitRuns(splitHashtag(body)));
+function splitHashtags(text: string, options: SplitOptions): string {
+  return text.replace(/#([\p{L}\p{N}_]+)/gu, (_, body: string) => splitRuns(splitHashtag(body), options));
 }
 
-// Hashtags split into words; a title that is one word on its own ("aircrash",
-// "WorldSeries") is split the same way.
-function splitTitle(text: string): string {
-  const cleaned = clean(splitHashtags(text));
-  return /^[\p{L}\p{N}_]+$/u.test(cleaned) ? splitRuns(splitHashtag(cleaned)) : cleaned;
+// Hashtags split into words; a title that is one lowercase word on its own
+// ("aircrash") is split into words too. A capitalized single word ("LeBron",
+// "PlayStation") is a name and stays whole.
+function splitTitle(text: string, options: SplitOptions): string {
+  const cleaned = clean(splitHashtags(text, options));
+  return /^[a-z]+$/.test(cleaned) ? splitRuns(cleaned, options) : cleaned;
 }
 
 function clean(text: string): string {
@@ -40,13 +47,26 @@ function clean(text: string): string {
 }
 
 // Matching form: hashtags split into words, lowercase, no URLs, emoji or #.
-export function normalize(text: string): string {
-  return splitTitle(text).toLowerCase();
+export function normalize(text: string, options: SplitOptions = {}): string {
+  return splitTitle(text, options).toLowerCase();
 }
 
 // Display form: hashtags split into words, the source's capitalization kept.
 export function prettyLabel(text: string): string {
-  return splitTitle(text);
+  return splitTitle(text, {});
+}
+
+// Words of six or more letters written in running text (titles and headlines
+// of two or more words, hashtags left out), lowercase: the `keep` set for a
+// run's hashtags. "Flydubai flight diverts to Saudi Arabia" gives "flydubai".
+export function plainWords(texts: readonly string[]): Set<string> {
+  const words = new Set<string>();
+  for (const text of texts) {
+    const plain = clean(text.replace(/#[\p{L}\p{N}_]+/gu, " "));
+    if (!plain.includes(" ")) continue;
+    for (const word of plain.toLowerCase().match(/\b[a-z]{6,}\b/g) ?? []) words.add(word);
+  }
+  return words;
 }
 
 // URL slug: "World Series 2026!" → "world-series-2026".

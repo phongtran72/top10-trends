@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalize, prettyLabel, slugify, splitHashtag } from "./text";
+import { normalize, plainWords, prettyLabel, slugify, splitHashtag } from "./text";
 
 describe("normalize", () => {
   it.each([
@@ -35,9 +35,25 @@ describe("prettyLabel", () => {
     ["dodgers vs yankees", "dodgers vs yankees"],
     ["Man City charges case 🏆", "Man City charges case"],
     ["#jacksmith", "jack smith"],
-    ["WorldSeries", "World Series"],
+    // A capitalized single word is a name and stays whole.
+    ["LeBron", "LeBron"],
+    ["PlayStation", "PlayStation"],
   ])("%s → %s", (input, expected) => {
     expect(prettyLabel(input)).toBe(expected);
+  });
+});
+
+describe("keeping brands whole", () => {
+  it("collects six-letter-plus words from running text, not from hashtags or one-word titles", () => {
+    expect(plainWords(["Flydubai flight diverts to Saudi Arabia", "#nationalcoffeeday", "aircrash", "#Big news today"])).toEqual(
+      new Set(["flydubai", "flight", "diverts", "arabia"]),
+    );
+  });
+
+  it("keeps a run whole in a hashtag when the news writes it as one word", () => {
+    expect(normalize("#flydubai")).toBe("fly dubai");
+    expect(normalize("#flydubai", { keep: new Set(["flydubai"]) })).toBe("flydubai");
+    expect(normalize("#nationalcoffeeday", { keep: new Set(["flydubai"]) })).toBe("national coffee day");
   });
 });
 

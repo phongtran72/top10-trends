@@ -61,7 +61,7 @@ export function latinShare(text: string): number {
 // A confident non-English language for the item, if any. Headlines, when a
 // source provides them, give the detector more English to work with.
 export function confidentLanguage(item: TrendItem): string | null {
-  const text = [item.title, ...(item.matchText ?? []).slice(0, 2)].map(normalize).filter(Boolean).join(". ");
+  const text = [item.title, ...(item.matchText ?? []).slice(0, 2)].map((text) => normalize(text)).filter(Boolean).join(". ");
   const [top] = detectAll(text);
   if (!top || top.lang === "en" || top.accuracy < LANGUAGE_CONFIDENCE) return null;
   return top.lang;
