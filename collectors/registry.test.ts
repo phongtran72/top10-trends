@@ -65,6 +65,11 @@ describe("planSources", () => {
     expect(plan({ ids: ["tiktok"], env: { APIFY_TOKEN: "t", TIKTOK_ENABLED: "true" } }).tiktok.action).toBe("run");
   });
 
+  it("reads Pinterest through Apify, turned on by PINTEREST_ENABLED", () => {
+    expect(plan({ ids: ["pinterest"], env: { APIFY_TOKEN: "t" } }).pinterest).toMatchObject({ reason: "PINTEREST_ENABLED is not true" });
+    expect(plan({ ids: ["pinterest"], env: { APIFY_TOKEN: "t", PINTEREST_ENABLED: "true" } }).pinterest.action).toBe("run");
+  });
+
   it("turns Instagram on separately from TikTok, with the same Apify token", () => {
     const env = { APIFY_TOKEN: "t", TIKTOK_ENABLED: "true" };
     expect(plan({ ids: ["instagram"], env }).instagram).toMatchObject({ action: "skip", reason: "INSTAGRAM_ENABLED is not true" });
