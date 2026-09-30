@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gt, lte, sql } from "drizzle-orm";
 import { pageRegion, SOURCES, type SourceDef, type SourceId } from "@/collectors/registry";
-import { fetchRuns, trendItems } from "@/db/schema";
+import { fetchRuns, rankings, trendItems } from "@/db/schema";
 import type { Db } from "@/db/types";
 
 // Read-only queries behind the site's pages. Results are plain JSON (dates as
@@ -27,7 +27,9 @@ function iso(value: Date | string | null | undefined): string | null {
   return (value instanceof Date ? value : new Date(value)).toISOString();
 }
 
-// A platform's latest successful list, top 10 in the source's own order.
+// A platform's latest successful list, top 10 in the source's own order and
+// after filters when the rank step has ranked that list (phase 2); the raw
+// list otherwise.
 export async function platformList(db: Db, source: SourceDef, limit = 10): Promise<PlatformList | null> {
   const region = pageRegion(source);
   const [run] = await db
@@ -44,18 +46,28 @@ export async function platformList(db: Db, source: SourceDef, limit = 10): Promi
     .orderBy(desc(fetchRuns.startedAt))
     .limit(1);
   if (!run) return null;
-  const items = await db
-    .select({
-      rank: trendItems.rank,
-      title: trendItems.title,
-      url: trendItems.url,
-      metricValue: trendItems.metricValue,
-      metricLabel: trendItems.metricLabel,
-    })
-    .from(trendItems)
-    .where(eq(trendItems.runId, run.id))
-    .orderBy(asc(trendItems.rank))
+  const fields = {
+    title: trendItems.title,
+    url: trendItems.url,
+    metricValue: trendItems.metricValue,
+    metricLabel: trendItems.metricLabel,
+  };
+  const ranked = await db
+    .select({ rank: rankings.rank, ...fields })
+    .from(rankings)
+    .innerJoin(trendItems, eq(trendItems.id, rankings.itemId))
+    .where(and(eq(rankings.list, source.id), eq(trendItems.runId, run.id)))
+    .orderBy(asc(rankings.rank))
     .limit(limit);
+  const items =
+    ranked.length > 0
+      ? ranked
+      : await db
+          .select({ rank: trendItems.rank, ...fields })
+          .from(trendItems)
+          .where(eq(trendItems.runId, run.id))
+          .orderBy(asc(trendItems.rank))
+          .limit(limit);
   if (items.length === 0) return null;
   return {
     sourceId: source.id,

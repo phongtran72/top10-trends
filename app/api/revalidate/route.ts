@@ -19,6 +19,7 @@ export async function POST(request: Request) {
   revalidateTag(TRENDS_TAG, { expire: 0 });
   revalidatePath("/");
   revalidatePath("/p/[platform]", "page");
+  revalidatePath("/t/[slug]", "page");
   revalidatePath("/status");
   return Response.json({ ok: true, revalidatedAt: new Date().toISOString() });
 }

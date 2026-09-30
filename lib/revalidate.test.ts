@@ -37,7 +37,7 @@ describe("POST /api/revalidate", () => {
     const response = await call(secret);
     expect(response.status).toBe(200);
     expect(revalidateTag).toHaveBeenCalledWith("trends", { expire: 0 });
-    expect(vi.mocked(revalidatePath).mock.calls).toEqual([["/"], ["/p/[platform]", "page"], ["/status"]]);
+    expect(vi.mocked(revalidatePath).mock.calls).toEqual([["/"], ["/p/[platform]", "page"], ["/t/[slug]", "page"], ["/status"]]);
   });
 
   it("rejects a wrong or missing secret without revalidating", async () => {

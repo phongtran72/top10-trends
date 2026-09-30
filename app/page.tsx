@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { PLATFORMS } from "@/collectors/registry";
+import { PlatformBadges } from "@/components/PlatformBadges";
+import { RankChange } from "@/components/RankChange";
 import { RelativeTime } from "@/components/RelativeTime";
-import { getDashboard } from "@/lib/cached";
+import { getCombinedTop, getDashboard } from "@/lib/cached";
 import type { DashboardEntry, Staying } from "@/lib/dashboard";
 import { metricText, REGION_NAMES } from "@/lib/format";
 import styles from "./page.module.css";
 
-// The dashboard: every platform at a glance, plus what changed since the last
-// hourly list. It renders per request (never at build time) from data cached
-// under the `trends` tag. Phase 2 adds the combined top 10 above it.
+// The home page: the combined top 10 across platforms, then the dashboard
+// (every platform at a glance and what changed since the last hourly list).
+// It renders per request (never at build time) from data cached under the
+// `trends` tag.
 
 function Entry({ entry, children }: { entry: DashboardEntry | Staying; children?: React.ReactNode }) {
   return (
@@ -51,6 +54,7 @@ function Meter({ value, max }: { value: number; max: number }) {
 
 export default async function Home() {
   await connection();
+  const combined = await getCombinedTop();
   const data = await getDashboard();
   const later = PLATFORMS.filter((p) => p.phase > 1).map((p) => p.name);
 
@@ -67,6 +71,31 @@ export default async function Home() {
         ) : null}
         .
       </p>
+
+      {combined && combined.entries.length > 0 && (
+        <section className={styles.section} aria-labelledby="combined">
+          <h2 id="combined">Top 10 across platforms</h2>
+          <p className={styles.note}>
+            Topics ranked by how high they trend on each platform ·{" "}
+            <RelativeTime iso={combined.computedAt} prefix="updated" />
+          </p>
+          <ol className={styles.combined}>
+            {combined.entries.map((entry) => (
+              <li key={entry.topicId} className={styles.topic}>
+                <span className={styles.topicRank}>{entry.rank}</span>
+                <div className={styles.topicBody}>
+                  <Link href={`/t/${entry.slug}`} className={styles.topicLabel}>
+                    {entry.label}
+                  </Link>
+                  {entry.summary && <p className={styles.topicSummary}>{entry.summary}</p>}
+                  <PlatformBadges platforms={entry.platforms} />
+                </div>
+                <RankChange change={entry.change} compared={combined.compared} />
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       {data.highlights.length > 0 && (
         <section className={styles.section} aria-labelledby="highlights">
@@ -191,7 +220,7 @@ export default async function Home() {
       </section>
 
       <p className={styles.later}>
-        Coming later: {later.join(", ")}, and one combined top 10 across every platform.
+        Coming later: {later.join(", ")}.
       </p>
     </>
   );

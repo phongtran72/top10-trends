@@ -1,0 +1,67 @@
+.kicker {
+  margin-top: 2.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+}
+
+.kicker + :global(.page-title) {
+  margin-top: 0.25rem;
+}
+
+.section {
+  margin-top: 2rem;
+}
+
+.section h2 {
+  font-size: 1.125rem;
+  margin-bottom: 0.75rem;
+}
+
+.badges {
+  font-size: 1rem;
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.linkGroups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.linkGroup h3 {
+  font-size: 0.9375rem;
+  margin-bottom: 0.375rem;
+}
+
+.linkGroup ul {
+  list-style: none;
+  display: grid;
+  gap: 0.375rem;
+}
+
+.linkGroup li {
+  font-size: 0.9375rem;
+  overflow-wrap: anywhere;
+}
+
+.linkGroup a:hover,
+.back a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.linkMeta {
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.back {
+  margin-top: 2rem;
+  font-size: 0.9375rem;
+}
