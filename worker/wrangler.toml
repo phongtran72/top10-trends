@@ -1,0 +1,23 @@
+# Hourly trigger for the pipeline: the cron starts one run of
+# .github/workflows/collect.yml through GitHub's workflow-dispatch API.
+# Deployed by .github/workflows/deploy-worker.yml.
+name = "top10-trends-cron"
+main = "src/index.ts"
+compatibility_date = "2026-09-25"
+
+# No public URL: the Worker only runs on its cron.
+workers_dev = false
+preview_urls = false
+
+[triggers]
+crons = ["7 * * * *"]
+
+[vars]
+GH_OWNER = "phongtran72"
+GH_REPO = "top10-trends"
+
+[observability]
+enabled = true
+
+# GH_DISPATCH_TOKEN is a Worker secret, set by the deploy workflow from the
+# GitHub secret of the same name (SETUP.md §6).

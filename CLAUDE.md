@@ -80,3 +80,5 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 - When a key, account, approval or network host is missing, name the SETUP.md step that provides it, leave that source disabled and carry on with the rest.
 - Don't start the next phase until the current phase's gate in TASKS.md passes; the human confirms each gate.
 - When you change a decision, update PLAN.md in the same pull request.
+
+@AGENTS.md
