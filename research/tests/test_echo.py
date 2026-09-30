@@ -68,6 +68,8 @@ def test_cross_platform_finds_the_best_match_on_each_other_platform_within_the_s
     assert np.isnan(cp.loc["google_trends", "sim_google_trends"])  # never its own platform
     assert np.isnan(cp.loc["google_trends", "sim_mastodon"])  # two days apart
     assert np.isnan(cp.loc["mastodon", "best_sim"])  # nothing near it in time
+    assert cp.loc["google_trends", "match_bluesky"] == "t1"  # which trend it was
+    assert cp.loc["google_trends", "match_google_trends"] is None
 
 
 def test_echo_shares_count_trends_alone_at_each_threshold_and_weight_by_fetches():

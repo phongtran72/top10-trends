@@ -203,6 +203,8 @@ Between refreshes the same list repeats in every hourly fetch, so those sources'
 - **Breakouts are rare.** Only 2 stories reached 3 or more platforms all day, so the breakout labels will be very unbalanced; "2 or more platforms" may be worth adding as a label.
 - **Matching near 0.60 is about half right.** Short names pass it as different people ("Dom Smith" and "jack smith"). Hashtags written as one lowercase word fall below it: 47% of TikTok's titles, and "#nationalcoffeeday" against "national coffee day" scored 0.53. Evidence for task 2.9.
 
+**Lead and lag** (RQ2, 2026-09-30, `research/findings/rq2-lead-lag.md`): the method is ready, with no result yet. Matched trends (0.70) are grouped into stories, and each platform's earliest sighting is compared. Trends already listed at a source's first fetch are censored and left out, as are the slow sources. So far there's one usable story pair: Google had the Phillies–Braves game 3 hours before Bluesky. Google against X should reach about 20 stories within a few days of X's start. A lead measures when a story enters a platform's list, which favors lists that rank by novelty or velocity (Google, Bluesky) over those that rank by size (X, Twitch).
+
 **Outside data**, added in this order and only when a question or horizon needs it, all free:
 
 1. Wikipedia pageviews: daily attention history since 2015 from the Wikimedia REST API, no key. The best source for seasonal baselines and for how big a past topic got.

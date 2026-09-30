@@ -110,7 +110,8 @@ def cross_platform(table: pd.DataFrame, vectors: np.ndarray, slack_hours: float 
     """Per trend: its best similarity to each other platform's trends seen within `slack_hours`.
 
     Returns the trend table with `sim_<platform>` columns (NaN for its own
-    platform), `best_sim`, and the best match's platform and title.
+    platform) and `match_<platform>` columns (that best match's trend_id),
+    `best_sim`, and the best match's platform and title.
     """
     platforms = sorted(table["source_id"].unique())
     sims = vectors @ vectors.T
@@ -122,11 +123,14 @@ def cross_platform(table: pd.DataFrame, vectors: np.ndarray, slack_hours: float 
     masked = np.where(allowed, sims, -np.inf)
 
     out = table.copy()
+    ids = table["trend_id"].to_numpy()
     for platform in platforms:
-        columns = source == platform
-        best = masked[:, columns].max(axis=1) if columns.any() else np.full(len(table), -np.inf)
-        best = np.where(source == platform, np.nan, best)
-        out[f"sim_{platform}"] = np.where(np.isneginf(best), np.nan, best)
+        columns = np.flatnonzero(source == platform)
+        best = masked[:, columns].max(axis=1)
+        which = ids[columns[masked[:, columns].argmax(axis=1)]]
+        found = np.isfinite(best) & (source != platform)
+        out[f"sim_{platform}"] = np.where(found, best, np.nan)
+        out[f"match_{platform}"] = np.where(found, which, None)
     best_index = masked.argmax(axis=1)
     best_value = masked[np.arange(len(table)), best_index]
     has_match = np.isfinite(best_value)
