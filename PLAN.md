@@ -10,7 +10,7 @@ Visitors get one merged top 10 across all platforms on the home page, plus a sep
 
 | Page | Route | What it shows |
 | --- | --- | --- |
-| Home | `/` | Combined top 10: topic name, one line of context (a Google Trends headline, or a Claude summary on Starter), badges for the platforms where it appears, rank change vs. 24 hours ago |
+| Home | `/` | From phase 1, a dashboard: the biggest numbers, each platform's top 3, what is new since the last hour, climbers and staying power. From phase 2, the combined top 10 above it: topic name, one line of context (a Google Trends headline, or a Claude summary on Starter), badges for the platforms where it appears, rank change vs. 24 hours ago |
 | Platform | `/p/[platform]` | That platform's own top 10, in its own order, each linking to the original trend, search or post |
 | Topic | `/t/[slug]` | Where the topic is trending, its rank history over 7 days, the top 3–5 links per platform |
 | Archive | `/archive/[date]` | Hourly snapshots of past top 10s (per-platform lists only for the last 28 days) |
@@ -89,7 +89,7 @@ Vercel's Hobby cron runs [at most once a day](https://vercel.com/docs/cron-jobs/
 
 Supabase connections: the direct host is IPv6-only without a paid add-on, and GitHub's hosted runners are IPv4-only, so use the [pooler strings](https://supabase.com/docs/guides/database/connecting-to-postgres). The website on Vercel uses the transaction pooler (port 6543, prepared statements off, one connection); the hourly pipeline and migrations use the session pooler (port 5432). The database is in `us-east-2` (Ohio), so the Vercel functions run in Cleveland (`cle1`), in the same region.
 
-Page caching uses Next.js 16 without Cache Components, because `next build` must never query the database. Dynamic routes (`/p/[platform]`, later `/t/[slug]`) are ISR pages: `generateStaticParams` returns `[]`, so each page renders on its first visit and is then served from cache. Static routes (`/status`, and the home page from phase 2) would be prerendered at build time, so they call `connection()` to render per request and read through `unstable_cache` under the `trends` tag, so a visit rarely reaches Postgres. `POST /api/revalidate` expires that tag and revalidates the page paths after each run. `unstable_cache` is superseded by `'use cache'` in Next.js 16; the Cache Components version would need `'use cache: remote'` for a durable shared cache on Vercel, so revisit this if `unstable_cache` is removed.
+Page caching uses Next.js 16 without Cache Components, because `next build` must never query the database. Dynamic routes (`/p/[platform]`, later `/t/[slug]`) are ISR pages: `generateStaticParams` returns `[]`, so each page renders on its first visit and is then served from cache. Static routes (`/` and `/status`) would be prerendered at build time, so they call `connection()` to render per request and read through `unstable_cache` under the `trends` tag, so a visit rarely reaches Postgres. `POST /api/revalidate` expires that tag and revalidates the page paths after each run. `unstable_cache` is superseded by `'use cache'` in Next.js 16; the Cache Components version would need `'use cache: remote'` for a durable shared cache on Vercel, so revisit this if `unstable_cache` is removed.
 
 ## Ranking
 
@@ -143,7 +143,7 @@ About 8 weeks at 6–10 hours a week gets the full site live; the per-platform l
 | Phase | Weeks | Delivers | Gate |
 | --- | --- | --- | --- |
 | 0 · Setup | 1 | Repo, database, workflows, Cloudflare trigger, empty site on Vercel; Reddit and X applications sent | A heartbeat row lands every hour for 24 hours |
-| 1 · Per-platform lists | 2–3 | Six collectors, platform and status pages, revalidation, 28-day purge | 7-day soak at 95% success per source (runs into week 4); lists go public |
+| 1 · Per-platform lists | 2–3 | Six collectors, platform and status pages, a dashboard home page, revalidation, 28-day purge | 7-day soak at 95% success per source (runs into week 4); lists go public |
 | 2 · Combined top 10 | 4–5 | Normalization, filters, embeddings, topic matching, scoring, home and topic pages | In 5 random hours, at least 8 of 10 topics make sense, with no duplicates |
 | 3 · Paid and approved sources | 6 | X with its spend cap, the Global / US toggle, Reddit and Pinterest when approved, optional TikTok and Claude topic names | Projected monthly spend within your chosen tier |
 | 4 · Polish and launch | 7–8 | Archive pages, share images, page titles, failure alerts, analytics | Launch and share the link |

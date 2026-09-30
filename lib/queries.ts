@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, lte, sql } from "drizzle-orm";
 import { pageRegion, SOURCES, type SourceDef, type SourceId } from "@/collectors/registry";
 import { fetchRuns, trendItems } from "@/db/schema";
 import type { Db } from "@/db/types";
@@ -63,6 +63,34 @@ export async function platformList(db: Db, source: SourceDef, limit = 10): Promi
     fetchedAt: iso(run.finishedAt ?? run.startedAt)!,
     items,
   };
+}
+
+export interface RecentItem extends ListItem {
+  runId: number;
+  sourceId: string;
+  region: string;
+  fetchedAt: string;
+}
+
+// Every top-10 item fetched since `since` (items exist only for successful
+// runs), oldest first. About 1,500 rows for 25 hours of six sources.
+export async function recentTopItems(db: Db, since: Date): Promise<RecentItem[]> {
+  const rows = await db
+    .select({
+      runId: trendItems.runId,
+      sourceId: trendItems.sourceId,
+      region: trendItems.region,
+      fetchedAt: trendItems.fetchedAt,
+      rank: trendItems.rank,
+      title: trendItems.title,
+      url: trendItems.url,
+      metricValue: trendItems.metricValue,
+      metricLabel: trendItems.metricLabel,
+    })
+    .from(trendItems)
+    .where(and(gt(trendItems.fetchedAt, since), lte(trendItems.rank, 10)))
+    .orderBy(asc(trendItems.fetchedAt), asc(trendItems.rank));
+  return rows.map((row) => ({ ...row, fetchedAt: iso(row.fetchedAt)! }));
 }
 
 export interface SourceStatus {

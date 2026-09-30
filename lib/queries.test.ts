@@ -3,7 +3,7 @@ import { getSource, planSources } from "@/collectors/registry";
 import { fetchRuns, trendItems } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
 import { upsertSources } from "@/pipeline/sources";
-import { platformList, sourceStatuses } from "./queries";
+import { platformList, recentTopItems, sourceStatuses } from "./queries";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 const now = new Date("2026-09-30T12:10:00Z");
@@ -61,6 +61,16 @@ describe("platformList", () => {
 
   it("returns null when a source has no successful list", async () => {
     expect(await platformList(t.db, getSource("youtube"))).toBeNull();
+  });
+});
+
+describe("recentTopItems", () => {
+  it("returns top-10 items since a time, oldest first, with ISO dates", async () => {
+    const items = await recentTopItems(t.db, hoursAgo(3));
+    expect(new Set(items.map((i) => i.fetchedAt))).toEqual(new Set([hoursAgo(2).toISOString(), hoursAgo(1).toISOString()]));
+    expect(items.every((i) => i.rank <= 10)).toBe(true);
+    expect(items.filter((i) => i.sourceId === "bluesky")).toHaveLength(10);
+    expect(items[0]).toMatchObject({ sourceId: "bluesky", rank: 1, title: "Trend 1", fetchedAt: hoursAgo(2).toISOString() });
   });
 });
 

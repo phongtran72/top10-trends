@@ -18,7 +18,7 @@ When the tasks are done, open a pull request and list anything I must do by hand
 ## Phase 0 · Setup (week 1)
 
 - [x] **[You]** Create the public GitHub repo, upload these four files, connect it to Claude Code and allow the data-source hosts in the cloud environment (SETUP.md §1). Done with a local Claude Code session, so no cloud environment was needed.
-- [ ] **[You]** Request Reddit Data API access and open an X developer account now, because approvals take time (SETUP.md §9, §10).
+- [x] **[You]** Request Reddit Data API access and open an X developer account now, because approvals take time (SETUP.md §9, §10).
 - [x] **[You]** Create the Supabase project and copy both pooler connection strings (SETUP.md §2).
 - [x] **[You]** Create the Cloudflare API token and the GitHub fine-grained token for the hourly trigger (SETUP.md §5, §6).
 - [x] **0.1 Scaffold.** Next.js App Router with TypeScript and ESLint, plus Vitest, tsx and `.nvmrc` set to 22. create-next-app refuses a non-empty directory, so scaffold in a temp directory and copy the files in without overwriting `CLAUDE.md` or `README.md`; if the scaffold has `AGENTS.md`, keep it and append `@AGENTS.md` to `CLAUDE.md`. Scripts: `dev`, `build`, `start`, `lint`, `typecheck`, `test`, `pipeline`, `db:generate`, `db:migrate`, `eval` (stub for now). Done when `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` pass with no environment variables set.
@@ -85,6 +85,14 @@ where source_id = 'heartbeat' and status = 'ok'
 - [x] **1.5 Purge step.** Every run deletes `trend_items` older than 28 days (which cascades to `topic_items` and per-platform `rankings`) and `fetch_runs` older than 90 days.
 - [x] **1.6 Revalidation.** `POST /api/revalidate` checks the `x-revalidate-secret` header against `REVALIDATE_SECRET`, then calls `revalidatePath('/')`, `revalidatePath('/p/[platform]', 'page')` and `revalidatePath('/status')` (plus `/t/[slug]` from phase 2). The pipeline calls `{SITE_URL}/api/revalidate` as its last step and logs a failure without failing the run.
 - [x] **1.7 Pages.** `/p/[platform]` shows the latest successful top 10 with "updated N min ago" (computed in the browser from a timestamp), a link out per item and the platform's name as attribution. `/status` shows, per source, the last success, the last sanitized error, and the run count and success rate over 24 hours. The home page links to every platform page until phase 2 replaces it.
+- [x] **1.8 Dashboard.** The home page becomes a dashboard built from the last 25 hours of top-10 lists, with no LLM:
+    - highlights (the biggest number in each list),
+    - each platform's top 3 with its update time,
+    - items new since the previous hourly list,
+    - climbers against that list,
+    - staying power (how many of the last day's hourly lists had each item).
+
+    It renders per request after `connection()` from data cached under the `trends` tag. Phase 2 puts the combined top 10 above it.
 - [x] **[You]** Run `collect` with `dry_run` checked from the Actions tab and confirm every phase 1 source prints items. Done from the phase-1 branch on 2026-09-30: all six sources printed items.
 
 **Gate 1.** Every phase 1 source succeeds in at least 95% of runs over a 7-day soak (this runs into week 4). Then the per-platform lists can go public.

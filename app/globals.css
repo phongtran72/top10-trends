@@ -8,6 +8,9 @@
   --ok: #1d7a46;
   --warn: #9a6200;
   --bad: #b3261e;
+  /* Meter: one hue, validated against the surface; the track is a pale step of it. */
+  --meter-fill: #2c5fd6;
+  --meter-track: #dde6f8;
   color-scheme: light;
 }
 
@@ -22,6 +25,8 @@
     --ok: #5cc98a;
     --warn: #e0a84a;
     --bad: #ff8a80;
+    --meter-fill: #3987e5;
+    --meter-track: #1f2b40;
     color-scheme: dark;
   }
 }
@@ -55,7 +60,7 @@ a {
 
 .container {
   width: 100%;
-  max-width: 44rem;
+  max-width: 60rem;
   margin: 0 auto;
   padding: 0 1rem;
 }
