@@ -49,7 +49,9 @@ Three facts about the lists:
 
 ## What it means for the forecasts
 
-- **Google's rank means age, not size.** In the combined score, `weight / log2(rank + 1)` gives Google's newest trend the most weight, not its biggest. And a Google trend leaves our list when 10 newer ones start, which on a busy afternoon takes under an hour, so its time in the list isn't its lifespan. RQ1 and the lifespan labels can't use Google's list as it is. A ranking change is the owner's decision (PLAN.md › Ranking). One option is to re-rank Google's items by searches in the pipeline, since collectors keep the source's order. Another is to keep a Google trend active for a few hours after it leaves the feed.
+- **Google's rank means age, not size.** In the combined score, `weight / log2(rank + 1)` gave Google's newest trend the most weight, not its biggest. And a Google trend leaves the feed when 10 newer ones start, which on a busy afternoon takes under an hour, so its time on the feed isn't its lifespan.
+  - **Decided the same day** (task 2.12, PLAN.md › Ranking › Google Trends window): Google's list is now every trend it published in the last 3 hours, ranked by searches. That applies to the combined score, the snapshots and the site; `trend_items` keeps the feed's order.
+  - **For research,** a topic that only Google has stays in the snapshots for up to 3 hours after its last sighting. Google-led lifespans (RQ1, the lifespan labels) carry that tail, so measure Google's own time on the feed from `trend_items`.
 - **Features use growth, never totals.** Posts per hour, points per hour, uses per hour.
 - **The hours horizon has to be fast on Bluesky and Google,** where about half the top 10 changes every hour. Twitch and Mastodon change about one item an hour, so their hourly fetches add little new information.
 
