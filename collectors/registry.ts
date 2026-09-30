@@ -37,6 +37,21 @@ export const SOURCES: readonly SourceDef[] = [
 
 export const PLATFORMS = SOURCES.filter((source) => source.role !== "system");
 
+// URL slug for /p/[platform]: google_trends → google-trends.
+export function platformSlug(id: SourceId): string {
+  return id.replace(/_/g, "-");
+}
+
+export function platformBySlug(slug: string): SourceDef | undefined {
+  return PLATFORMS.find((source) => platformSlug(source.id) === slug);
+}
+
+// The feed a platform page shows: the global one, or the US one when a source
+// has no global feed (PLAN.md › Ranking › Regions).
+export function pageRegion(source: SourceDef): Region {
+  return source.regions.includes("global") ? "global" : source.regions[0];
+}
+
 export function getSource(id: SourceId): SourceDef {
   const source = SOURCES.find((s) => s.id === id);
   if (!source) throw new Error(`unknown source: ${id}`);

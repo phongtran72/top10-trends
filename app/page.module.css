@@ -1,33 +1,5 @@
-.main {
-  width: 100%;
-  max-width: 44rem;
-  margin: 0 auto;
-  padding: 3rem 1rem 4rem;
-}
-
-.header h1 {
-  font-size: clamp(2rem, 6vw, 2.75rem);
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-
-.eyebrow {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--accent);
-  margin-bottom: 0.5rem;
-}
-
-.lede {
-  margin-top: 1rem;
-  font-size: 1.125rem;
-  color: var(--muted);
-}
-
 .section {
-  margin-top: 2.5rem;
+  margin-top: 2.25rem;
 }
 
 .section h2 {
@@ -42,7 +14,7 @@
 
 .list {
   list-style: none;
-  margin-top: 1rem;
+  margin-top: 0.875rem;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
   gap: 0.5rem;
@@ -59,27 +31,24 @@
   background: var(--surface);
 }
 
-.item a:hover {
-  text-decoration: underline;
-}
-
-.role {
-  font-size: 0.75rem;
-  padding: 0.125rem 0.5rem;
-  border-radius: 999px;
-  color: var(--muted);
-  border: 1px solid var(--border);
-}
-
-.role[data-role="lead"] {
-  color: var(--accent);
+a.item:hover {
   border-color: var(--accent);
 }
 
-.footer {
-  margin-top: 3rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border);
+a.item:hover .name {
+  color: var(--accent);
+}
+
+.name {
+  font-weight: 600;
+}
+
+.meta {
+  font-size: 0.8125rem;
   color: var(--muted);
-  font-size: 0.875rem;
+}
+
+.pending .name {
+  font-weight: 500;
+  color: var(--muted);
 }

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:ht="https://trends.google.com/trending/rss" version="2.0">
+  <channel>
+    <item>
+      <title>example storm</title>
+      <ht:approx_traffic>20,000+</ht:approx_traffic>
+      <ht:news_item>
+        <ht:news_item_title>Example storm heads east</ht:news_item_title>
+        <ht:news_item_url>https://news.example.com/storm</ht:news_item_url>
+      </ht:news_item>
+      <ht:news_item>
+        <ht:news_item_title>What to know about the example storm</ht:news_item_title>
+        <ht:news_item_url>https://news.example.org/storm-guide</ht:news_item_url>
+      </ht:news_item>
+    </item>
+    <item>
+      <title>sample team &amp; rivals</title>
+      <ht:approx_traffic>2M+</ht:approx_traffic>
+    </item>
+    <item>
+      <title>test holiday</title>
+    </item>
+  </channel>
+</rss>

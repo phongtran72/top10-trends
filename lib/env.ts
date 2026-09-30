@@ -12,7 +12,7 @@ export class EnvError extends Error {
 }
 
 // GitHub Actions passes an unset secret or variable as "", so treat blank as unset.
-function clean(raw: RawEnv): RawEnv {
+export function cleanEnv(raw: RawEnv): RawEnv {
   const out: RawEnv = {};
   for (const [key, value] of Object.entries(raw)) {
     const trimmed = value?.trim();
@@ -22,7 +22,7 @@ function clean(raw: RawEnv): RawEnv {
 }
 
 function parse<T extends z.ZodType>(schema: T, consumer: string, raw: RawEnv): z.output<T> {
-  const result = schema.safeParse(clean(raw));
+  const result = schema.safeParse(cleanEnv(raw));
   if (!result.success) {
     const names = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))];
     throw new EnvError(
@@ -108,7 +108,7 @@ export function readKeys(
   names: readonly string[],
   raw: RawEnv = process.env,
 ): { values: Record<string, string>; missing: string[] } {
-  const env = clean(raw);
+  const env = cleanEnv(raw);
   const values: Record<string, string> = {};
   const missing: string[] = [];
   for (const name of names) {

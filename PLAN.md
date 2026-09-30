@@ -89,6 +89,8 @@ Vercel's Hobby cron runs [at most once a day](https://vercel.com/docs/cron-jobs/
 
 Supabase connections: the direct host is IPv6-only without a paid add-on, and GitHub's hosted runners are IPv4-only, so use the [pooler strings](https://supabase.com/docs/guides/database/connecting-to-postgres). The website on Vercel uses the transaction pooler (port 6543, prepared statements off, one connection); the hourly pipeline and migrations use the session pooler (port 5432). The database is in `us-east-2` (Ohio), so the Vercel functions run in Cleveland (`cle1`), in the same region.
 
+Page caching uses Next.js 16 without Cache Components, because `next build` must never query the database. Dynamic routes (`/p/[platform]`, later `/t/[slug]`) are ISR pages: `generateStaticParams` returns `[]`, so each page renders on its first visit and is then served from cache. Static routes (`/status`, and the home page from phase 2) would be prerendered at build time, so they call `connection()` to render per request and read through `unstable_cache` under the `trends` tag, so a visit rarely reaches Postgres. `POST /api/revalidate` expires that tag and revalidates the page paths after each run. `unstable_cache` is superseded by `'use cache'` in Next.js 16; the Cache Components version would need `'use cache: remote'` for a durable shared cache on Vercel, so revisit this if `unstable_cache` is removed.
+
 ## Ranking
 
 Each platform's top 10 keeps that platform's own order; the combined top 10 rewards topics that rank high on several platforms, led by sources that report live trends.

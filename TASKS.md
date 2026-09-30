@@ -17,10 +17,10 @@ When the tasks are done, open a pull request and list anything I must do by hand
 
 ## Phase 0 · Setup (week 1)
 
-- [ ] **[You]** Create the public GitHub repo, upload these four files, connect it to Claude Code and allow the data-source hosts in the cloud environment (SETUP.md §1).
+- [x] **[You]** Create the public GitHub repo, upload these four files, connect it to Claude Code and allow the data-source hosts in the cloud environment (SETUP.md §1). Done with a local Claude Code session, so no cloud environment was needed.
 - [ ] **[You]** Request Reddit Data API access and open an X developer account now, because approvals take time (SETUP.md §9, §10).
-- [ ] **[You]** Create the Supabase project and copy both pooler connection strings (SETUP.md §2).
-- [ ] **[You]** Create the Cloudflare API token and the GitHub fine-grained token for the hourly trigger (SETUP.md §5, §6).
+- [x] **[You]** Create the Supabase project and copy both pooler connection strings (SETUP.md §2).
+- [x] **[You]** Create the Cloudflare API token and the GitHub fine-grained token for the hourly trigger (SETUP.md §5, §6).
 - [x] **0.1 Scaffold.** Next.js App Router with TypeScript and ESLint, plus Vitest, tsx and `.nvmrc` set to 22. create-next-app refuses a non-empty directory, so scaffold in a temp directory and copy the files in without overwriting `CLAUDE.md` or `README.md`; if the scaffold has `AGENTS.md`, keep it and append `@AGENTS.md` to `CLAUDE.md`. Scripts: `dev`, `build`, `start`, `lint`, `typecheck`, `test`, `pipeline`, `db:generate`, `db:migrate`, `eval` (stub for now). Done when `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` pass with no environment variables set.
 - [x] **0.2 Environment.** `lib/env.ts` validates variables with zod per consumer, at first use:
     - The site needs `DATABASE_URL`; `/api/revalidate` also needs `REVALIDATE_SECRET`.
@@ -38,7 +38,7 @@ When the tasks are done, open a pull request and list anything I must do by hand
     - `migrate.yml`: on pushes to `main` that touch `db/migrations/**`, plus `workflow_dispatch`, run `npm run db:migrate` with `SESSION_DATABASE_URL`.
 - [x] **0.7 Hourly trigger.** `worker/` holds a Cloudflare Worker whose `scheduled` handler POSTs to `https://api.github.com/repos/{GH_OWNER}/{GH_REPO}/actions/workflows/collect.yml/dispatches` with body `{"ref":"main"}` and headers `Authorization: Bearer {GH_DISPATCH_TOKEN}`, `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28` and `User-Agent: top10-trends-cron`, and logs any non-2xx response. `wrangler.toml` sets `workers_dev = false`, `[triggers] crons = ["7 * * * *"]` and the `GH_OWNER` and `GH_REPO` vars. `deploy-worker.yml` runs on pushes to `main` that touch `worker/**`, and on `workflow_dispatch` so a renewed token can be pushed without a code change. It deploys with wrangler using `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, then sets the Worker secret `GH_DISPATCH_TOKEN` from the GitHub secret of the same name.
 - [x] **0.8 Placeholder site.** A home page that says the site is coming soon and lists the planned sources from the registry, grouped by phase; a README with the architecture summary and a pointer to SETUP.md.
-- [ ] **[You]** Merge the pull request (creating any workflow files by hand if 0.6 asked you to). Then import the repo into Vercel (SETUP.md §7), add the GitHub secrets and variables (SETUP.md §8), and run `migrate` and then `collect` once from the repo's Actions tab (GitHub Mobile works too).
+- [x] **[You]** Merge the pull request (creating any workflow files by hand if 0.6 asked you to). Then import the repo into Vercel (SETUP.md §7), add the GitHub secrets and variables (SETUP.md §8), and run `migrate` and then `collect` once from the repo's Actions tab (GitHub Mobile works too).
 
 **Gate 0.** A heartbeat lands every hour for 24 hours. In Supabase's SQL editor:
 
@@ -52,8 +52,8 @@ where source_id = 'heartbeat' and status = 'ok'
 
 ## Phase 1 · Per-platform lists (weeks 2–3)
 
-- [ ] **[You]** Add the phase 1 keys and variables: `YOUTUBE_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `REVALIDATE_SECRET`, `SITE_URL`, `COLLECTOR_USER_AGENT` (SETUP.md §3, §4, §7, §8), and redeploy on Vercel after adding `REVALIDATE_SECRET` there.
-- [ ] **1.1 Types.** `collectors/types.ts`:
+- [x] **[You]** Add the phase 1 keys and variables: `YOUTUBE_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `REVALIDATE_SECRET`, `SITE_URL`, `COLLECTOR_USER_AGENT` (SETUP.md §3, §4, §7, §8), and redeploy on Vercel after adding `REVALIDATE_SECRET` there.
+- [x] **1.1 Types.** `collectors/types.ts`:
 
     ```ts
     export type Region = 'global' | 'us' | 'gb' | 'ca' | 'au';
@@ -73,19 +73,19 @@ where source_id = 'heartbeat' and status = 'ok'
       fetch(region: Region, ctx: { http: Http; env: Env; now: Date }): Promise<TrendItem[]>;
     }
     ```
-- [ ] **1.2 HTTP helper.** `lib/http.ts`: a 10-second timeout and one retry with jitter per request (on network errors, 429 and 5xx), User-Agent from `COLLECTOR_USER_AGENT`, JSON and XML (RSS) parsing helpers, and errors that carry only the status code, host and a short reason, never the full URL.
-- [ ] **1.3 Collectors.** Each gets a zod-validated response, a fixture in `collectors/__fixtures__/` and a unit test. Fixtures follow CLAUDE.md invariant 13: at most 5 items, only fields the schema reads, invented YouTube data, no Bluesky `actors`.
+- [x] **1.2 HTTP helper.** `lib/http.ts`: a 10-second timeout and one retry with jitter per request (on network errors, 429 and 5xx), User-Agent from `COLLECTOR_USER_AGENT`, JSON and XML (RSS) parsing helpers, and errors that carry only the status code, host and a short reason, never the full URL.
+- [x] **1.3 Collectors.** Each gets a zod-validated response, a fixture in `collectors/__fixtures__/` and a unit test. Fixtures follow CLAUDE.md invariant 13: at most 5 items, only fields the schema reads, invented YouTube data, no Bluesky `actors`.
     - **Bluesky** (`global`): `GET https://public.api.bsky.app/xrpc/app.bsky.unspecced.getTrends?limit=25`. Title is `displayName` (skip items without one; `topic` is an opaque id); URL is `https://bsky.app` plus the relative `link`; metric is `postCount` (`posts`); `flags.status` is `status`, validated as any string.
     - **Google Trends** (`us`): `GET https://trends.google.com/trending/rss?geo=US`. Title is the item title; metric is `ht:approx_traffic` parsed to a number ("20000+" becomes 20000, `searches`); `matchText` holds the `ht:news_item_title` values; URL is the first `ht:news_item_url`, or a Google search link for the query (the item's own `<link>` is only the feed URL).
     - **YouTube** (`us`): `GET https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&chart=mostPopular&regionCode=US&maxResults=25`, with the key in the `X-goog-api-key` header. Title is `snippet.title`; URL is `https://www.youtube.com/watch?v={id}`; metric is `statistics.viewCount` (`views`).
     - **Mastodon** (`global`): `GET https://{MASTODON_INSTANCE}/api/v1/trends/tags?limit=20`. Title is `#` plus `name`; URL is the tag's `url`. `history` is newest first and its values are strings; the metric is today's `uses` parsed to a number (`uses today`, a partial day).
     - **Hacker News** (`global`): `GET https://hacker-news.firebaseio.com/v0/topstories.json`, take the first 25 ids, then fetch `item/{id}.json` five at a time. Title and URL come from the item (fall back to `https://news.ycombinator.com/item?id={id}`); metric is `score` (`points`).
     - **Twitch** (`global`): get an app token with `POST https://id.twitch.tv/oauth2/token` (`grant_type=client_credentials`), then `GET https://api.twitch.tv/helix/games/top?first=25` with the `Client-Id` and `Authorization: Bearer` headers. Title is `name`; URL is `https://www.twitch.tv/search?term=` plus the encoded name; no metric.
-- [ ] **1.4 Collect step.** Run the runnable collectors in parallel with `Promise.allSettled`. Write one `fetch_runs` row per collector and region (status, item count, sanitized error) and insert each source's `trend_items` in one batch. With `--dry-run`, print each list as a table instead of writing.
-- [ ] **1.5 Purge step.** Every run deletes `trend_items` older than 28 days (which cascades to `topic_items` and per-platform `rankings`) and `fetch_runs` older than 90 days.
-- [ ] **1.6 Revalidation.** `POST /api/revalidate` checks the `x-revalidate-secret` header against `REVALIDATE_SECRET`, then calls `revalidatePath('/')`, `revalidatePath('/p/[platform]', 'page')` and `revalidatePath('/status')` (plus `/t/[slug]` from phase 2). The pipeline calls `{SITE_URL}/api/revalidate` as its last step and logs a failure without failing the run.
-- [ ] **1.7 Pages.** `/p/[platform]` shows the latest successful top 10 with "updated N min ago" (computed in the browser from a timestamp), a link out per item and the platform's name as attribution. `/status` shows, per source, the last success, the last sanitized error, and the run count and success rate over 24 hours. The home page links to every platform page until phase 2 replaces it.
-- [ ] **[You]** Run `collect` with `dry_run` checked from the Actions tab and confirm every phase 1 source prints items.
+- [x] **1.4 Collect step.** Run the runnable collectors in parallel with `Promise.allSettled`. Write one `fetch_runs` row per collector and region (status, item count, sanitized error) and insert each source's `trend_items` in one batch. With `--dry-run`, print each list as a table instead of writing.
+- [x] **1.5 Purge step.** Every run deletes `trend_items` older than 28 days (which cascades to `topic_items` and per-platform `rankings`) and `fetch_runs` older than 90 days.
+- [x] **1.6 Revalidation.** `POST /api/revalidate` checks the `x-revalidate-secret` header against `REVALIDATE_SECRET`, then calls `revalidatePath('/')`, `revalidatePath('/p/[platform]', 'page')` and `revalidatePath('/status')` (plus `/t/[slug]` from phase 2). The pipeline calls `{SITE_URL}/api/revalidate` as its last step and logs a failure without failing the run.
+- [x] **1.7 Pages.** `/p/[platform]` shows the latest successful top 10 with "updated N min ago" (computed in the browser from a timestamp), a link out per item and the platform's name as attribution. `/status` shows, per source, the last success, the last sanitized error, and the run count and success rate over 24 hours. The home page links to every platform page until phase 2 replaces it.
+- [x] **[You]** Run `collect` with `dry_run` checked from the Actions tab and confirm every phase 1 source prints items. Done from the phase-1 branch on 2026-09-30: all six sources printed items.
 
 **Gate 1.** Every phase 1 source succeeds in at least 95% of runs over a 7-day soak (this runs into week 4). Then the per-platform lists can go public.
 
