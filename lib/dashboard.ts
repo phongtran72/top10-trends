@@ -51,6 +51,11 @@ export interface Dashboard {
 
 export const DASHBOARD_WINDOW_HOURS = 25;
 const STAYING_HOURS = 24;
+// "New" means absent from every list of the previous two hours, not just the
+// previous one: Bluesky re-cuts its list each hour, and a topic near the edge
+// often drops out for an hour and comes back (47% of its top-10 stays are
+// such returns, research RQ1).
+export const NEW_ENTRY_HOURS = 2;
 
 const HIGHLIGHT_LABELS: Partial<Record<SourceId, string>> = {
   google_trends: "Top search",
@@ -145,14 +150,21 @@ export function buildDashboard(
       });
     }
 
-    // New entries and climbers, against the previous list.
+    // New entries (in no list of the previous two hours) and climbers (against the previous list).
     if (previous) {
       const previousRanks = new Map(previous.items.map((item) => [itemKey(item), item.rank]));
+      const newSince = Date.parse(latest.fetchedAt) - NEW_ENTRY_HOURS * 60 * 60 * 1000;
+      const seenBefore = new Set(
+        runs
+          .slice(1)
+          .filter((run) => run === previous || Date.parse(run.fetchedAt) >= newSince)
+          .flatMap((run) => run.items.map(itemKey)),
+      );
       for (const item of latest.items) {
         const before = previousRanks.get(itemKey(item));
         const entry = { ...base, title: item.title, url: item.url, rank: item.rank };
-        if (before === undefined) newEntries.push(entry);
-        else if (before > item.rank) movers.push({ ...entry, previousRank: before });
+        if (!seenBefore.has(itemKey(item))) newEntries.push(entry);
+        else if (before !== undefined && before > item.rank) movers.push({ ...entry, previousRank: before });
       }
     }
 

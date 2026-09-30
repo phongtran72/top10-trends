@@ -74,6 +74,21 @@ describe("buildDashboard", () => {
   });
 });
 
+describe("new entries", () => {
+  it("doesn't call a topic new when it was in a list of the previous two hours", () => {
+    const rows = [
+      ...run("bluesky", "global", hoursAgo(4), ["Old story"]),
+      ...run("bluesky", "global", hoursAgo(2), ["Flicker", "Steady"]),
+      ...run("bluesky", "global", hoursAgo(1), ["Steady"]),
+      ...run("bluesky", "global", hoursAgo(0), ["Steady", "Flicker", "Old story", "Fresh"]),
+    ];
+    const dashboard = buildDashboard(rows, now, [bluesky]);
+    // "Flicker" skipped one hour; "Old story" was last seen 4 hours ago, so it counts as new again.
+    expect(dashboard.newEntries.map((e) => e.title)).toEqual(["Old story", "Fresh"]);
+    expect(dashboard.movers).toEqual([]);
+  });
+});
+
 describe("Bluesky renames", () => {
   it("follows a renamed Bluesky topic by its link", () => {
     const link = "https://bsky.app/profile/trending.bsky.app/feed/example";
