@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { buildDashboard, DASHBOARD_WINDOW_HOURS } from "@/lib/dashboard";
 import { getDb } from "@/lib/db";
-import { recentTopItems, sourceStatuses } from "@/lib/queries";
+import { recentTopItems, sourceStatuses, spendThisMonth } from "@/lib/queries";
 import { TRENDS_TAG } from "@/lib/revalidate";
 import { combinedTop } from "@/lib/topic-queries";
 
@@ -28,6 +28,11 @@ export const getDashboard = unstable_cache(
 );
 
 export const getCombinedTop = unstable_cache(async () => combinedTop(getDb()), ["combined-top-v1"], {
+  tags: [TRENDS_TAG],
+  revalidate: 3600,
+});
+
+export const getSpend = unstable_cache(async () => spendThisMonth(getDb(), new Date()), ["spend-v1"], {
   tags: [TRENDS_TAG],
   revalidate: 3600,
 });

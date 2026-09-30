@@ -65,3 +65,17 @@
 .error code {
   font-size: 0.8125rem;
 }
+
+.spend {
+  margin-top: 2.5rem;
+}
+
+.spend h2 {
+  font-size: 1.125rem;
+}
+
+.spendNote {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
