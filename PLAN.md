@@ -102,7 +102,7 @@ Each platform's top 10 keeps that platform's own order; the combined top 10 rewa
 1. Take each source's latest list only if it was fetched in the last 3 hours, so a dead collector stops counting.
 2. Normalize: lowercase, strip `#` and URLs, split hashtags such as `#WorldSeries` into words, and attach Google Trends' news headlines to their query as extra matching text.
 3. Filter: keep English items, using a language detector suited to short text plus a Latin-script check. Drop Reddit posts flagged NSFW, Bluesky trends whose status is cooling or stale, profanity, and evergreen tags such as #MondayMotivation.
-4. Embed each item and assign it to the nearest topic from the last 48 hours when cosine similarity is at least 0.80 (tune 0.75–0.85); otherwise it starts a new topic. Matching against topic centroids, never item to item, stops unrelated items chaining together.
+4. Embed each item and assign it to the nearest topic from the last 48 hours when cosine similarity is at least the threshold (starting value 0.80, set in `config/ranking.ts` and tuned in task 2.9; see *Matching threshold* below); otherwise it starts a new topic. Matching against topic centroids, never item to item, stops unrelated items chaining together.
 5. Score each topic with the formula below and keep the 10 highest.
 6. Name new topics from a lead-source item (an X trend, Google query, Bluesky topic or Mastodon tag), never from a video or post title. On Starter, Claude Haiku 4.5 writes the name and a one-line reason.
 
@@ -118,6 +118,10 @@ P(T) is the set of platforms where topic T appears, r is its best rank there, an
 | Corroborating only | YouTube 0.8, TikTok 0.5, Twitch 0.3, Hacker News 0.3, Pinterest 0.3 |
 
 Corroborating sources count only when a lead source also has the topic, which keeps music videos and evergreen games out of the combined list. On the Free tier the combined list leans on Google Trends and Bluesky, and it gets much stronger once X and Reddit join; tune the weights by eye in phase 2.
+
+The rank step runs after the lists are saved, in its own error handler, so a failure in filtering, embedding or matching never costs the lists, the heartbeat or the page refresh. Filters run in memory because the flags and headlines they read are not stored. Each platform's page shows its list after filters, renumbered 1 to 10; the combined score uses each item's original rank.
+
+**Matching threshold.** The model is `Xenova/all-MiniLM-L6-v2` with 8-bit weights (23 MB), chosen on 2026-09-30. Measured with it, the same story worded differently scores about 0.65 to 0.70 ("world series" against "dodgers win game 4 of the world series": 0.70), a related but different topic about 0.63 ("baseball"), and unrelated text about 0.2. A first probe of one hour of real lists merged only correct pairs, and only at 0.55 to 0.65 (Deadlock on Bluesky and Twitch; Flydubai on Bluesky and Mastodon). So 0.80 is too strict for this model; task 2.9 sets the value from a week of `npm run eval` output.
 
 **Regions.** Each stored list keeps its feed's real region: `us` for Google Trends and YouTube (plus `gb`, `ca` and `au` from phase 3) and `global` for Bluesky, Mastodon, Hacker News and Twitch. Until phase 3 the site has one view, stored as `global` and built from every list. From phase 3 there are two views. US uses X's US list, the US feeds and the global lists. Global uses X's Worldwide list, the global lists, and Google Trends and YouTube for the US, UK, Canada and Australia. Per-platform pages show a source's global feed, or its US feed when it has no global one.
 

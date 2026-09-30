@@ -50,7 +50,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 5. **28-day retention.** Every run deletes `trend_items`, `topic_items` and per-platform `rankings` older than 28 days, because YouTube's policy caps stored API data at 30 days. Topics and combined rankings are kept.
 6. **Source roles.** Lead sources: X, Google Trends, Reddit, Bluesky, Mastodon. Corroborating-only sources: YouTube, TikTok, Twitch, Hacker News, Pinterest. Weights live in `config/ranking.ts`; their starting values are in PLAN.md › Ranking.
 7. **Combined score** = sum over platforms of `weight / log2(rank + 1)`. A corroborating source counts only when a lead source also has the topic. Only lists fetched in the last 3 hours count.
-8. **Topic matching** assigns each item to the nearest topic centroid from the last 48 hours when cosine similarity is at least 0.80 (configurable); otherwise a lead item starts a new topic. Never cluster item to item.
+8. **Topic matching** assigns each item to the nearest topic centroid from the last 48 hours when cosine similarity is at least `MATCH_THRESHOLD` (starting value 0.80; real data suggests about 0.60, see PLAN.md › Ranking › Matching threshold); otherwise a lead item starts a new topic. Never cluster item to item.
 9. **Topic names** come only from lead-source items (an X trend, Google query, Bluesky topic or Mastodon tag), never from video or post titles.
 10. **English only.** Drop NSFW items, Bluesky trends whose status is `cooling` or `stale`, profanity, and evergreen tags listed in `config/blocklist.txt`.
 11. **X spend cap.** At most 60 X trend requests per UTC day, counted from `fetch_runs`. The X collector turns itself off when the cap is reached.
