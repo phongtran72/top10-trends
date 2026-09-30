@@ -1,0 +1,32 @@
+name: eval
+
+# Prints the combined top 10 of a few random past hours with each topic's
+# member items, for the phase 2 review (TASKS.md Gate 2). Run it by hand from
+# the Actions tab, on a computer or in GitHub Mobile.
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: How many random past hours to print (1 to 48)
+        type: number
+        default: 5
+
+permissions:
+  contents: read
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Print sample hours
+        env:
+          HOURS: ${{ inputs.hours }}
+          SESSION_DATABASE_URL: ${{ secrets.SESSION_DATABASE_URL }}
+        run: npm run eval -- --hours "$HOURS"
