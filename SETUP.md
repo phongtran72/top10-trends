@@ -19,7 +19,7 @@ Sections 1–8 cover phases 0–1. Sections 9–13 are for later phases or optio
 
 ## 2. Supabase database (phase 0)
 
-1. Create a free project at [supabase.com](https://supabase.com) in **East US (North Virginia)**, next to Vercel's default function region. Use a letters-and-digits database password: symbols have to be escaped inside connection strings.
+1. Create a free project at [supabase.com](https://supabase.com) in a US East region. This project uses **East US (Ohio)**, `us-east-2`; §7 puts the Vercel functions next to it. Use a letters-and-digits database password: symbols have to be escaped inside connection strings.
 2. Open **Connect** and copy two pooler connection strings. Don't use the direct connection: it is IPv6-only without a paid add-on, and GitHub's hosted runners are IPv4-only.
     - **Transaction pooler** (port 6543) → `DATABASE_URL`, used only by the website on Vercel
     - **Session pooler** (port 5432) → `SESSION_DATABASE_URL`, used by the hourly pipeline and by migrations
@@ -58,6 +58,7 @@ Runs triggered with this token count as yours, so GitHub can email you when one 
 2. **Add New › Project** and import the repo once phase 0's pull request is merged; Vercel detects Next.js.
 3. Environment variables: `DATABASE_URL` now; `REVALIDATE_SECRET` in phase 1. Vercel applies changed variables only to new deployments, so redeploy after adding one.
 4. Deploy, then copy the production domain (for example `https://top10-trends.vercel.app`) → `SITE_URL`.
+5. **Settings › Functions › Function Region**: choose the region next to the database. For Supabase in `us-east-2` (Ohio) that is **Cleveland, `cle1`**; for `us-east-1` (North Virginia) keep Vercel's default, Washington `iad1`. Hobby allows one region.
 
 Hobby is for personal, non-commercial use. Adding ads or sponsors means moving to Pro ($20 a month).
 
