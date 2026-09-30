@@ -1,3 +1,4 @@
+import { describeError } from "@/lib/errors";
 import { loadLocalEnv } from "@/lib/local-env";
 import { createPipelineDb } from "./db";
 import { runPipeline } from "./main";
@@ -9,6 +10,6 @@ runPipeline(process.argv.slice(2), process.env, {
   openDb: createPipelineDb,
   log: (line) => console.log(line),
 }).catch((error: unknown) => {
-  console.error(`pipeline failed: ${error instanceof Error ? error.message : String(error)}`);
+  console.error(`pipeline failed: ${describeError(error)}`);
   process.exit(1);
 });
