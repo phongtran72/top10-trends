@@ -17,6 +17,7 @@ A personal, non-commercial website that shows the top 10 trending topics on each
 - Scheduler: a Cloudflare Workers Free cron in `worker/` calls GitHub's workflow-dispatch API once an hour. Never add a `schedule:` trigger to the workflow (GitHub delays or drops scheduled runs at busy times) and never use Vercel cron (Hobby runs crons at most once a day).
 - Embeddings: `@huggingface/transformers` running `Xenova/all-MiniLM-L6-v2` (384 dimensions, English) inside the pipeline.
 - Tests: Vitest. TypeScript scripts run with tsx.
+- Research (phase 5): Python notebooks in `research/` (pandas, lifelines, statsmodels, LightGBM) for analysis and training only. They read Supabase through a read-only Postgres role. Production never runs Python: a trained model ships as a small JSON or ONNX file that the TypeScript pipeline loads. Exclude `research/` from the root tsconfig, ESLint and Vitest.
 
 ## Layout
 
@@ -28,6 +29,7 @@ lib/                  db clients, env validation, HTTP helper, embeddings, text 
 db/                   Drizzle schema and generated migrations
 config/               ranking.ts (weights, thresholds, caps) and blocklist.txt
 scripts/              one-off tools such as eval.ts
+research/             phase 5: Python notebooks, findings/ write-ups, requirements (never imported by the site or pipeline)
 worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.json
 .github/workflows/    ci.yml, collect.yml, migrate.yml, deploy-worker.yml
 ```

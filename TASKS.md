@@ -154,10 +154,10 @@ order by success_pct;
 
 Research on attention and forecasts for creators and marketers, built on one dataset. The design is in PLAN.md › Predictions and research. The predictions session owns every task here except 5.9, the pages, which the web-app session builds on `lib/forecast-queries.ts`.
 
-- [ ] **[You]** Confirm three things:
-    - which horizons to build first (recommended: hours and days);
-    - Python notebooks in `research/` for analysis and training (PLAN.md › Predictions and research › Methods);
-    - creating a read-only Postgres role for them (the SETUP.md step comes with 5.1).
+- [x] **[You]** Confirm three things (decided on 2026-09-30):
+    - which horizons to build first: hours and days;
+    - Python notebooks in `research/` for analysis and training (PLAN.md › Predictions and research › Methods): yes;
+    - a read-only Postgres role for them: yes. The SETUP.md step comes with 5.1.
 - [ ] **5.1 Research setup.** A `research/` folder with Python notebooks, pinned requirements and a shared data loader, kept out of the TypeScript tooling. A SETUP.md step for the read-only role, with its connection string only in `.env.local`.
 - [ ] **5.2 Dataset.** `npm run dataset` builds one training table from `topic_snapshots`, `topics` and the combined rankings: one row per topic per hour, with features and labels.
     - Features: platform ranks, platform count, position and score, plus their 1-, 3- and 6-hour changes; hours since first seen; the first platform; hour of day and weekday; `news_count`.
