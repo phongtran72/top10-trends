@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // The Cloudflare Worker has its own package and tooling.
     "worker/**",
+    // Git worktrees of other branches (other Claude sessions) live here.
+    ".claude/**",
   ]),
 ]);
 
