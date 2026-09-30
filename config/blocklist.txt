@@ -1,0 +1,41 @@
+# Evergreen tags and phrases that trend every week and are never news.
+# One per line, case-insensitive, written without the leading "#" (a line
+# starting with "#" is a comment). An item is dropped when its whole text,
+# ignoring spaces, case and punctuation, equals an entry.
+
+# Days of the week
+mondaymotivation
+motivationmonday
+tuesdaythoughts
+transformationtuesday
+wednesdaywisdom
+wednesdayvibes
+throwbackthursday
+tbt
+thursdaythoughts
+fridayfeeling
+followfriday
+ff
+fridayvibes
+caturday
+saturdayvibes
+sundayfunday
+selfiesunday
+silentsunday
+
+# Evergreen community and platform tags
+goodmorning
+goodnight
+nowplaying
+photography
+art
+music
+news
+catsofmastodon
+dogsofmastodon
+mastoart
+fediverse
+mastodon
+bluesky
+introduction
+introductions
