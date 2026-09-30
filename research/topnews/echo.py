@@ -62,7 +62,7 @@ def trends(items: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def embed(trend_table: pd.DataFrame, name: str = "rq6_titles") -> tuple[pd.DataFrame, np.ndarray]:
+def embed(trend_table: pd.DataFrame, name: str = "rq6_titles", segment: bool = True) -> tuple[pd.DataFrame, np.ndarray]:
     """Runs the pipeline's filters and model on the trends' titles (scripts/embed-titles.ts).
 
     Writes research/data/<name>.json/.f32 (git ignores data/) and returns the
@@ -74,7 +74,8 @@ def embed(trend_table: pd.DataFrame, name: str = "rq6_titles") -> tuple[pd.DataF
     rows = [{"id": t.trend_id, "source": t.source_id, "title": t.title} for t in trend_table.itertuples(index=False)]
     source.write_text(json.dumps(rows), encoding="utf-8")
     npx = shutil.which("npx") or "npx"
-    subprocess.run([npx, "tsx", "scripts/embed-titles.ts", str(source), str(out)], cwd=REPO_ROOT, check=True)
+    flags = [] if segment else ["--no-segment"]
+    subprocess.run([npx, "tsx", "scripts/embed-titles.ts", str(source), str(out), *flags], cwd=REPO_ROOT, check=True)
     return load_vectors(out)
 
 
@@ -93,10 +94,12 @@ def kept_trends(trend_table: pd.DataFrame, filtered: pd.DataFrame, vectors: np.n
     return table, vectors[kept["index"].astype(int).to_numpy()]
 
 
-def analyze(items: pd.DataFrame, name: str, slack_hours: float = SLACK_HOURS) -> tuple[pd.DataFrame, pd.DataFrame]:
+def analyze(
+    items: pd.DataFrame, name: str, slack_hours: float = SLACK_HOURS, segment: bool = True
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Trends → the pipeline's filters and model → cross-platform matches. Returns the matches and the dropped trends."""
     table = trends(items)
-    filtered, vectors = embed(table, name)
+    filtered, vectors = embed(table, name, segment)
     kept, kept_vectors = kept_trends(table, filtered, vectors)
     dropped = filtered[~filtered["kept"]].merge(table, left_on="id", right_on="trend_id")
     return cross_platform(kept, kept_vectors, slack_hours), dropped

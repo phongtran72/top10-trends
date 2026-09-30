@@ -1,6 +1,6 @@
 # RQ6 · Echo chambers
 
-**Status: preliminary (2026-09-30).** One day of the phase-1 lists, and one hour with every list. The pattern is already strong: almost every trend stays on its own platform. Re-run `notebooks/06_rq6_echo.ipynb` weekly. Once topic snapshots exist (after phase 2), repeat it on them: a topic's `platform_count` answers the same question with the pipeline's own matching.
+**Status: preliminary (2026-09-30; updated the same day for task 2.13's hashtag splitting).** One day of the phase-1 lists, and one hour with every list. The pattern is already strong: almost every trend stays on its own platform. Re-run `notebooks/06_rq6_echo.ipynb` weekly. Once topic snapshots exist (after phase 2), repeat it on them: a topic's `platform_count` answers the same question with the pipeline's own matching.
 
 ## Question
 
@@ -25,19 +25,19 @@ What share of each platform's trends appears on no other platform? The answer sh
 
 ## Result
 
-Share of each platform's trends with no match on any other list, at 0.60:
+Share of each platform's trends with no match on any other list, at 0.60. Cut B is shown before and after task 2.13's hashtag splitting (see below). Cut A barely changes with splitting, and repeated runs move it by up to 2 points (batch noise, below).
 
-| Platform | Cut A: phase-1 lists, whole day | Cut B: every list, one hour |
-| --- | --- | --- |
-| Hacker News | 98% | 91% |
-| Bluesky | 96% | 88% |
-| Mastodon | 96% | 94% |
-| Google Trends (US) | 95% | 78% |
-| Twitch | 95% | 100% |
-| TikTok | not collected | 97% |
-| Pinterest | not collected | 96% |
-| X | not collected | 71% |
-| Instagram | not collected | 70% |
+| Platform | Cut A: phase-1 lists, whole day | Cut B, before splitting | Cut B, with splitting |
+| --- | --- | --- | --- |
+| Hacker News | 98% | 91% | 91% |
+| Bluesky | 96% | 88% | 92% |
+| Mastodon | 96% | 94% | 100% |
+| Google Trends (US) | 95% | 78% | 78% |
+| Twitch | 95% | 100% | 100% |
+| TikTok | not collected | 97% | 93% |
+| Pinterest | not collected | 96% | 80% |
+| X | not collected | 71% | 71% |
+| Instagram | not collected | 70% | 60% |
 
 - **Sharing runs through X, Google and Instagram.** In cut B, 22% of Google's trends were also on X, and 30% of Instagram's were too. They share sports and news names.
 - **TikTok, Pinterest, Twitch and Hacker News each run their own conversation.** TikTok and Pinterest matched only each other, on one story ("#firstdayoffall" and "first day of fall").
@@ -55,15 +55,45 @@ Share of each platform's trends with no match on any other list, at 0.60:
 | 0.60 to 0.65 | 3 of 6 | wrong: "Jorge Jesus" and "jorge kahwagi", "Dom Smith" and "jack smith"; right: "#firstdayoffall" and "first day of fall" |
 | 0.55 to 0.60 | 2 of 5 | wrong: "Grand Theft Auto V" and a GTA VI story, "phil mickelson" and "Phillies" |
 
+The hand check was made before hashtag splitting.
+
+## Hashtag splitting (task 2.13)
+
+The pipeline now splits hashtags written as one lowercase word ("#nationalcoffeeday" becomes "national coffee day"). The same data was compared with splitting off and on (`scripts/embed-titles.ts --no-segment`):
+
+| Pair | Right? | Off | On |
+| --- | --- | --- | --- |
+| #firstdayoffall · first day of fall | yes | 0.60 | 1.00 |
+| #jacksmith · jack smith | yes | 0.62 | 1.00 |
+| #nationalcoffeeday · national coffee day | yes | 0.52 | 1.00 |
+| #nationsleague · nations league | yes | 0.76 | 1.00 |
+| #flydubai · Flydubai flight diverts to Saudi Arabia | yes | 0.61 | 0.45 |
+| yankees · Astros | no | 0.70 | 0.66 |
+| Jorge Jesus · jorge kahwagi | no | 0.66 | 0.63 |
+
+- **Splitting rescues the right tag matches,** at 0.60 and at 0.65. Pinterest's "first day of fall" searches now match TikTok's tag, which is why Pinterest drops from 96% to 80% alone.
+- **Brands suffer.** "#flydubai" becomes "fly dubai", while Bluesky's sentence keeps "Flydubai" as one word, so that match is lost.
+- **Short names aren't affected,** because splitting touches only hashtags and single-word titles, and names aren't over-split ("kahwagi", "astros" and "hegseth" stay whole). Their small changes are batch noise.
+
+## Batch noise in the embeddings
+
+The pipeline embeds titles in batches of 64. The 8-bit model scales its values over the whole padded batch, so a title's vector depends a little on its batch-mates.
+- **Measured:** embedding the 369 titles twice in shuffled order moved pair similarities by a median of 0.008, a 99th percentile of 0.034 and at most 0.06.
+- **Effect:** 11 of the 111 pairs at or above 0.60 fell on opposite sides of it between the two orderings (7 of 80 at 0.65, 2 of 50 at 0.70). A borderline match can merge one hour and not the next.
+- **Fix:** embedding one title at a time gives identical vectors in any order, and took 0.4 s instead of 0.2 s per 400 titles.
+
+This is sent to the web-app session for task 2.9. Until it's fixed, RQ6's shares move by a point or two between runs.
+
 ## What it means for the forecasts
 
 - **Breakouts are rare, so the labels will be very unbalanced.** Perhaps two stories a day reach 3 or more platforms. A 60% precision target has to be judged against that low base rate. "2 or more platforms" may be worth adding as an easier, more common label.
 - **Cross-platform forecasts will mostly be about news and sports names on X, Google and Instagram.** Trends on TikTok, Pinterest, Twitch and Hacker News are mostly native to their platform. For creators, a TikTok-only trend is a TikTok opportunity, not an early sign of a wider story.
-- **Matching quality bounds every cross-platform label.** Two problems showed up, both matters for task 2.9:
+- **Matching quality bounds every cross-platform label.** Three problems showed up, all matters for task 2.9:
   - short names pass 0.60 as different people or teams;
-  - hashtags written as one lowercase word match plain text poorly. That's 47% of TikTok's titles and 28% of Mastodon's, and "#nationalcoffeeday" scored 0.53 against "national coffee day".
+  - hashtags written as one lowercase word matched plain text poorly. That's 47% of TikTok's titles and 28% of Mastodon's. Task 2.13's splitting now fixes this, except for brands written as one word elsewhere;
+  - batch noise flips about 1 in 10 borderline matches.
 
-  Splitting those hashtags into words would let a stricter threshold, such as 0.65, keep the right matches.
+  With splitting in place, a stricter threshold such as 0.65 keeps the right tag matches and drops some short-name errors.
 
 ## Limits
 
