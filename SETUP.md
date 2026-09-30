@@ -91,17 +91,17 @@ A business account, then an app at [developers.pinterest.com](https://developers
 3. Open the actor [data_xplorer/tiktok-trends](https://apify.com/data_xplorer/tiktok-trends) and create a **schedule** (**Schedules › Create**) that runs it daily (cron `0 6 * * *`, UTC) with this input and a maximum cost per run of $0.25:
 
     ```json
-    { "trendType": "hashtags", "maxItems": 15, "countryCode": "US", "hashtagPeriod": "7", "industryId": "", "saveMedia": false }
+    { "trendType": "hashtags", "maxItems": 30, "countryCode": "US", "hashtagPeriod": "7", "industryId": "", "saveMedia": false }
     ```
 
-    A run of 15 hashtags cost $0.048 in a test, so about $1.50 a month, inside the free $5. The pipeline only reads the latest run's results. If no run has succeeded for 48 hours, TikTok shows as failing on /status. (Since July 2026 TikTok's Creative Center shows logged-out visitors only its top 3; automation-lab/tiktok-trends-scraper returned just those 3, while this actor returned all 15.)
-4. Open the actor [s-r/instagram-trending-scraper](https://apify.com/s-r/instagram-trending-scraper) and create a schedule that runs it every 6 hours (cron `30 */6 * * *`, UTC) with this input and a maximum cost per run of $0.10:
+    A run costs $0.025 plus $0.001 per hashtag: 30 hashtags cost $0.055 in a test, so about $1.70 a month, inside the free $5. Each hashtag also carries a 7-day daily popularity curve and an up/down direction, which the collector passes on for phase 5. The pipeline only reads the latest run's results. If no run has succeeded for 48 hours, TikTok shows as failing on /status. (Since July 2026 TikTok's Creative Center shows logged-out visitors only its top 3; automation-lab/tiktok-trends-scraper returned just those 3, while this actor returned all 30.)
+4. Open the actor [s-r/instagram-trending-scraper](https://apify.com/s-r/instagram-trending-scraper) and create a schedule that runs it every 6 hours at 50 minutes past the hour, just before the pipeline's run at :07 (cron `50 */6 * * *`, UTC), with this input and a maximum cost per run of $0.10:
 
     ```json
     { "maxKeywords": 10, "expandRelatedTopics": false }
     ```
 
-    It costs $0.002 per topic with no start fee, and the free plan caps a run at 10 topics: $0.02 a run, about $2.40 a month. Together with TikTok that is about $3.90 of the free $5. If no run has succeeded for 18 hours, Instagram shows as failing on /status.
+    It costs $0.002 per topic with no start fee, and the free plan caps a run at 10 topics: $0.02 a run, about $2.40 a month. Together with TikTok that is about $4.10 of the free $5. If no run has succeeded for 18 hours, Instagram shows as failing on /status.
 
 TikTok's and Instagram's terms ban scraping, so these sources are your call.
 

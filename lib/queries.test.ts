@@ -118,9 +118,9 @@ describe("spendThisMonth", () => {
     expect(x.toDate).toBeCloseTo(0.12);
     expect(x.projected).toBeCloseTo((0.12 / 29.5) * 30, 2);
     // Daily: 30 runs so far on Sep 30 at 12:10, and 30 in September.
-    expect(tiktok).toMatchObject({ service: "TikTok (Apify)", detail: "about 30 runs × $0.048, estimated from the schedule" });
-    expect(tiktok.toDate).toBeCloseTo(30 * 0.048);
-    expect(tiktok.projected).toBeCloseTo(30 * 0.048);
+    expect(tiktok).toMatchObject({ service: "TikTok (Apify)", detail: "about 30 runs × $0.055, estimated from the schedule" });
+    expect(tiktok.toDate).toBeCloseTo(30 * 0.055);
+    expect(tiktok.projected).toBeCloseTo(30 * 0.055);
     // Every 6 hours: 119 runs by Sep 30 at 12:10, and 120 in September.
     expect(instagram).toMatchObject({ service: "Instagram (Apify)", detail: "about 119 runs × $0.020, estimated from the schedule" });
     expect(instagram.toDate).toBeCloseTo(119 * 0.02);

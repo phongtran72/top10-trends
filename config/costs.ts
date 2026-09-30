@@ -14,8 +14,9 @@ export interface ApifySchedule {
 }
 
 export const APIFY_SCHEDULES: readonly ApifySchedule[] = [
-  // data_xplorer/tiktok-trends: 15 US hashtags cost $0.048 in a test run.
-  { source: "tiktok", service: "TikTok (Apify)", costPerRun: 0.048, runsPerDay: 1 },
+  // data_xplorer/tiktok-trends: 30 US hashtags cost $0.055 in a test run
+  // ($0.025 a run plus $0.001 a hashtag).
+  { source: "tiktok", service: "TikTok (Apify)", costPerRun: 0.055, runsPerDay: 1 },
   // s-r/instagram-trending-scraper: $0.002 per topic and no start fee; the
   // free plan caps a run at 10 topics.
   { source: "instagram", service: "Instagram (Apify)", costPerRun: 10 * 0.002, runsPerDay: 4 },

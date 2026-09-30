@@ -336,6 +336,11 @@ describe("tiktok", () => {
         url: "https://www.tiktok.com/tag/examplechallenge",
         metricValue: 98000000,
         metricLabel: "views",
+        flags: { direction: "up" },
+        series: [
+          { day: "2026-10-06", value: 20 },
+          { day: "2026-10-07", value: 100 },
+        ],
       },
       {
         source: "tiktok",
@@ -345,7 +350,14 @@ describe("tiktok", () => {
         url: "https://www.tiktok.com/tag/sampledance",
         metricValue: 5100,
         metricLabel: "posts",
+        flags: { direction: "down" },
+        // Dated by timestamp when `date` is missing, sorted, and a point with an unreadable date dropped.
+        series: [
+          { day: "2026-10-07", value: 64.5 },
+          { day: "2026-10-08", value: 100 },
+        ],
       },
+      // An unknown direction and a missing curve leave both fields out.
       { source: "tiktok", region: "us", rank: 3, title: "#testtrend", url: "https://www.tiktok.com/tag/testtrend" },
     ]);
   });
