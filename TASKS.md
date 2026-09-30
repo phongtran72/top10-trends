@@ -53,7 +53,7 @@ where source_id = 'heartbeat' and status = 'ok'
 ## Phase 1 · Per-platform lists (weeks 2–3)
 
 - [x] **[You]** Add the phase 1 keys and variables: `YOUTUBE_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `REVALIDATE_SECRET`, `SITE_URL`, `COLLECTOR_USER_AGENT` (SETUP.md §3, §4, §7, §8), and redeploy on Vercel after adding `REVALIDATE_SECRET` there.
-- [ ] **1.1 Types.** `collectors/types.ts`:
+- [x] **1.1 Types.** `collectors/types.ts`:
 
     ```ts
     export type Region = 'global' | 'us' | 'gb' | 'ca' | 'au';
