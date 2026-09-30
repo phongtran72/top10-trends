@@ -30,5 +30,7 @@ describe("describeDatabaseUrl", () => {
     expect(describeDatabaseUrl(base.replace("PW", "[YOUR-PASSWORD]"))).toContain("placeholder");
     expect(describeDatabaseUrl(base.replace("PW", "[secret123]"))).toContain("remove the brackets");
     expect(describeDatabaseUrl(base.replace(":5432/postgres", ":5432/"))).toContain("database=(none; add /postgres)");
+    expect(describeDatabaseUrl(base.replace("PW", "ab%2 0cd"))).toContain("write each literal % as %25");
+    expect(describeDatabaseUrl(base.replace("PW", "ab%20cd"))).toContain("password contains spaces");
   });
 });

@@ -28,9 +28,15 @@ export function describeDatabaseUrl(url: string): string {
   } catch {
     return "not a valid URL";
   }
-  const password = decodeURIComponent(parsed.password);
+  let password: string | undefined;
+  try {
+    password = decodeURIComponent(parsed.password);
+  } catch {
+    password = undefined;
+  }
   const warnings: string[] = [];
-  if (!password) warnings.push("no password");
+  if (password === undefined) warnings.push("password has a % that is not a valid escape; write each literal % as %25");
+  else if (!password) warnings.push("no password");
   else if (/YOUR-PASSWORD/i.test(password)) warnings.push("password is still the [YOUR-PASSWORD] placeholder");
   else if (/[[\]]/.test(password)) warnings.push("password contains [ or ]; remove the brackets");
   else if (/\s/.test(password)) warnings.push("password contains spaces");
