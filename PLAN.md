@@ -212,6 +212,11 @@ Between refreshes the same list repeats in every hourly fetch, so those sources'
   - Hacker News has a real rise and fall: 38% of stories climb after entering;
   - Bluesky flickers: 47% of its spells are returns, most after missing one fetch, so a Bluesky life should allow an hour's gap (which gives a 2-hour half-life).
 
+**Breakout** (RQ3, 2026-09-30, `research/findings/rq3-breakout.md`): the method is ready, with no result yet.
+- **Outcome and features:** "spread" means matched on another list at 0.70. The features are those known at first sighting: platform, entry rank, metric against the list's median, hour and title length. Only trends with a seen entry and 6 hours of data after it count.
+- **On the five all-day lists, none of 96 trends spread.** The 95% upper bound is 3.8%, so a spread model there must beat a 96% "never" baseline.
+- **The day's shared stories ran on X, Google and Instagram in the evening,** so that cut is where RQ3 starts. Its model cell waits for 30 spread trends.
+
 **Lead and lag** (RQ2, 2026-09-30, `research/findings/rq2-lead-lag.md`): the method is ready, with no result yet. Matched trends (0.70) are grouped into stories, and each platform's earliest sighting is compared. Trends already listed at a source's first fetch are censored and left out, as are the slow sources. So far there's one usable story pair: Google had the Phillies–Braves game 3 hours before Bluesky. Google against X should reach about 20 stories within a few days of X's start. A lead measures when a story enters a platform's list, which favors lists that rank by novelty or velocity (Google, Bluesky) over those that rank by size (X, Twitch).
 
 **Outside data**, added in this order and only when a question or horizon needs it, all free:

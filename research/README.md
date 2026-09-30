@@ -53,6 +53,7 @@ research/
   topnews/db.py      read-only data access
   topnews/rhythms.py RQ5: turnover, novelty and flow of the stored lists by hour
   topnews/lifecycle.py RQ1: spells in each list's top 10, half-lives (Kaplan–Meier), rank paths
+  topnews/breakout.py RQ3: which trends spread to other lists, by what was known at first sighting
   topnews/leadlag.py RQ2: which platform has a story first, from RQ6's matches
   topnews/echo.py    RQ6: cross-platform matches of the stored lists' trends, using
                      the pipeline's own filters and model (scripts/embed-titles.ts;
