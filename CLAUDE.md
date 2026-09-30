@@ -62,12 +62,14 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 - Supabase: never use the direct host; it is IPv6-only without a paid add-on, and GitHub's hosted runners are IPv4-only. The pipeline and migrations use `SESSION_DATABASE_URL` (session pooler, port 5432). Only the Vercel site uses `DATABASE_URL` (transaction pooler, port 6543), with `postgres(url, { prepare: false, max: 1, ssl: 'require' })` and queries awaited one at a time.
 - `next build` runs in CI with no secrets, so never query the database at build time; database pages render on demand and are then cached.
 - Revalidate dynamic routes with a pattern and type, for example `revalidatePath('/p/[platform]', 'page')`. Cached HTML freezes relative times, so render "updated N min ago" in the browser from a timestamp.
+- `export const dynamic = 'force-dynamic'` sets `fetchCache` to `force-no-store`, which makes `unstable_cache` skip its cache. To render a static route per request with cached data, call `await connection()` instead (PLAN.md › Tech stack).
+- postgres-js rejects a JavaScript `Date` passed into a raw `sql` fragment (PGlite accepts it, so tests pass). Pass `date.toISOString()` and cast it: `${since}::timestamptz`.
 - create-next-app refuses a non-empty directory and writes its own `CLAUDE.md`. Scaffold in a temp directory and copy files in, never overwriting `CLAUDE.md` or `README.md`. If the scaffold includes `AGENTS.md`, keep it and append the line `@AGENTS.md` to this file.
 - If nextjs.org is blocked from a cloud session, use the docs bundled in the installed package (`node_modules/next/dist/docs/`).
 - Cloud sessions reach only allowed hosts. When a request is blocked, name the host so the human can allow it (SETUP.md §1).
 - Pushing `.github/workflows/*` from a cloud session can be refused for lack of workflow permission. Commit workflow files separately; if the push is refused, move them to `ci/workflows/` and ask the human to create each file through GitHub's web editor.
 - Reddit requires the User-Agent format `<platform>:<app ID>:<version> (by /u/<username>)`, and its API needs explicit approval first (SETUP.md).
-- Bluesky's trends endpoints are "unspecced": `link` is a relative path, `status` is free text (seen: `trending`, `cooling`, `stale`) and `topic` is an opaque id. Validate with zod so a schema change fails only that source.
+- Bluesky's trends endpoints are "unspecced": `link` is a relative path, `status` is free text (seen: `trending`, `saturating`, `cooling`, `stale`) and `topic` is an opaque id. Validate with zod so a schema change fails only that source.
 - YouTube's `chart=mostPopular` has no worldwide option and, since July 2025, draws from the music, movies and gaming charts.
 - Google Trends' "Trending now" RSS is per country with no worldwide feed, and each item's `<link>` is only the feed URL.
 - Keep a pipeline run under 5 minutes: cache npm and the embedding model in Actions, and fetch sources in parallel.
