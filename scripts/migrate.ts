@@ -1,5 +1,6 @@
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { pipelineEnv } from "@/lib/env";
+import { describeError } from "@/lib/errors";
 import { loadLocalEnv } from "@/lib/local-env";
 import { createPipelineDb } from "@/pipeline/db";
 
@@ -17,6 +18,6 @@ async function main() {
 }
 
 main().catch((error: unknown) => {
-  console.error(`migrate: failed: ${error instanceof Error ? error.message : String(error)}`);
+  console.error(`migrate: failed: ${describeError(error)}`);
   process.exit(1);
 });

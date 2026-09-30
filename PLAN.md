@@ -87,7 +87,7 @@ Use TypeScript end to end: one Next.js app for the site plus a folder of collect
 
 Vercel's Hobby cron runs [at most once a day](https://vercel.com/docs/cron-jobs/usage-and-pricing), so it can't drive an hourly job. GitHub's own scheduler can drop runs at busy times and turns off public-repo schedules after 60 idle days; a Cloudflare trigger avoids both. Neon Free was ruled out because it meters compute at [100 CU-hours a month](https://neon.com/docs/introduction/plans), which crawler traffic waking the database could use up.
 
-Supabase connections: the direct host is IPv6-only without a paid add-on, and GitHub's hosted runners are IPv4-only, so use the [pooler strings](https://supabase.com/docs/guides/database/connecting-to-postgres). The website on Vercel uses the transaction pooler (port 6543, prepared statements off, one connection); the hourly pipeline and migrations use the session pooler (port 5432).
+Supabase connections: the direct host is IPv6-only without a paid add-on, and GitHub's hosted runners are IPv4-only, so use the [pooler strings](https://supabase.com/docs/guides/database/connecting-to-postgres). The website on Vercel uses the transaction pooler (port 6543, prepared statements off, one connection); the hourly pipeline and migrations use the session pooler (port 5432). The database is in `us-east-2` (Ohio), so the Vercel functions run in Cleveland (`cle1`), in the same region.
 
 ## Ranking
 
