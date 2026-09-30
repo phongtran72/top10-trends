@@ -30,7 +30,10 @@ items = db.trend_items(engine, days=7)
 
 - **Topic snapshots** (`topic_snapshots`) are the main dataset. They're kept permanently, never include YouTube, and each row's `algo_version` says how it was made. Keep an analysis to one version, or compare versions on purpose; rows marked `+replay` were rebuilt from stored lists and have `news_count` 0.
 - **Stored lists** (`trend_items`) are kept only 28 days. `db.trend_items` leaves YouTube out unless you pass `include_youtube=True`. Don't save YouTube rows to disk: its policy caps stored data at 30 days.
-- **Slow sources:** TikTok's list refreshes once a day and Instagram's every 6 hours. Between refreshes the same list repeats in every hourly fetch, so hour-to-hour changes there aren't signal. Instagram's `posts` metric is an all-time count, not momentum. X can show `skipped` runs with the reason `daily cap`: no X ranks that hour, not low ones.
+- **Slow sources:** TikTok's list refreshes once a day, Instagram's every few hours and Pinterest's about weekly (fetched twice a week). Between refreshes the same list repeats in every hourly fetch, so hour-to-hour changes there aren't signal. Instagram's `posts` metric is an all-time count, not momentum. X can show `skipped` runs with the reason `daily cap`: no X ranks that hour, not low ones.
+- **Google Trends' rank is age, not size:** its feed holds the 10 newest trends, newest first, so a trend's time in the list isn't its lifespan (findings/rq5-rhythms.md).
+- **Metrics are running totals** (Bluesky posts, Hacker News points, Google searches in buckets, Mastodon's uses today, which restart at midnight UTC). Measure activity as growth between fetches, not as the level.
+- **Matching an item across hours:** Bluesky rewrites a topic's title as the story moves on and Hacker News titles get edited, so match those by url; Google's url is its first news link and changes, so match Google by title. `topnews.rhythms` does this.
 
 ## Rules
 
@@ -47,6 +50,7 @@ research/
   requirements.txt   pinned packages (pandas 2.x because lifelines needs it)
   pyproject.toml     makes topnews/ importable
   topnews/db.py      read-only data access
+  topnews/rhythms.py RQ5: turnover, novelty and flow of the stored lists by hour
   notebooks/         one notebook per question, numbered
   findings/          write-ups: rq1-lifecycle.md and so on
   tests/             pytest, no database needed

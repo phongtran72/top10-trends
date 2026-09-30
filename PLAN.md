@@ -169,8 +169,15 @@ Phase 5 turns the stored history into two things of equal weight, built on one d
 **Data.** Features come only from `topic_snapshots` (hourly, permanent, never YouTube), `topics` (labels, centroids, first and last seen) and the combined rankings. The hours and days work needs 6 to 8 weeks of snapshots; the weeks horizon and seasonal rhythms need a year of our own data or outside history. Labels: *breakout* means reaching 3 or more platforms, or the combined top 3, within 6 hours of the forecast; *lifespan* means the hours until the topic last appears in the combined top 10. Each snapshot records its `algo_version` (embedding model and weights, matching threshold and `RANKING_VERSION`, plus "+replay" for rebuilt hours), so analyses and training can keep to one version or compare versions. Replayed hours have a `news_count` of 0, because past lists' headlines weren't stored. Some sources move in steps, not hourly:
 - **TikTok:** the 7-day hashtag list refreshes once a day.
 - **Instagram:** its 10 worldwide topics refresh every 6 hours.
+- **Pinterest:** Pinterest Trends refreshes about weekly, and it's fetched twice a week.
 
 Between refreshes the same list repeats in every hourly fetch, so those sources' hour-to-hour changes aren't signal. Instagram's `posts` metric is an all-time media count, not trending volume, so it isn't momentum either. X can have `skipped` runs with the reason `daily cap`: those hours have no X ranks, not low ones.
+
+**What the lists are** (RQ5 first look, 2026-09-30, `research/findings/rq5-rhythms.md`):
+- **Google Trends:** its feed is the 10 *newest* US trends, newest first, not the 10 biggest. Its rank is age, and a trend leaves the list when 10 newer ones start, which takes under an hour on a busy afternoon. So time in Google's list isn't a lifespan, and in the combined score Google's weight goes to its newest trend, not its biggest.
+- **Metrics:** every stored metric is a running total for its item (Bluesky posts, Hacker News points, Google searches in buckets, Mastodon's uses today), so features use growth between fetches, never levels.
+- **Titles:** Bluesky renames a topic as the story moves on, under the same url, so research matches Bluesky and Hacker News items by url.
+- **Churn:** on the first weekday, the share of each top 10 that was new since the hour before was Google 61%, Bluesky 53%, Hacker News 26%, Mastodon 8% and Twitch 7%. An hour-of-day rhythm needs at least 3 days of data, and about a week to trust.
 
 **Outside data**, added in this order and only when a question or horizon needs it, all free:
 
