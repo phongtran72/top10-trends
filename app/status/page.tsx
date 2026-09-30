@@ -119,8 +119,8 @@ export default async function StatusPage() {
             </div>
             <p className={styles.spendNote}>
               Out of pocket this month: about {usd(spend.outOfPocket)}, after Apify&apos;s free $5 of monthly usage. X is
-              exact (requests × price); TikTok and Instagram are estimated from their Apify schedules. The X and Apify
-              consoles show the actual bills.
+              exact (requests × price); TikTok, Instagram and Pinterest are estimated from their Apify schedules, from
+              each one&apos;s first run this month. The X and Apify consoles show the actual bills.
             </p>
           </>
         )}

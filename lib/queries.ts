@@ -177,42 +177,46 @@ export interface Spend {
 
 // Month-to-date spend and a projection (TASKS.md 3.7). X is exact: requests
 // that reached X × the per-request price. Apify sources are estimates from
-// their schedules, since their runs happen on Apify's side; each counts once
-// the pipeline has read it this month.
+// their schedules, since their runs happen on Apify's side. Each source is
+// counted from its first run this month, so one that starts mid-month isn't
+// charged for the days before it.
 export async function spendThisMonth(db: Db, now: Date): Promise<Spend> {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-  const elapsedMs = Math.max(now.getTime() - monthStart.getTime(), 60 * 60 * 1000);
-  const monthMs = monthEnd.getTime() - monthStart.getTime();
+  const hour = 60 * 60 * 1000;
   const lines: SpendLine[] = [];
 
-  const [x] = await db
-    .select({ n: sql<number>`count(*)`.mapWith(Number) })
-    .from(fetchRuns)
-    .where(and(eq(fetchRuns.sourceId, "x"), inArray(fetchRuns.status, ["ok", "error"]), gte(fetchRuns.startedAt, monthStart)));
+  // How many of a source's runs this month have these statuses, and when the first began.
+  const runsSince = async (sourceId: string, statuses: string[]) => {
+    const [row] = await db
+      .select({ n: sql<number>`count(*)`.mapWith(Number), first: sql<Date | null>`min(${fetchRuns.startedAt})`.mapWith(fetchRuns.startedAt) })
+      .from(fetchRuns)
+      .where(and(eq(fetchRuns.sourceId, sourceId), inArray(fetchRuns.status, statuses), gte(fetchRuns.startedAt, monthStart)));
+    return { n: row.n, first: row.first ? new Date(row.first) : now };
+  };
+
+  const x = await runsSince("x", ["ok", "error"]);
   if (x.n > 0) {
     const toDate = x.n * X_COST_PER_REQUEST;
+    const elapsedMs = Math.max(now.getTime() - x.first.getTime(), hour);
     lines.push({
       service: "X",
       detail: `${x.n} trend requests × $${X_COST_PER_REQUEST.toFixed(3)}`,
       toDate,
-      projected: (toDate / elapsedMs) * monthMs,
+      projected: toDate + (toDate / elapsedMs) * Math.max(monthEnd.getTime() - now.getTime(), 0),
     });
   }
 
   let apify = 0;
   for (const schedule of APIFY_SCHEDULES) {
-    const [read] = await db
-      .select({ n: sql<number>`count(*)`.mapWith(Number) })
-      .from(fetchRuns)
-      .where(and(eq(fetchRuns.sourceId, schedule.source), eq(fetchRuns.status, "ok"), gte(fetchRuns.startedAt, monthStart)));
+    const read = await runsSince(schedule.source, ["ok"]);
     if (read.n === 0) continue;
-    const intervalMs = (24 * 60 * 60 * 1000) / schedule.runsPerDay;
-    const runsSoFar = Math.floor(elapsedMs / intervalMs) + 1;
-    const runsInMonth = Math.ceil(monthMs / intervalMs);
+    const intervalMs = (24 * hour) / schedule.runsPerDay;
+    const runsSoFar = Math.floor((now.getTime() - read.first.getTime()) / intervalMs) + 1;
+    const runsInMonth = Math.max(Math.ceil((monthEnd.getTime() - read.first.getTime()) / intervalMs), runsSoFar);
     const line = {
       service: schedule.service,
-      detail: `about ${runsSoFar} runs × $${schedule.costPerRun.toFixed(3)}, estimated from the schedule`,
+      detail: `about ${runsSoFar} run${runsSoFar === 1 ? "" : "s"} × $${schedule.costPerRun.toFixed(3)}, estimated from the schedule`,
       toDate: runsSoFar * schedule.costPerRun,
       projected: runsInMonth * schedule.costPerRun,
     };
