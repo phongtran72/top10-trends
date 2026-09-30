@@ -1,9 +1,11 @@
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { pipelineEnv } from "@/lib/env";
+import { loadLocalEnv } from "@/lib/local-env";
 import { createPipelineDb } from "@/pipeline/db";
 
 // Applies db/migrations to SESSION_DATABASE_URL (the session pooler).
 async function main() {
+  loadLocalEnv();
   const env = pipelineEnv({ dryRun: false });
   const { db, close } = createPipelineDb(env.SESSION_DATABASE_URL);
   try {

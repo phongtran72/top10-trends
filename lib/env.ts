@@ -97,7 +97,7 @@ export function pipelineEnv(options: { dryRun: boolean }, raw: RawEnv = process.
   if (options.dryRun) return { ...env, dryRun: true, revalidate };
   if (!env.SESSION_DATABASE_URL) {
     throw new EnvError(
-      "pipeline: missing or invalid environment variables: SESSION_DATABASE_URL (or pass --dry-run; see SETUP.md §2)",
+      "pipeline: missing or invalid environment variables: SESSION_DATABASE_URL (see SETUP.md §2; a --dry-run needs none)",
     );
   }
   return { ...env, SESSION_DATABASE_URL: env.SESSION_DATABASE_URL, dryRun: false, revalidate };

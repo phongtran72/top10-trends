@@ -12,10 +12,10 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
-    "pipeline": "tsx --env-file-if-exists=.env.local pipeline/run.ts",
+    "pipeline": "tsx pipeline/run.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx --env-file-if-exists=.env.local scripts/migrate.ts",
-    "eval": "tsx --env-file-if-exists=.env.local scripts/eval.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "eval": "tsx scripts/eval.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",

@@ -1,8 +1,8 @@
-import { existsSync } from "node:fs";
 import { defineConfig } from "drizzle-kit";
+import { loadLocalEnv } from "./lib/local-env";
 
 // `db:generate` needs no database. Migrations are applied by scripts/migrate.ts.
-if (existsSync(".env.local")) process.loadEnvFile(".env.local");
+loadLocalEnv();
 
 export default defineConfig({
   dialect: "postgresql",
