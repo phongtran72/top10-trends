@@ -1,0 +1,58 @@
+.list {
+  list-style: none;
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.item {
+  display: flex;
+  gap: 0.875rem;
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.rank {
+  flex: 0 0 1.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  text-align: right;
+}
+
+.body {
+  min-width: 0;
+}
+
+.title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.title:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.meta {
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.empty {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 0.5rem;
+  color: var(--muted);
+}
+
+.attribution {
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.attribution a {
+  text-decoration: underline;
+}
