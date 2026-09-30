@@ -1,0 +1,15 @@
+[project]
+name = "topnews-research"
+version = "0.1.0"
+description = "Research notebooks and helpers for Top 10 Social Trends (phase 5)"
+requires-python = ">=3.12"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["topnews"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

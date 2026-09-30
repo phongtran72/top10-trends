@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     "worker/**",
     // Git worktrees of other branches (other Claude sessions) live here.
     ".claude/**",
+    // Python research notebooks and their environment (phase 5).
+    "research/**",
   ]),
 ]);
 

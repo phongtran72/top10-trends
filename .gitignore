@@ -50,3 +50,11 @@ next-env.d.ts
 
 # embedding model cache
 /.cache
+
+# research (phase 5): Python environment, exported data, notebook caches
+/research/.venv
+/research/data
+/research/*.egg-info
+__pycache__/
+.ipynb_checkpoints/
+.pytest_cache/
