@@ -62,17 +62,37 @@ def trends(items: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def embed(trend_table: pd.DataFrame, name: str = "rq6_titles", segment: bool = True) -> tuple[pd.DataFrame, np.ndarray]:
+def embed_input(trend_table: pd.DataFrame, items: pd.DataFrame | None = None) -> dict:
+    """What scripts/embed-titles.ts reads. With `items`, each trend is embedded as in the hour it was first
+    seen: that hour's titles decide which hashtag runs stay whole, as they would in that pipeline run."""
+    rows = [{"id": t.trend_id, "source": t.source_id, "title": t.title} for t in trend_table.itertuples(index=False)]
+    if items is None:
+        return {"rows": rows}
+    hours = pd.to_datetime(trend_table["first_seen"], utc=True).dt.floor("h").dt.strftime("%Y-%m-%dT%H")
+    for row, hour in zip(rows, hours):
+        row["group"] = hour
+    by_hour = items.assign(hour=pd.to_datetime(items["fetched_at"], utc=True).dt.floor("h").dt.strftime("%Y-%m-%dT%H"))
+    by_hour = by_hour[by_hour["hour"].isin(set(hours))].drop_duplicates(["hour", "source_id", "title"])
+    groups = {
+        hour: [{"source": s, "title": t} for s, t in zip(group["source_id"], group["title"])]
+        for hour, group in by_hour.groupby("hour")
+    }
+    return {"rows": rows, "groups": groups}
+
+
+def embed(
+    trend_table: pd.DataFrame, name: str = "rq6_titles", segment: bool = True, items: pd.DataFrame | None = None
+) -> tuple[pd.DataFrame, np.ndarray]:
     """Runs the pipeline's filters and model on the trends' titles (scripts/embed-titles.ts).
 
     Writes research/data/<name>.json/.f32 (git ignores data/) and returns the
-    filter result per trend, plus the kept trends' vectors in row order.
+    filter result per trend, plus the kept trends' vectors in row order. Pass
+    the stored `items` to embed each trend as in the hour it was first seen.
     """
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     source = DATA_DIR / f"{name}_input.json"
     out = DATA_DIR / name
-    rows = [{"id": t.trend_id, "source": t.source_id, "title": t.title} for t in trend_table.itertuples(index=False)]
-    source.write_text(json.dumps(rows), encoding="utf-8")
+    source.write_text(json.dumps(embed_input(trend_table, items)), encoding="utf-8")
     npx = shutil.which("npx") or "npx"
     flags = [] if segment else ["--no-segment"]
     subprocess.run([npx, "tsx", "scripts/embed-titles.ts", str(source), str(out), *flags], cwd=REPO_ROOT, check=True)
@@ -99,7 +119,7 @@ def analyze(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Trends → the pipeline's filters and model → cross-platform matches. Returns the matches and the dropped trends."""
     table = trends(items)
-    filtered, vectors = embed(table, name, segment)
+    filtered, vectors = embed(table, name, segment, items)
     kept, kept_vectors = kept_trends(table, filtered, vectors)
     dropped = filtered[~filtered["kept"]].merge(table, left_on="id", right_on="trend_id")
     return cross_platform(kept, kept_vectors, slack_hours), dropped

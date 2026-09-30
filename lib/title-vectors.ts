@@ -1,6 +1,7 @@
 import type { SourceId } from "@/collectors/registry";
 import type { TrendItem } from "@/collectors/types";
 import { EMBEDDING_DIMENSIONS, EMBEDDING_DTYPE, EMBEDDING_MODEL, embeddingText, type Embedder } from "@/lib/embed";
+import { plainWords } from "@/lib/text";
 import { checkItem, type DropReason } from "@/pipeline/filter";
 
 // Title vectors for the research notebooks (research/, PLAN.md › Predictions
@@ -12,6 +13,12 @@ import { checkItem, type DropReason } from "@/pipeline/filter";
 
 export interface TitleRow {
   id: string; // the notebook's own id for the trend
+  source: string;
+  title: string;
+  group?: string; // the hour it's embedded for: its words to keep whole come from that hour's titles
+}
+
+export interface GroupTitle {
   source: string;
   title: string;
 }
@@ -34,23 +41,43 @@ export interface TitleVectors {
 
 // The pipeline's filters, minus the ones that read flags the stored lists
 // don't keep (NSFW, Bluesky's status).
-export function checkTitle(row: TitleRow, blocklist: ReadonlySet<string>): ReturnType<typeof checkItem> {
+export function checkTitle(row: GroupTitle, blocklist: ReadonlySet<string>): ReturnType<typeof checkItem> {
   const item: TrendItem = { source: row.source as SourceId, region: "global", rank: 1, title: row.title, url: "" };
   return checkItem(item, blocklist);
 }
 
-export async function embedTitles(rows: readonly TitleRow[], blocklist: ReadonlySet<string>, embed: Embedder): Promise<TitleVectors> {
+// The rank step keeps a hashtag's run whole when the run's other titles use
+// it as a plain word ("#flydubai" next to "Flydubai flight diverts…"). Here a
+// row's words to keep come from its group's titles, like one pipeline run;
+// rows without a group, or without `groups`, share the kept rows' titles.
+export async function embedTitles(
+  rows: readonly TitleRow[],
+  blocklist: ReadonlySet<string>,
+  embed: Embedder,
+  groups: Readonly<Record<string, readonly GroupTitle[]>> = {},
+): Promise<TitleVectors> {
   const results: TitleResult[] = [];
-  const texts: string[] = [];
+  const kept: TitleRow[] = [];
   for (const row of rows) {
     const drop = checkTitle(row, blocklist);
     if (drop) {
       results.push({ id: row.id, kept: false, ...drop });
     } else {
-      results.push({ id: row.id, kept: true, index: texts.length });
-      texts.push(embeddingText({ title: row.title }));
+      results.push({ id: row.id, kept: true, index: kept.length });
+      kept.push(row);
     }
   }
+  const everyone = plainWords(kept.map((row) => row.title));
+  const keepByGroup = new Map<string, Set<string>>();
+  const keepFor = (group: string | undefined) => {
+    const titles = group === undefined ? undefined : groups[group];
+    if (!titles) return everyone;
+    if (!keepByGroup.has(group!)) {
+      keepByGroup.set(group!, plainWords(titles.filter((t) => !checkTitle(t, blocklist)).map((t) => t.title)));
+    }
+    return keepByGroup.get(group!)!;
+  };
+  const texts = kept.map((row) => embeddingText({ title: row.title }, { keep: keepFor(row.group) }));
   const embedded = texts.length > 0 ? await embed(texts) : [];
   const vectors = new Float32Array(embedded.length * EMBEDDING_DIMENSIONS);
   embedded.forEach((vector, i) => vectors.set(vector, i * EMBEDDING_DIMENSIONS));

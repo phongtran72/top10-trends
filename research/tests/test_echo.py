@@ -130,6 +130,21 @@ def test_kept_trends_line_up_with_their_vectors(tmp_path):
     assert kept_vectors[1][0] == pytest.approx(1.0)
 
 
+def test_embed_input_groups_each_trend_with_the_titles_of_its_first_hour():
+    t = table([("mastodon", "#flydubai", 10, 12, 3), ("x", "Astros", 11, 11, 1)])
+    items = pd.DataFrame(
+        {
+            "source_id": ["bluesky", "bluesky", "mastodon", "x"],
+            "title": ["Flydubai flight diverts to Saudi Arabia", "Fat Bear Week", "#flydubai", "Astros"],
+            "fetched_at": [T0 + pd.to_timedelta(h, unit="h") for h in (10.02, 11.02, 10.01, 11.03)],
+        }
+    )
+    data = echo.embed_input(t, items)
+    assert [r["group"] for r in data["rows"]] == ["2026-10-01T22", "2026-10-01T23"]
+    assert {g["title"] for g in data["groups"]["2026-10-01T22"]} == {"Flydubai flight diverts to Saudi Arabia", "#flydubai"}
+    assert "group" not in echo.embed_input(t)["rows"][0]
+
+
 def test_load_vectors_reads_the_embed_script_output(tmp_path):
     out = tmp_path / "v"
     (tmp_path / "v.json").write_text('{"model": "m", "dtype": "q8", "dimensions": 384, "rows": [{"id": "t0", "kept": true, "index": 0}]}')

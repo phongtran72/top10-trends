@@ -34,6 +34,22 @@ describe("embedTitles", () => {
     expect(result.vectors[384]).toBe("fat bear week".length);
   });
 
+  it("keeps a hashtag whole when its group's titles use it as a plain word, like the rank step", async () => {
+    const rows = [{ id: "a", source: "mastodon", title: "#flydubai", group: "22" }];
+    const withBrand = { "22": [{ source: "bluesky", title: "Flydubai flight diverts to Saudi Arabia" }] };
+    const without = { "22": [{ source: "bluesky", title: "Fat Bear Week" }] };
+    expect((await embedTitles(rows, new Set(), lengthEmbedder, withBrand)).vectors[0]).toBe("flydubai".length);
+    expect((await embedTitles(rows, new Set(), lengthEmbedder, without)).vectors[0]).toBe("fly dubai".length);
+  });
+
+  it("without groups, the kept rows' own titles give the words to keep", async () => {
+    const rows = [
+      { id: "a", source: "mastodon", title: "#flydubai" },
+      { id: "b", source: "bluesky", title: "Flydubai flight diverts to Saudi Arabia" },
+    ];
+    expect((await embedTitles(rows, new Set(), lengthEmbedder)).vectors[0]).toBe("flydubai".length);
+  });
+
   it("needs no model call when nothing is kept", async () => {
     const never: Embedder = async () => {
       throw new Error("should not embed");
