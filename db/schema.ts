@@ -1,0 +1,106 @@
+import {
+  bigint,
+  bigserial,
+  boolean,
+  index,
+  integer,
+  pgTable,
+  primaryKey,
+  real,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
+
+// The six tables from PLAN.md › Data model. Store only these columns: never
+// full API responses or item embeddings (CLAUDE.md invariant 4).
+//
+// Row-level security is on with no policies, so Supabase's public Data API
+// (anon and authenticated roles) can read nothing; the owner role used by our
+// connection strings bypasses it.
+
+const timestamptz = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
+
+// Permanent; upserted from collectors/registry.ts at the start of each run.
+export const sources = pgTable("sources", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  role: text("role").notNull(), // lead | corroborating | system
+  weight: real("weight").notNull(),
+  enabled: boolean("enabled").notNull(),
+  regions: text("regions").array().notNull(),
+}).enableRLS();
+
+// 90 days. One row per collector and region per run, plus the heartbeat.
+export const fetchRuns = pgTable("fetch_runs", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  sourceId: text("source_id")
+    .notNull()
+    .references(() => sources.id),
+  region: text("region").notNull(),
+  startedAt: timestamptz("started_at").notNull(),
+  finishedAt: timestamptz("finished_at"),
+  status: text("status").notNull(), // ok | error | skipped
+  itemCount: integer("item_count").notNull().default(0),
+  error: text("error"), // status code, host and a short reason only; never a URL with a key
+}).enableRLS();
+
+// 28 days (YouTube's policy caps stored API data at 30 days).
+export const trendItems = pgTable(
+  "trend_items",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    runId: bigint("run_id", { mode: "number" })
+      .notNull()
+      .references(() => fetchRuns.id),
+    sourceId: text("source_id").notNull(),
+    region: text("region").notNull(),
+    rank: integer("rank").notNull(),
+    title: text("title").notNull(),
+    url: text("url").notNull(),
+    metricValue: bigint("metric_value", { mode: "number" }),
+    metricLabel: text("metric_label"),
+    fetchedAt: timestamptz("fetched_at").notNull(),
+  },
+  (t) => [index("trend_items_source_region_fetched_idx").on(t.sourceId, t.region, t.fetchedAt.desc())],
+).enableRLS();
+
+// Permanent.
+export const topics = pgTable("topics", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  slug: text("slug").notNull().unique(),
+  label: text("label").notNull(),
+  summary: text("summary"),
+  centroid: real("centroid").array(384).notNull(),
+  firstSeen: timestamptz("first_seen").notNull(),
+  lastSeen: timestamptz("last_seen").notNull(),
+}).enableRLS();
+
+// 28 days, deleted with their items.
+export const topicItems = pgTable(
+  "topic_items",
+  {
+    topicId: bigint("topic_id", { mode: "number" })
+      .notNull()
+      .references(() => topics.id),
+    itemId: bigint("item_id", { mode: "number" })
+      .notNull()
+      .references(() => trendItems.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.topicId, t.itemId] })],
+).enableRLS();
+
+// Combined rankings are permanent; per-platform rankings cascade with their items.
+export const rankings = pgTable(
+  "rankings",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    computedAt: timestamptz("computed_at").notNull(),
+    list: text("list").notNull(), // 'combined' or a source id
+    region: text("region").notNull(), // the view: global | us
+    rank: integer("rank").notNull(),
+    topicId: bigint("topic_id", { mode: "number" }).references(() => topics.id),
+    itemId: bigint("item_id", { mode: "number" }).references(() => trendItems.id, { onDelete: "cascade" }),
+    score: real("score"),
+  },
+  (t) => [index("rankings_list_region_computed_idx").on(t.list, t.region, t.computedAt.desc())],
+).enableRLS();

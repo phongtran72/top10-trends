@@ -1,0 +1,20 @@
+import { migrate } from "drizzle-orm/postgres-js/migrator";
+import { pipelineEnv } from "@/lib/env";
+import { createPipelineDb } from "@/pipeline/db";
+
+// Applies db/migrations to SESSION_DATABASE_URL (the session pooler).
+async function main() {
+  const env = pipelineEnv({ dryRun: false });
+  const { db, close } = createPipelineDb(env.SESSION_DATABASE_URL);
+  try {
+    await migrate(db, { migrationsFolder: "db/migrations" });
+    console.log("migrate: done");
+  } finally {
+    await close();
+  }
+}
+
+main().catch((error: unknown) => {
+  console.error(`migrate: failed: ${error instanceof Error ? error.message : String(error)}`);
+  process.exit(1);
+});

@@ -85,6 +85,11 @@ export type PipelineEnv = PipelineBase &
     revalidate: { siteUrl: string; secret: string } | null;
   };
 
+export function pipelineEnv(
+  options: { dryRun: false },
+  raw?: RawEnv,
+): Extract<PipelineEnv, { dryRun: false }>;
+export function pipelineEnv(options: { dryRun: boolean }, raw?: RawEnv): PipelineEnv;
 export function pipelineEnv(options: { dryRun: boolean }, raw: RawEnv = process.env): PipelineEnv {
   const env = parse(pipelineSchema, "pipeline", raw);
   const revalidate =
