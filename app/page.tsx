@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import { COLLECTORS } from "@/collectors/index";
 import { PLATFORMS } from "@/collectors/registry";
 import { RelativeTime } from "@/components/RelativeTime";
 import { getDashboard } from "@/lib/cached";
@@ -52,7 +53,7 @@ function Meter({ value, max }: { value: number; max: number }) {
 export default async function Home() {
   await connection();
   const data = await getDashboard();
-  const later = PLATFORMS.filter((p) => p.phase > 1).map((p) => p.name);
+  const later = PLATFORMS.filter((p) => !COLLECTORS.has(p.id)).map((p) => p.name);
 
   return (
     <>

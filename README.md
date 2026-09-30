@@ -20,7 +20,7 @@ flowchart LR
 - The **pipeline** (`pipeline/run.ts`, run by `.github/workflows/collect.yml`) fetches every enabled source in parallel, merges matching topics, ranks them, writes to **Postgres on Supabase** and asks the site to refresh its cached pages.
 - The **website** (Next.js on Vercel) reads the precomputed rows. Page views never call a platform API.
 
-Sources: Google Trends, Bluesky, Mastodon, YouTube, Twitch and Hacker News first; X, Reddit, Pinterest and TikTok later. See PLAN.md › Data sources.
+Sources: Google Trends, Bluesky, Mastodon, YouTube, Twitch and Hacker News first; X, Reddit, Pinterest, TikTok and Instagram later. See PLAN.md › Data sources.
 
 ## Setup
 

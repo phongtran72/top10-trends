@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { COLLECTORS } from "@/collectors/index";
 import { pageRegion, platformBySlug } from "@/collectors/registry";
 import { RelativeTime } from "@/components/RelativeTime";
 import { getDb } from "@/lib/db";
@@ -63,7 +64,7 @@ export default async function PlatformPage({ params }: PageProps<"/p/[platform]"
         </ol>
       ) : (
         <p className={styles.empty}>
-          {source.phase > 1
+          {!COLLECTORS.has(source.id)
             ? `${source.name} arrives in a later phase.`
             : `No ${source.name} list has been collected yet. Check the status page.`}
         </p>
