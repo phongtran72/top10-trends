@@ -127,7 +127,7 @@ The rank step runs after the lists are saved, in its own error handler, so a fai
 
 ## Data model
 
-Six Postgres tables hold everything. Raw items are deleted after 28 days, inside YouTube's 30-day storage limit; combined rankings are kept for good.
+Seven Postgres tables hold everything. Raw items are deleted after 28 days, inside YouTube's 30-day storage limit; combined rankings are kept for good.
 
 | Table | Columns | Retention |
 | --- | --- | --- |
@@ -137,8 +137,11 @@ Six Postgres tables hold everything. Raw items are deleted after 28 days, inside
 | `topics` | `id` bigserial PK, `slug` text unique, `label` text, `summary` text (one line of context), `centroid` real[384], `first_seen` timestamptz, `last_seen` timestamptz | Permanent |
 | `topic_items` | `topic_id` bigint → topics, `item_id` bigint → trend_items on delete cascade; PK (`topic_id`, `item_id`) | 28 days, with their items |
 | `rankings` | `id` bigserial PK, `computed_at` timestamptz, `list` text (`combined` or a source id), `region` text, `rank` int, `topic_id` bigint → topics, `item_id` bigint → trend_items on delete cascade, `score` real; index on (`list`, `region`, `computed_at` desc) | Combined permanent; per-platform 28 days (cascades with items) |
+| `topic_snapshots` | `taken_at` timestamptz, `region` text, `topic_id` bigint → topics, `position` int (place among scored topics, null without a lead platform), `score` real, `platform_count` int, `ranks` jsonb (source → best rank), `metrics` jsonb (source → metric); PK (`topic_id`, `taken_at`, `region`); index on `taken_at` | Permanent, never with YouTube data |
 
-In `trend_items` and `fetch_runs`, `region` is the feed's real region (`global` or `us`, plus `gb`, `ca` and `au` from phase 3); in `rankings` it is the view (`global` or `us`). At about 195 items per hourly run, `trend_items` holds roughly 131,000 rows at 28-day retention: about 39 MB, under 100 MB with indexes, well inside Supabase's 500 MB. Phase 3's extra country feeds raise this to about 300 items per run, or about 60 MB. Store only these columns rather than full API responses. Compute item embeddings inside the job instead of storing them; a few hundred items per run fit in memory, so pgvector is optional. Every table has row-level security turned on with no policies, so Supabase's public Data API exposes nothing; the site and pipeline connect as the table owner, which bypasses it.
+In `trend_items` and `fetch_runs`, `region` is the feed's real region (`global` or `us`, plus `gb`, `ca` and `au` from phase 3); in `rankings` it is the view (`global` or `us`). At about 195 items per hourly run, `trend_items` holds roughly 131,000 rows at 28-day retention: about 39 MB, under 100 MB with indexes, well inside Supabase's 500 MB. Phase 3's extra country feeds raise this to about 300 items per run, or about 60 MB. Store only these columns rather than full API responses.
+
+**Topic snapshots** record, every run, where each current topic stands on each platform: the hour-by-hour history a future prediction model needs (for example, whether a topic will break out to more platforms). Items are deleted after 28 days, so snapshots are the only lasting record, at about 50 rows an hour, or 6 MB a month. YouTube is left out entirely, including from the snapshot score: its developer policies (III.E.4) allow storing API data for at most 30 days and forbid using it "to create new or derived data or metrics". Other sources' terms (for example Reddit's on training machine-learning models, and X's) must be checked before their data trains a model. The same YouTube clause also bears on YouTube's place in the combined score and topic matching; that is an open question to settle before phase 2 goes live. Compute item embeddings inside the job instead of storing them; a few hundred items per run fit in memory, so pgvector is optional. Every table has row-level security turned on with no policies, so Supabase's public Data API exposes nothing; the site and pipeline connect as the table owner, which bypasses it.
 
 ## Build phases
 

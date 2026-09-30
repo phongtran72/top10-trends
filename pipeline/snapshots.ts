@@ -1,0 +1,67 @@
+import { PLATFORMS, type SourceId } from "@/collectors/registry";
+import { topicSnapshots } from "@/db/schema";
+import type { Db } from "./db";
+import { scoreTopics, type ScoreEntry } from "./score";
+
+// Topic snapshots: one row per topic per run, kept permanently as history for
+// a future prediction model. Built from the same current entries as the
+// combined score.
+//
+// YouTube is left out entirely. Its developer policies (III.E.4) allow
+// storing API data for at most 30 days and forbid using it "to create new or
+// derived data or metrics", so neither its ranks nor its view counts go into
+// a permanent table, and it doesn't count toward the snapshot score.
+export const EXCLUDED_FROM_HISTORY: ReadonlySet<SourceId> = new Set<SourceId>(["youtube"]);
+
+export interface SnapshotRow {
+  takenAt: Date;
+  region: string;
+  topicId: number;
+  position: number | null;
+  score: number | null;
+  platformCount: number;
+  ranks: Record<string, number>;
+  metrics: Record<string, number>;
+}
+
+export function buildSnapshots(entries: readonly ScoreEntry[], takenAt: Date, region = "global"): SnapshotRow[] {
+  const kept = entries.filter((e) => !EXCLUDED_FROM_HISTORY.has(e.sourceId));
+  const sources = PLATFORMS.filter((p) => !EXCLUDED_FROM_HISTORY.has(p.id));
+  const scores = scoreTopics(kept, sources);
+  const position = new Map(scores.map((s, index) => [s.topicId, { position: index + 1, score: s.score }]));
+
+  // Best rank per topic and platform, with the metric of that best-ranked item.
+  const byTopic = new Map<number, Map<SourceId, { rank: number; metric: number | null }>>();
+  for (const entry of kept) {
+    const platforms = byTopic.get(entry.topicId) ?? new Map<SourceId, { rank: number; metric: number | null }>();
+    const best = platforms.get(entry.sourceId);
+    if (!best || entry.rank < best.rank) platforms.set(entry.sourceId, { rank: entry.rank, metric: entry.metricValue ?? null });
+    byTopic.set(entry.topicId, platforms);
+  }
+
+  return [...byTopic]
+    .map(([topicId, platforms]) => {
+      const ranks: Record<string, number> = {};
+      const metrics: Record<string, number> = {};
+      for (const [sourceId, { rank, metric }] of platforms) {
+        ranks[sourceId] = rank;
+        if (metric !== null) metrics[sourceId] = metric;
+      }
+      const scored = position.get(topicId);
+      return {
+        takenAt,
+        region,
+        topicId,
+        position: scored?.position ?? null,
+        score: scored?.score ?? null,
+        platformCount: platforms.size,
+        ranks,
+        metrics,
+      };
+    })
+    .sort((a, b) => (a.position ?? Infinity) - (b.position ?? Infinity) || a.topicId - b.topicId);
+}
+
+export async function writeSnapshots(db: Db, rows: readonly SnapshotRow[]): Promise<void> {
+  if (rows.length > 0) await db.insert(topicSnapshots).values([...rows]).onConflictDoNothing();
+}

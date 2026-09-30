@@ -13,6 +13,7 @@ export interface ScoreEntry {
   topicId: number;
   sourceId: SourceId;
   rank: number;
+  metricValue?: number | null;
 }
 
 export interface TopicScore {
@@ -61,7 +62,12 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
     .orderBy(fetchRuns.sourceId, fetchRuns.region, desc(fetchRuns.startedAt));
   if (latest.length === 0) return [];
   const rows = await db
-    .select({ topicId: topicItems.topicId, sourceId: trendItems.sourceId, rank: trendItems.rank })
+    .select({
+      topicId: topicItems.topicId,
+      sourceId: trendItems.sourceId,
+      rank: trendItems.rank,
+      metricValue: trendItems.metricValue,
+    })
     .from(trendItems)
     .innerJoin(topicItems, eq(topicItems.itemId, trendItems.id))
     .where(

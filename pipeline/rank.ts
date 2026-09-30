@@ -7,10 +7,12 @@ import type { Db } from "./db";
 import { filterItems, type Dropped } from "./filter";
 import { matchItems, type MatchItem, type Topic } from "./match";
 import { currentEntries, scoreTopics, writeRankings, type PlatformRow, type ScoreEntry, type TopicScore } from "./score";
+import { buildSnapshots, writeSnapshots } from "./snapshots";
 import { loadRecentTopics, saveMatches } from "./topics";
 
 // The rank step: filter this run's lists, embed what's left, match items to
-// topics, then write each platform's filtered top 10 and the combined top 10.
+// topics, then write each platform's filtered top 10, the combined top 10 and
+// a snapshot of every current topic.
 // With no database (a dry run) it matches against no earlier topics and
 // scores this run's lists only.
 
@@ -33,6 +35,7 @@ export interface RankedTopic {
 
 export interface RankOutcome {
   kept: number;
+  snapshots: number;
   dropped: Dropped[];
   created: number;
   matched: number;
@@ -99,9 +102,14 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
   );
 
   let scores: TopicScore[];
+  let snapshots = 0;
   if (input.db) {
-    scores = scoreTopics(await currentEntries(input.db, input.now));
+    const entries = await currentEntries(input.db, input.now);
+    scores = scoreTopics(entries);
     await writeRankings(input.db, input.now, scores, platformRows);
+    const rows = buildSnapshots(entries, input.now);
+    await writeSnapshots(input.db, rows);
+    snapshots = rows.length;
   } else {
     const entries: ScoreEntry[] = items.flatMap((item) => {
       const topic = match.assignments.get(item.key);
@@ -113,6 +121,7 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
   const topicById = new Map<number, Topic>(match.topics.map((t) => [t.id!, t]));
   return {
     kept: kept.length,
+    snapshots,
     dropped,
     created,
     matched: match.assignments.size,
@@ -134,7 +143,8 @@ export function formatRankOutcome(outcome: RankOutcome): string[] {
   const why = [...reasons].map(([reason, n]) => `${reason} ${n}`).join(", ");
   const lines = [
     `rank: ${outcome.kept} items kept, ${outcome.dropped.length} dropped${why ? ` (${why})` : ""}; ` +
-      `${outcome.matched} matched to topics, ${outcome.created} new topics`,
+      `${outcome.matched} matched to topics, ${outcome.created} new topics` +
+      (outcome.snapshots > 0 ? `, ${outcome.snapshots} topic snapshots` : ""),
     "combined top 10:",
   ];
   outcome.combined.forEach((topic, index) => {

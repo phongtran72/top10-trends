@@ -113,7 +113,7 @@ describe("runPipeline", () => {
       [runs[0].id, "bluesky", 2, "Test Launch", null, null],
     ]);
     expect(out.lines.slice(0, 2)).toEqual([
-      "rank: 2 items kept, 0 dropped; 2 matched to topics, 2 new topics",
+      "rank: 2 items kept, 0 dropped; 2 matched to topics, 2 new topics, 2 topic snapshots",
       "combined top 10:",
     ]);
     expect(out.lines.slice(-3)).toEqual([

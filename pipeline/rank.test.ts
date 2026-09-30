@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getSource, planSources, type SourceId } from "@/collectors/registry";
 import type { Region, TrendItem } from "@/collectors/types";
-import { rankings, topicItems, topics } from "@/db/schema";
+import { rankings, topicItems, topicSnapshots, topics } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
 import { writeResults, type ListResult } from "./collect";
 import { contextFor, formatRankOutcome, labelFor, rankRun } from "./rank";
@@ -85,6 +85,12 @@ describe("rankRun", () => {
     expect(saved.map((s) => [s.label, s.summary])).toEqual([
       ["world series", "dodgers win world series game"],
       ["Election night", null],
+    ]);
+    // Permanent snapshots leave YouTube out.
+    const snaps = await t.db.select().from(topicSnapshots);
+    expect(snaps.map((s) => [s.position, s.platformCount, s.ranks])).toEqual([
+      [1, 2, { google_trends: 1, bluesky: 2 }],
+      [2, 1, { bluesky: 3 }],
     ]);
     expect(formatRankOutcome(outcome)[2]).toBe("   1. world series · 2.12 · google_trends #1, youtube #1, bluesky #2 · new");
   });
