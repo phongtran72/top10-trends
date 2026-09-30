@@ -39,8 +39,16 @@ export interface RankOutcome {
   combined: RankedTopic[];
 }
 
+// A new topic is named after the item that created it: matching handles lead
+// items best rank first, so that is its best-ranked lead item (invariant 9).
 export function labelFor(item: Pick<MatchItem, "title">): string {
   return prettyLabel(item.title) || item.title;
+}
+
+// One line of context: the first Google Trends headline attached to a topic.
+export function contextFor(item: Pick<MatchItem, "sourceId" | "matchText">): string | null {
+  if (item.sourceId !== "google_trends") return null;
+  return item.matchText?.find((headline) => headline.trim())?.trim().slice(0, 300) ?? null;
 }
 
 export async function rankRun(input: RankInput): Promise<RankOutcome> {
@@ -75,7 +83,7 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
     threshold: input.threshold,
     now: input.now,
     labelFor,
-    contextFor: () => null,
+    contextFor,
   });
   const created = match.topics.filter((t) => t.isNew).length;
   if (input.db) await saveMatches(input.db, match);

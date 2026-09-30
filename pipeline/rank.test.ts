@@ -4,7 +4,7 @@ import type { Region, TrendItem } from "@/collectors/types";
 import { rankings, topicItems, topics } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
 import { writeResults, type ListResult } from "./collect";
-import { formatRankOutcome, rankRun } from "./rank";
+import { contextFor, formatRankOutcome, labelFor, rankRun } from "./rank";
 import { upsertSources } from "./sources";
 import { wordEmbedder } from "./test-embedder";
 
@@ -81,6 +81,11 @@ describe("rankRun", () => {
       [1, false],
       [2, true],
     ]);
+    const saved = await t.db.select().from(topics);
+    expect(saved.map((s) => [s.label, s.summary])).toEqual([
+      ["world series", "dodgers win world series game"],
+      ["Election night", null],
+    ]);
     expect(formatRankOutcome(outcome)[2]).toBe("   1. world series · 2.12 · google_trends #1, youtube #1, bluesky #2 · new");
   });
 
@@ -99,5 +104,18 @@ describe("rankRun", () => {
         { sourceId: "bluesky", rank: 1 },
       ],
     });
+  });
+});
+
+describe("labels and context", () => {
+  it("names a topic from its item's display form", () => {
+    expect(labelFor({ title: "#WorldSeries2026" })).toBe("World Series 2026");
+    expect(labelFor({ title: "🎉" })).toBe("🎉");
+  });
+
+  it("takes context only from a Google Trends headline", () => {
+    expect(contextFor({ sourceId: "google_trends", matchText: ["", "Dodgers win Game 4"] })).toBe("Dodgers win Game 4");
+    expect(contextFor({ sourceId: "google_trends" })).toBeNull();
+    expect(contextFor({ sourceId: "bluesky", matchText: ["A description"] })).toBeNull();
   });
 });
