@@ -1,0 +1,50 @@
+name: deploy-worker
+
+# Deploys the hourly trigger in worker/. Run it by hand after renewing
+# GH_DISPATCH_TOKEN so the Worker gets the new token without a code change.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "worker/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: worker
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      GH_DISPATCH_TOKEN: ${{ secrets.GH_DISPATCH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+      - name: Check secrets
+        run: |
+          missing=0
+          for name in CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID GH_DISPATCH_TOKEN; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing repository secret $name (SETUP.md §5, §6, §8)"
+              missing=1
+            fi
+          done
+          exit $missing
+      - run: npm ci
+      - run: npx wrangler deploy
+      - name: Set the Worker secret GH_DISPATCH_TOKEN
+        run: printf '%s' "$GH_DISPATCH_TOKEN" | npx wrangler secret put GH_DISPATCH_TOKEN
