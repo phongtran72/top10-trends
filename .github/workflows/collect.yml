@@ -29,6 +29,13 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
+      # The embedding model (about 23 MB) downloads from huggingface.co once and
+      # is reused from here on.
+      - name: Cache the embedding model
+        uses: actions/cache@v6
+        with:
+          path: .cache/transformers
+          key: transformers-Xenova-all-MiniLM-L6-v2-q8
       - name: Run pipeline
         env:
           DRY_RUN: ${{ inputs.dry_run }}
