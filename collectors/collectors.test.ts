@@ -312,16 +312,16 @@ describe("x", () => {
 describe("tiktok", () => {
   const data = jsonFixture<{ run: unknown; items: unknown }>("tiktok.json");
   const routes = (): [string, (url: string, init: RequestInit) => Response][] => [
-    ["https://api.apify.com/v2/acts/automation-lab~tiktok-trends-scraper/runs/last", () => Response.json(data.run)],
+    ["https://api.apify.com/v2/acts/data_xplorer~tiktok-trends/runs/last", () => Response.json(data.run)],
     ["https://api.apify.com/v2/datasets/ds456/items", () => Response.json(data.items)],
   ];
 
-  it("reads the latest successful Apify run's hashtags in rank order", async () => {
+  it("reads the latest successful Apify run's US hashtags in rank order", async () => {
     const { ctx, calls } = routedContext(routes(), { APIFY_TOKEN: "apify-token" });
     ctx.now = new Date("2026-10-08T12:07:00Z");
     const items = await tiktok.fetch("us", ctx);
     expect(calls.map((c) => c.url)).toEqual([
-      "https://api.apify.com/v2/acts/automation-lab~tiktok-trends-scraper/runs/last?status=SUCCEEDED",
+      "https://api.apify.com/v2/acts/data_xplorer~tiktok-trends/runs/last?status=SUCCEEDED",
       "https://api.apify.com/v2/datasets/ds456/items?clean=true",
     ]);
     expect(calls.every((c) => (c.init.headers as Record<string, string>).Authorization === "Bearer apify-token")).toBe(true);
@@ -343,7 +343,7 @@ describe("tiktok", () => {
         title: "#sampledance",
         url: "https://www.tiktok.com/tag/sampledance",
         metricValue: 5100,
-        metricLabel: "videos",
+        metricLabel: "posts",
       },
       { source: "tiktok", region: "us", rank: 3, title: "#testtrend", url: "https://www.tiktok.com/tag/testtrend" },
     ]);
@@ -351,8 +351,14 @@ describe("tiktok", () => {
 
   it("fails when the latest successful run is too old", async () => {
     const { ctx } = routedContext(routes(), { APIFY_TOKEN: "t" });
-    ctx.now = new Date("2026-10-12T06:00:00Z");
-    await expect(tiktok.fetch("us", ctx)).rejects.toThrow("latest TikTok run finished 96 h ago");
+    ctx.now = new Date("2026-10-10T12:00:00Z");
+    await expect(tiktok.fetch("us", ctx)).rejects.toThrow("latest TikTok run finished 54 h ago; check the Apify schedule");
+  });
+
+  it("fails without APIFY_TOKEN before calling Apify", async () => {
+    const { ctx, calls } = routedContext(routes());
+    await expect(tiktok.fetch("us", ctx)).rejects.toThrow("APIFY_TOKEN is not set");
+    expect(calls).toHaveLength(0);
   });
 });
 

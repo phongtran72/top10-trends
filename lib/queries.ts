@@ -1,11 +1,6 @@
 import { and, asc, desc, eq, gt, gte, inArray, lte, sql } from "drizzle-orm";
 import { pageRegion, SOURCES, type SourceDef, type SourceId } from "@/collectors/registry";
-import {
-  APIFY_FREE_MONTHLY_CREDIT,
-  TIKTOK_COST_PER_RUN,
-  TIKTOK_RUN_EVERY_DAYS,
-  X_COST_PER_REQUEST,
-} from "@/config/costs";
+import { APIFY_FREE_MONTHLY_CREDIT, APIFY_SCHEDULES, X_COST_PER_REQUEST } from "@/config/costs";
 import { fetchRuns, trendItems } from "@/db/schema";
 import type { Db } from "@/db/types";
 
@@ -181,8 +176,9 @@ export interface Spend {
 }
 
 // Month-to-date spend and a projection (TASKS.md 3.7). X is exact: requests
-// that reached X × the per-request price. TikTok is an estimate from the Apify
-// schedule, since its runs happen on Apify's side.
+// that reached X × the per-request price. Apify sources are estimates from
+// their schedules, since their runs happen on Apify's side; each counts once
+// the pipeline has read it this month.
 export async function spendThisMonth(db: Db, now: Date): Promise<Spend> {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
@@ -204,24 +200,27 @@ export async function spendThisMonth(db: Db, now: Date): Promise<Spend> {
     });
   }
 
-  const [tiktok] = await db
-    .select({ n: sql<number>`count(*)`.mapWith(Number) })
-    .from(fetchRuns)
-    .where(and(eq(fetchRuns.sourceId, "tiktok"), eq(fetchRuns.status, "ok"), gte(fetchRuns.startedAt, monthStart)));
-  if (tiktok.n > 0) {
-    const day = 24 * 60 * 60 * 1000;
-    const runsSoFar = Math.floor(elapsedMs / (TIKTOK_RUN_EVERY_DAYS * day)) + 1;
-    const runsInMonth = Math.ceil(monthMs / (TIKTOK_RUN_EVERY_DAYS * day));
-    lines.push({
-      service: "TikTok (Apify)",
-      detail: `about ${runsSoFar} runs × $${TIKTOK_COST_PER_RUN.toFixed(3)}, estimated from the schedule`,
-      toDate: runsSoFar * TIKTOK_COST_PER_RUN,
-      projected: runsInMonth * TIKTOK_COST_PER_RUN,
-    });
+  let apify = 0;
+  for (const schedule of APIFY_SCHEDULES) {
+    const [read] = await db
+      .select({ n: sql<number>`count(*)`.mapWith(Number) })
+      .from(fetchRuns)
+      .where(and(eq(fetchRuns.sourceId, schedule.source), eq(fetchRuns.status, "ok"), gte(fetchRuns.startedAt, monthStart)));
+    if (read.n === 0) continue;
+    const intervalMs = (24 * 60 * 60 * 1000) / schedule.runsPerDay;
+    const runsSoFar = Math.floor(elapsedMs / intervalMs) + 1;
+    const runsInMonth = Math.ceil(monthMs / intervalMs);
+    const line = {
+      service: schedule.service,
+      detail: `about ${runsSoFar} runs × $${schedule.costPerRun.toFixed(3)}, estimated from the schedule`,
+      toDate: runsSoFar * schedule.costPerRun,
+      projected: runsInMonth * schedule.costPerRun,
+    };
+    lines.push(line);
+    apify += line.projected;
   }
 
   const sum = (key: "toDate" | "projected") => lines.reduce((total, line) => total + line[key], 0);
-  const apify = lines.find((l) => l.service.startsWith("TikTok"))?.projected ?? 0;
   return {
     month: monthStart.toISOString().slice(0, 7),
     lines,

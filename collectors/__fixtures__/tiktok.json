@@ -1,9 +1,9 @@
 {
   "run": { "data": { "id": "run123", "finishedAt": "2026-10-08T06:01:30.000Z", "defaultDatasetId": "ds456" } },
   "items": [
-    { "type": "hashtag", "rank": 2, "name": "sampledance", "countryCode": "US", "publishedVideoCount": 5100 },
-    { "type": "hashtag", "rank": 1, "name": "examplechallenge", "countryCode": "US", "videoViews": 98000000 },
-    { "type": "sound", "rank": 1, "name": "Example Song" },
-    { "type": "hashtag", "rank": 3, "name": "#testtrend", "countryCode": "US" }
+    { "Rank": 2, "Hashtag": "#sampledance", "Country Code": "US", "Posts": 5100, "Video Views": 0 },
+    { "Rank": 1, "Hashtag": "#examplechallenge", "Country Code": "US", "Posts": 81000, "Video Views": 98000000 },
+    { "Rank": 1, "Hashtag": "#exemplefrance", "Country Code": "FR", "Posts": 900, "Video Views": 120000 },
+    { "Rank": 3, "Hashtag": "testtrend", "Country Code": "US" }
   ]
 }

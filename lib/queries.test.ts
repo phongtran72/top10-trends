@@ -116,9 +116,10 @@ describe("spendThisMonth", () => {
     expect(x).toMatchObject({ service: "X", detail: "12 trend requests × $0.010" });
     expect(x.toDate).toBeCloseTo(0.12);
     expect(x.projected).toBeCloseTo((0.12 / 29.5) * 30, 2);
-    // Every 2 days: 15 runs so far on Sep 30, and 15 in September.
-    expect(tiktok.toDate).toBeCloseTo(15 * 0.275);
-    expect(tiktok.projected).toBeCloseTo(15 * 0.275);
+    // Daily: 30 runs so far on Sep 30 at 12:10, and 30 in September.
+    expect(tiktok).toMatchObject({ service: "TikTok (Apify)", detail: "about 30 runs × $0.048, estimated from the schedule" });
+    expect(tiktok.toDate).toBeCloseTo(30 * 0.048);
+    expect(tiktok.projected).toBeCloseTo(30 * 0.048);
     // Apify's free $5 a month covers TikTok, so only X is out of pocket.
     expect(spend.outOfPocket).toBeCloseTo(x.projected, 5);
   });

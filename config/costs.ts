@@ -4,11 +4,19 @@
 // X pay-per-use: each trends request, from prepaid credits.
 export const X_COST_PER_REQUEST = 0.01;
 
-// TikTok through the Apify actor automation-lab/tiktok-trends-scraper, on
-// Apify's free plan: $0.05 per run plus $0.015 per hashtag, one run every
-// TIKTOK_RUN_EVERY_DAYS days (the schedule set up in Apify, SETUP.md §12).
-export const TIKTOK_HASHTAGS_PER_RUN = 15;
-export const TIKTOK_COST_PER_RUN = 0.05 + TIKTOK_HASHTAGS_PER_RUN * 0.015;
-export const TIKTOK_RUN_EVERY_DAYS = 2;
+// Apify actors run on schedules set up in Apify (SETUP.md §12), so their cost
+// is estimated from the schedule: the cost of one run × runs per day.
+export interface ApifySchedule {
+  source: "tiktok";
+  service: string;
+  costPerRun: number;
+  runsPerDay: number;
+}
+
+export const APIFY_SCHEDULES: readonly ApifySchedule[] = [
+  // data_xplorer/tiktok-trends: 15 US hashtags cost $0.048 in a test run.
+  { source: "tiktok", service: "TikTok (Apify)", costPerRun: 0.048, runsPerDay: 1 },
+];
+
 // Apify's free plan includes this much usage a month, then blocks until the next month.
 export const APIFY_FREE_MONTHLY_CREDIT = 5;

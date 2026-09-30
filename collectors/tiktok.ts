@@ -1,66 +1,47 @@
 import { z } from "zod";
+import { latestApifyItems } from "./apify";
 import type { Collector, TrendItem } from "./types";
-import { requireKey, requireRegion } from "./util";
+import { requireRegion } from "./util";
 
-// TikTok has no trends API for individuals, so an Apify actor scrapes the
-// Creative Center's trending hashtags (US, 7-day window) on a schedule set up
-// in Apify (SETUP.md §12). This collector only reads the latest successful
-// run's results: free, fast, and within the 30-second budget, since a run
-// itself takes 30 to 90 seconds.
-const API = "https://api.apify.com/v2";
-export const TIKTOK_ACTOR = "automation-lab~tiktok-trends-scraper";
-// The schedule runs every 2 days; older results mean it stopped.
-export const TIKTOK_MAX_AGE_HOURS = 72;
-
-const LastRun = z.object({
-  data: z.object({
-    id: z.string(),
-    finishedAt: z.string().nullable(),
-    defaultDatasetId: z.string(),
-  }),
-});
+// TikTok Creative Center's trending US hashtags over a 7-day window, scraped
+// once a day by the Apify actor data_xplorer/tiktok-trends (SETUP.md §12).
+// Since July 2026 Creative Center shows logged-out visitors only its top 3;
+// this actor still returns the full list, which automation-lab's did not.
+export const TIKTOK_ACTOR = "data_xplorer~tiktok-trends";
+// A daily schedule; older results mean it stopped (one missed run is fine).
+export const TIKTOK_MAX_AGE_HOURS = 48;
 
 const Items = z.array(
   z.object({
-    type: z.string().optional(),
-    rank: z.number(),
-    name: z.string(),
-    countryCode: z.string().optional(),
-    videoViews: z.number().nullable().optional(),
-    publishedVideoCount: z.number().nullable().optional(),
+    Rank: z.number(),
+    Hashtag: z.string(),
+    "Country Code": z.string().optional(),
+    Posts: z.number().nullable().optional(),
+    "Video Views": z.number().nullable().optional(),
   }),
 );
 
 export const tiktok: Collector = {
   id: "tiktok",
-  async fetch(region, { http, env, now }) {
+  async fetch(region, ctx) {
     requireRegion("tiktok", region, ["us"]);
-    const token = requireKey(env, "APIFY_TOKEN");
-    const headers = { Authorization: `Bearer ${token}` };
-
-    const run = LastRun.parse(await http.getJson(`${API}/acts/${TIKTOK_ACTOR}/runs/last?status=SUCCEEDED`, { headers }));
-    const finished = run.data.finishedAt ? new Date(run.data.finishedAt) : null;
-    const ageHours = finished ? (now.getTime() - finished.getTime()) / 3_600_000 : Infinity;
-    if (ageHours > TIKTOK_MAX_AGE_HOURS) {
-      throw new Error(`latest TikTok run finished ${Math.round(ageHours)} h ago; check the Apify schedule`);
-    }
-
-    const items = Items.parse(await http.getJson(`${API}/datasets/${run.data.defaultDatasetId}/items?clean=true`, { headers }));
+    const items = Items.parse(await latestApifyItems(TIKTOK_ACTOR, { label: "TikTok", maxAgeHours: TIKTOK_MAX_AGE_HOURS }, ctx));
     return items
-      .filter((item) => (item.type ?? "hashtag") === "hashtag" && (item.countryCode ?? "US") === "US" && item.name.trim())
-      .sort((a, b) => a.rank - b.rank)
+      .filter((item) => (item["Country Code"] ?? "US") === "US" && item.Hashtag.replace(/^#/, "").trim())
+      .sort((a, b) => a.Rank - b.Rank)
       .map((item, index): TrendItem => {
-        const name = item.name.trim().replace(/^#/, "");
-        const views = item.videoViews ?? undefined;
-        const videos = item.publishedVideoCount ?? undefined;
+        const name = item.Hashtag.trim().replace(/^#/, "");
+        // Creative Center sometimes reports 0 views; fall back to the post count then.
+        const views = item["Video Views"] || undefined;
+        const posts = item.Posts ?? undefined;
         return {
           source: "tiktok",
           region,
           rank: index + 1,
           title: `#${name}`,
           url: `https://www.tiktok.com/tag/${encodeURIComponent(name)}`,
-          metricValue: views ?? videos,
-          metricLabel: views !== undefined ? "views" : videos !== undefined ? "videos" : undefined,
+          metricValue: views ?? posts,
+          metricLabel: views !== undefined ? "views" : posts !== undefined ? "posts" : undefined,
         };
       });
   },
