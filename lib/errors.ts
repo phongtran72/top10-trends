@@ -17,3 +17,31 @@ export function describeError(error: unknown): string {
   }
   return parts.join(" <- caused by: ");
 }
+
+// A safe outline of a Postgres connection string for failure messages: user,
+// host, port, database and warnings about the password's shape. Never the
+// password itself.
+export function describeDatabaseUrl(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return "not a valid URL";
+  }
+  const password = decodeURIComponent(parsed.password);
+  const warnings: string[] = [];
+  if (!password) warnings.push("no password");
+  else if (/YOUR-PASSWORD/i.test(password)) warnings.push("password is still the [YOUR-PASSWORD] placeholder");
+  else if (/[[\]]/.test(password)) warnings.push("password contains [ or ]; remove the brackets");
+  else if (/\s/.test(password)) warnings.push("password contains spaces");
+  else if (!/^[A-Za-z0-9]+$/.test(password)) warnings.push("password has characters other than letters and digits");
+  const database = parsed.pathname.replace(/^\//, "") || "(none; add /postgres)";
+  const fields = [
+    `user=${decodeURIComponent(parsed.username) || "(none)"}`,
+    `host=${parsed.hostname}`,
+    `port=${parsed.port || "(default)"}`,
+    `database=${database}`,
+    warnings.length > 0 ? `warning: ${warnings.join("; ")}` : "password looks well formed",
+  ];
+  return fields.join(" ");
+}
