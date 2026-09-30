@@ -5,7 +5,7 @@ import { rankWindow, WINDOWED_SOURCES } from "./window";
 
 // The home-page dashboard, computed from the last day of top-10 lists. Pure,
 // so it is tested without a database. Items are matched across runs by their
-// normalized title, which is stable for every source.
+// normalized title, except Bluesky's (see itemKey).
 
 export interface PlatformCard {
   id: SourceId;
@@ -52,6 +52,11 @@ export interface Dashboard {
 
 export const DASHBOARD_WINDOW_HOURS = 25;
 const STAYING_HOURS = 24;
+// "New" means absent from every list of the previous two hours, not just the
+// previous one: Bluesky re-cuts its list each hour, and a topic near the edge
+// often drops out for an hour and comes back (47% of its top-10 stays are
+// such returns, research RQ1).
+export const NEW_ENTRY_HOURS = 2;
 
 const HIGHLIGHT_LABELS: Partial<Record<SourceId, string>> = {
   google_trends: "Top search",
@@ -65,6 +70,15 @@ const HIGHLIGHT_LABELS: Partial<Record<SourceId, string>> = {
 
 export function normalizeTitle(title: string): string {
   return title.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+// Bluesky renames a topic in place as its story develops, keeping its link
+// ("Jack Smith testifies to Senate" became "Schmitt remarks on Jack Smith"),
+// so its items are matched by link; every other source's by normalized title.
+const MATCHED_BY_URL: ReadonlySet<string> = new Set<SourceId>(["bluesky"]);
+
+export function itemKey(item: Pick<RecentItem, "sourceId" | "title" | "url">): string {
+  return MATCHED_BY_URL.has(item.sourceId) ? item.url : normalizeTitle(item.title);
 }
 
 interface Run {
@@ -148,14 +162,21 @@ export function buildDashboard(
       });
     }
 
-    // New entries and climbers, against the previous list.
+    // New entries (in no list of the previous two hours) and climbers (against the previous list).
     if (previous) {
-      const previousRanks = new Map(previous.items.map((item) => [normalizeTitle(item.title), item.rank]));
+      const previousRanks = new Map(previous.items.map((item) => [itemKey(item), item.rank]));
+      const newSince = Date.parse(latest.fetchedAt) - NEW_ENTRY_HOURS * 60 * 60 * 1000;
+      const seenBefore = new Set(
+        runs
+          .slice(1)
+          .filter((run) => run === previous || Date.parse(run.fetchedAt) >= newSince)
+          .flatMap((run) => run.items.map(itemKey)),
+      );
       for (const item of latest.items) {
-        const before = previousRanks.get(normalizeTitle(item.title));
+        const before = previousRanks.get(itemKey(item));
         const entry = { ...base, title: item.title, url: item.url, rank: item.rank };
-        if (before === undefined) newEntries.push(entry);
-        else if (before > item.rank) movers.push({ ...entry, previousRank: before });
+        if (!seenBefore.has(itemKey(item))) newEntries.push(entry);
+        else if (before !== undefined && before > item.rank) movers.push({ ...entry, previousRank: before });
       }
     }
 
@@ -165,13 +186,13 @@ export function buildDashboard(
       const seen = new Map<string, { count: number; item: RecentItem }>();
       for (const run of window) {
         for (const item of run.items) {
-          const key = normalizeTitle(item.title);
+          const key = itemKey(item);
           const entry = seen.get(key);
           if (entry) entry.count += 1;
           else seen.set(key, { count: 1, item }); // runs are newest first, so this is the latest sighting
         }
       }
-      const current = new Map(latest.items.map((item) => [normalizeTitle(item.title), item.rank]));
+      const current = new Map(latest.items.map((item) => [itemKey(item), item.rank]));
       for (const [key, { count, item }] of seen) {
         if (count < 2) continue;
         staying.push({ ...base, title: item.title, url: item.url, rank: current.get(key) ?? null, lists: count, of: window.length });
