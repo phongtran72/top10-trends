@@ -1,0 +1,7 @@
+{
+  "items": [
+    { "id": "vid00000001", "snippet": { "title": "Invented Music Video" }, "statistics": { "viewCount": "1234567" } },
+    { "id": "vid00000002", "snippet": { "title": "Made-up Game Trailer" }, "statistics": { "viewCount": "89000" } },
+    { "id": "vid00000003", "snippet": { "title": "Fictional Movie Clip" } }
+  ]
+}

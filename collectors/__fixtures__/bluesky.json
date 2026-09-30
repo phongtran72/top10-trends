@@ -1,0 +1,8 @@
+{
+  "trends": [
+    { "topic": "a1b2c3", "displayName": "Example Final", "description": "Fans react to a close example final", "link": "/profile/did:plc:example1/feed/aaa", "postCount": 4200, "status": "trending" },
+    { "topic": "d4e5f6", "displayName": "Test Launch", "link": "/profile/did:plc:example2/feed/bbb", "postCount": 1300, "status": "cooling" },
+    { "topic": "g7h8i9", "link": "/profile/did:plc:example3/feed/ccc", "postCount": 900 },
+    { "topic": "j0k1l2", "displayName": "  Sample Awards  ", "link": "https://bsky.app/profile/did:plc:example4/feed/ddd" }
+  ]
+}

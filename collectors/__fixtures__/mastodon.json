@@ -1,0 +1,28 @@
+[
+  {
+    "name": "ExampleDay",
+    "url": "https://mastodon.example/tags/exampleday",
+    "history": [
+      {
+        "uses": "357"
+      },
+      {
+        "uses": "12"
+      }
+    ]
+  },
+  {
+    "name": "sampletag",
+    "url": "https://mastodon.example/tags/sampletag",
+    "history": [
+      {
+        "uses": "40"
+      }
+    ]
+  },
+  {
+    "name": "notoday",
+    "url": "https://mastodon.example/tags/notoday",
+    "history": []
+  }
+]

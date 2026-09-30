@@ -1,0 +1,17 @@
+{
+  "token": {
+    "access_token": "test-token"
+  },
+  "games": {
+    "data": [
+      {
+        "id": "1",
+        "name": "Example Quest"
+      },
+      {
+        "id": "2",
+        "name": "Sample & Chips"
+      }
+    ]
+  }
+}

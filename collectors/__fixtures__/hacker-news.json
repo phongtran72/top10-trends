@@ -1,0 +1,10 @@
+{
+  "topstories": [101, 102, 103, 104, 105],
+  "items": {
+    "101": { "id": 101, "title": "Show HN: An example tool", "url": "https://example.com/tool", "score": 250 },
+    "102": { "id": 102, "title": "Ask HN: A sample question", "score": 120 },
+    "103": { "id": 103, "deleted": true },
+    "104": null,
+    "105": { "id": 105, "title": "A dead example", "url": "https://example.com/dead", "score": 3, "dead": true }
+  }
+}
