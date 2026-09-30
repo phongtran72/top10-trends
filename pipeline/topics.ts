@@ -1,4 +1,4 @@
-import { count, eq, gt, inArray } from "drizzle-orm";
+import { and, count, eq, gt, inArray, lte } from "drizzle-orm";
 import { TOPIC_WINDOW_HOURS } from "@/config/ranking";
 import { topicItems, topics } from "@/db/schema";
 import { slugify } from "@/lib/text";
@@ -7,7 +7,8 @@ import type { MatchResult, Topic } from "./match";
 
 // Loading and saving topics for matching.
 
-// Topics seen in the last 48 hours, with how many items shaped each centroid.
+// Topics seen in the last 48 hours (and created by then, which matters when
+// replaying past hours), with how many items shaped each centroid.
 export async function loadRecentTopics(db: Db, now: Date, hours = TOPIC_WINDOW_HOURS): Promise<Topic[]> {
   const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
   const rows = await db
@@ -20,7 +21,7 @@ export async function loadRecentTopics(db: Db, now: Date, hours = TOPIC_WINDOW_H
       lastSeen: topics.lastSeen,
     })
     .from(topics)
-    .where(gt(topics.lastSeen, since));
+    .where(and(gt(topics.lastSeen, since), lte(topics.firstSeen, now)));
   if (rows.length === 0) return [];
   const counts = await db
     .select({ topicId: topicItems.topicId, items: count() })

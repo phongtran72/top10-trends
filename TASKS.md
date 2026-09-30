@@ -122,6 +122,7 @@ order by success_pct;
 - [x] **2.8 Eval script.** `npm run eval -- --hours 5` picks 5 random past runs and prints each combined top 10 with its member items and scores, for manual review. Add an `eval` workflow with the same output so it can run from a phone.
 - [ ] **2.9 Tuning.** Tune `MATCH_THRESHOLD` and the weights in `config/ranking.ts` from the eval output, and record the final values and reasons in PLAN.md.
 - [x] **2.10 Topic snapshots.** Each run writes one permanent `topic_snapshots` row per current topic (position, score, platform count, best rank and metric per platform) as history for a future prediction model. YouTube is left out entirely (PLAN.md › Data model).
+- [x] **2.11 Replay.** `npm run replay -- tune` replays the stored hourly lists through the rank step in an in-memory copy, at several thresholds, and reports each cross-platform merge for review (input to 2.9). `npm run replay -- rebuild --threshold X --yes` rebuilds topics, rankings and snapshots from every stored list: the backfill of hours before phase 2 went live. It refuses if the stored lists no longer cover the derived data. Run the rebuild before 2026-10-28, when the first lists are purged.
 
 **Gate 2.** Run the eval for 5 hours. In each hour, at least 8 of the 10 topics make sense and none is a duplicate.
 

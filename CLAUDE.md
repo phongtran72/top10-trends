@@ -40,6 +40,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 - `npm test`: unit tests. Tests never touch the network; they use fixtures.
 - `npm run db:generate` and `npm run db:migrate`: create and apply Drizzle migrations (against `SESSION_DATABASE_URL`).
 - `npm run eval -- --hours 5`: print the combined list and its clusters for 5 random past runs (from phase 2).
+- `npm run replay -- tune`: replay the stored lists at several matching thresholds in memory (read-only). `npm run replay -- rebuild --threshold X --yes` rebuilds topics, rankings and snapshots in the database from stored lists; it deletes derived data first, so confirm with the human before running it against production.
 
 ## Invariants (keep these true in every change)
 

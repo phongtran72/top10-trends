@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, inArray } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, lte } from "drizzle-orm";
 import { PLATFORMS, type SourceDef, type SourceId } from "@/collectors/registry";
 import { FRESH_LIST_HOURS, TOP_N } from "@/config/ranking";
 import { fetchRuns, rankings, topicItems, trendItems } from "@/db/schema";
@@ -52,13 +52,26 @@ export function scoreTopics(entries: readonly ScoreEntry[], sources: readonly So
   );
 }
 
-// Topic ranks in each source's latest successful list from the last three hours.
+// A run stamps its rankings with its own start time and fetches its lists a
+// moment later, so lists up to this long after that time belong to it.
+export const RUN_LIST_MARGIN_MS = 15 * 60_000;
+
+// Topic ranks in each source's latest successful list from the last three
+// hours. The upper bound matters when replaying past hours.
 export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS): Promise<ScoreEntry[]> {
   const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
+  const until = new Date(now.getTime() + RUN_LIST_MARGIN_MS);
   const latest = await db
     .selectDistinctOn([fetchRuns.sourceId, fetchRuns.region], { id: fetchRuns.id })
     .from(fetchRuns)
-    .where(and(eq(fetchRuns.status, "ok"), gt(fetchRuns.itemCount, 0), gt(fetchRuns.startedAt, since)))
+    .where(
+      and(
+        eq(fetchRuns.status, "ok"),
+        gt(fetchRuns.itemCount, 0),
+        gt(fetchRuns.startedAt, since),
+        lte(fetchRuns.startedAt, until),
+      ),
+    )
     .orderBy(fetchRuns.sourceId, fetchRuns.region, desc(fetchRuns.startedAt));
   if (latest.length === 0) return [];
   const rows = await db

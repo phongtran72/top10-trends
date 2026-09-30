@@ -15,7 +15,8 @@
     "pipeline": "tsx pipeline/run.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
-    "eval": "tsx scripts/eval.ts"
+    "eval": "tsx scripts/eval.ts",
+    "replay": "tsx scripts/replay.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",

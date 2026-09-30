@@ -2,6 +2,7 @@ import { and, asc, desc, eq, gt, inArray, lte } from "drizzle-orm";
 import { FRESH_LIST_HOURS } from "@/config/ranking";
 import { fetchRuns, rankings, topicItems, topics, trendItems } from "@/db/schema";
 import type { Db } from "./db";
+import { RUN_LIST_MARGIN_MS } from "./score";
 
 // Evaluation (TASKS.md 2.8): print the combined top 10 of a few past hours
 // with each topic's member items and score, for a person to judge whether at
@@ -51,7 +52,7 @@ export async function evalHour(db: Db, at: Date, region = "global"): Promise<Eva
   const runs = await db
     .selectDistinctOn([fetchRuns.sourceId, fetchRuns.region], { id: fetchRuns.id })
     .from(fetchRuns)
-    .where(and(eq(fetchRuns.status, "ok"), gt(fetchRuns.startedAt, since), lte(fetchRuns.startedAt, new Date(at.getTime() + 15 * 60_000))))
+    .where(and(eq(fetchRuns.status, "ok"), gt(fetchRuns.startedAt, since), lte(fetchRuns.startedAt, new Date(at.getTime() + RUN_LIST_MARGIN_MS))))
     .orderBy(fetchRuns.sourceId, fetchRuns.region, desc(fetchRuns.startedAt));
   const topicIds = top.map((t) => t.topicId!).filter((id) => id !== null);
   const members =
