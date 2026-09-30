@@ -24,6 +24,11 @@ export const TOPIC_WINDOW_HOURS = 48;
 
 // Only lists fetched within the last 3 hours count toward the combined score.
 export const FRESH_LIST_HOURS = 3;
+// Bluesky re-cuts its trending list every hour, and a topic near the edge
+// often drops out for an hour and comes back (research RQ1: 47% of its top-10
+// stays are returns). A Bluesky topic missing from its latest list keeps its
+// last rank in the combined score for this long after it was last seen.
+export const BLUESKY_GRACE_HOURS = 2;
 export const TOP_N = 10;
 
 // X is billed per request: at most 60 trend requests per UTC day.
