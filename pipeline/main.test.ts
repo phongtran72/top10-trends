@@ -108,6 +108,7 @@ describe("runPipeline", () => {
     ]);
     expect(out.lines).toEqual([
       "error: mastodon (global): 503 mastodon.social: Service Unavailable",
+      "revalidate: skipped (SITE_URL or REVALIDATE_SECRET not set)",
       "run ok: heartbeat written, 1 lists ok, 1 failed, 1 skipped, 7 sources not built yet (0 ms)",
     ]);
   });

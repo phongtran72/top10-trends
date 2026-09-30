@@ -7,6 +7,7 @@ import { createHttp } from "@/lib/http";
 import { collect, formatResults, writeResults, type ListResult } from "./collect";
 import type { Db } from "./db";
 import { purge } from "./purge";
+import { revalidateSite } from "./revalidate";
 import { upsertSources } from "./sources";
 
 export interface RunDeps {
@@ -60,9 +61,10 @@ export function summarize(
 }
 
 // One pipeline run: collect every enabled source, then upsert sources, write
-// the lists, purge old rows, write the heartbeat and print a summary. A
-// failing source is recorded and never fails the run. With --dry-run nothing
-// touches the database: each list is printed instead.
+// the lists, purge old rows, write the heartbeat, ask the site to refresh its
+// cached pages and print a summary. A failing source or refresh is recorded
+// and never fails the run. With --dry-run nothing touches the database: each
+// list is printed instead.
 export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps: RunDeps): Promise<void> {
   const now = deps.now ?? (() => new Date());
   const startedAt = now();
@@ -100,6 +102,7 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
     for (const result of results) {
       if (result.status === "error") deps.log(`error: ${result.source.id} (${result.region}): ${result.error}`);
     }
+    deps.log(await revalidateSite(env.revalidate, deps.fetch));
   }
 
   deps.log(summarize(plans, results, { dryRun, ms: now().getTime() - startedAt.getTime() }));
