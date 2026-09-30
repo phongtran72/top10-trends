@@ -2,15 +2,20 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createTestDb } from "./test-db";
 
 // Migration 0002: the research_reader role can read every table through its
-// row-level-security policies, and can't write anything.
+// row-level-security policies, and can't write anything. Every later table
+// needs its own research_read policy; the table list here comes from the
+// database, so a new table without one fails this test.
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
-
-const TABLES = ["fetch_runs", "rankings", "sources", "topic_items", "topic_snapshots", "topics", "trend_items"];
+let TABLES: string[];
 
 beforeAll(async () => {
   t = await createTestDb();
   await t.client.exec(`insert into sources (id, name, role, weight, enabled, regions) values ('bluesky', 'Bluesky', 'lead', 0.5, true, '{global}')`);
+  const { rows } = await t.client.query<{ tablename: string }>(
+    "select tablename from pg_tables where schemaname = 'public' order by tablename",
+  );
+  TABLES = rows.map((r) => r.tablename);
 });
 
 afterAll(async () => {
@@ -38,6 +43,7 @@ describe("research_reader", () => {
     const { rows } = await t.client.query<{ tablename: string }>(
       "select tablename from pg_policies where policyname = 'research_read' and 'research_reader' = any(roles) order by tablename",
     );
+    expect(TABLES).toContain("tiktok_curves");
     expect(rows.map((r) => r.tablename)).toEqual(TABLES);
   });
 

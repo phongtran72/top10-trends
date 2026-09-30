@@ -25,7 +25,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 ENV_VAR = "RESEARCH_DATABASE_URL"
 READER_ROLE = "research_reader"
 
-TABLES = ("sources", "fetch_runs", "trend_items", "topics", "topic_items", "rankings", "topic_snapshots")
+TABLES = ("sources", "fetch_runs", "trend_items", "topics", "topic_items", "rankings", "topic_snapshots", "tiktok_curves")
 
 # YouTube's developer policies cap stored API data at 30 days and forbid
 # deriving new metrics from it, so helpers leave YouTube rows out unless a
@@ -152,3 +152,18 @@ def snapshots(eng: Engine, days: float | None = None, algo_version: str | None =
     if df.empty:
         return df
     return expand(expand(df, "ranks", "rank_"), "metrics", "metric_")
+
+
+def tiktok_curves(eng: Engine, days: float | None = None) -> pd.DataFrame:
+    """TikTok's daily popularity curves (permanent): one row per hashtag, curve and day.
+
+    A curve is named by its last day (`window_end`), and each daily Apify run
+    brings a new one. Values are 0–100 within one curve, so compare days
+    inside a curve, or line curves up by `window_end`, rather than mixing them.
+    """
+    where = _since(days).format(col="fetched_at")
+    return query(
+        eng,
+        f"select title, window_end, day, value, direction, fetched_at from tiktok_curves where true {where} order by window_end, title, day",
+        **({} if days is None else {"seconds": days * 86400}),
+    )

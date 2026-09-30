@@ -29,6 +29,7 @@ items = db.trend_items(engine, days=7)
 ```
 
 - **Topic snapshots** (`topic_snapshots`) are the main dataset. They're kept permanently, never include YouTube, and each row's `algo_version` says how it was made. Keep an analysis to one version, or compare versions on purpose; rows marked `+replay` were rebuilt from stored lists and have `news_count` 0.
+- **TikTok curves** (`tiktok_curves`, via `db.tiktok_curves`) are kept permanently: each listed hashtag's 7-day daily popularity curve, one new curve a day. Values run 0–100 within a curve, so compare days inside one curve (`window_end`) rather than across curves.
 - **Stored lists** (`trend_items`) are kept only 28 days. `db.trend_items` leaves YouTube out unless you pass `include_youtube=True`. Don't save YouTube rows to disk: its policy caps stored data at 30 days.
 - **Slow sources:** TikTok's list refreshes once a day, Instagram's every few hours and Pinterest's about weekly (fetched twice a week). Between refreshes the same list repeats in every hourly fetch, so hour-to-hour changes there aren't signal. Instagram's `posts` metric is an all-time count, not momentum. X can show `skipped` runs with the reason `daily cap`: no X ranks that hour, not low ones.
 - **Google Trends' rank is age, not size:** its feed holds the 10 newest trends, newest first, so a trend's time in the list isn't its lifespan (findings/rq5-rhythms.md).

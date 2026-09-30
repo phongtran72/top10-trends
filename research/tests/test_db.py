@@ -1,3 +1,5 @@
+import re
+
 import pandas as pd
 import pytest
 
@@ -41,3 +43,8 @@ def test_expand_spreads_json_columns():
 
 def test_youtube_is_left_out_by_default():
     assert "youtube" in db.EXCLUDED_BY_DEFAULT
+
+
+def test_tables_match_the_schema():
+    schema = (db.REPO_ROOT / "db" / "schema.ts").read_text(encoding="utf-8")
+    assert sorted(db.TABLES) == sorted(re.findall(r'pgTable\(\s*"(\w+)"', schema))
