@@ -143,6 +143,26 @@ In `trend_items` and `fetch_runs`, `region` is the feed's real region (`global` 
 
 **Topic snapshots** record, every run, where each current topic stands on each platform: the hour-by-hour history a future prediction model needs (for example, whether a topic will break out to more platforms). Items are deleted after 28 days, so snapshots are the only lasting record, at about 50 rows an hour, or 6 MB a month. Each row names the method that made it (`algo_version`), so analyses survive retuning, and counts the news headlines attached to its topic (`news_count`), the first news signal for the research. Hours rebuilt from stored lists carry `+replay` and a news count of 0, because headlines are not stored. YouTube is left out entirely, including from the snapshot score: its developer policies (III.E.4) allow storing API data for at most 30 days and forbid using it "to create new or derived data or metrics". This is a personal MVP: the owner accepts the platforms' terms risk of using their data to train a personal model, and would revisit it if the site ever went commercial. The same clause also bears on YouTube's place in the combined score and topic matching. The owner decided on 2026-09-30 to keep YouTube there as planned for this personal MVP, and to leave it out of permanent snapshots only. Compute item embeddings inside the job instead of storing them; a few hundred items per run fit in memory, so pgvector is optional. Every table has row-level security turned on with no policies, so Supabase's public Data API exposes nothing; the site and pipeline connect as the table owner, which bypasses it.
 
+## Predictions (phase 5)
+
+Phase 5 turns the stored history into forecasts for creators and marketers planning content: is a topic worth making content about, and when? The same data also answers research questions about attention, such as how long topics last and which platform tends to have them first.
+
+| Horizon | The creator's question | Forecast | Inputs |
+| --- | --- | --- | --- |
+| Hours (0–12) | "Should I post about this now?" | Rising or fading: the chance it reaches 3 or more platforms, or the combined top 3, within 6 hours | Topic snapshots: momentum, breadth, which platform had it first, `news_count` |
+| Days (1–7) | "Will it still matter when my video is ready?" | Expected lifespan: hours left in the combined top 10 | The above, plus how similar past topics fared (nearest topic centroids) |
+| Weeks (1–8) | "What goes on next month's calendar?" | Scheduled and recurring moments, and how big they were last time | Outside calendars and multi-year history (below); our own data can't see an event before it trends |
+
+**Data.** Features come only from `topic_snapshots` (hourly, permanent, never YouTube), `topics` (labels, centroids, first and last seen) and the combined rankings. The hours and days models need 6 to 8 weeks of snapshots; the weeks horizon needs a year of our own data or outside history. Labels: *breakout* means reaching 3 or more platforms, or the combined top 3, within 6 hours of the forecast; *lifespan* means the hours until the topic last appears in the combined top 10. Each snapshot records its `algo_version`, so training can leave out rows made under an older threshold or ranking.
+
+**Outside data**, added only when a horizon needs it, all free: Wikipedia pageviews (attention history since 2015, from the Wikimedia REST API), GDELT (news volume and tone, updated every 15 minutes), and event calendars: Nager.Date (holidays), TMDB (film and TV releases), IGDB (game releases, through the existing Twitch app) and TheSportsDB (fixtures). Each is a collector like the others: it only fetches and maps, runs in its own try/catch, and no page view ever calls it.
+
+**Models.** Rules first, as baselines to beat (for example, "on 2 platforms within 2 hours of first appearing"). Then logistic regression for breakouts, and gradient-boosted trees or a survival model for lifespan, on tabular features. Training runs offline, on a computer or in a manual GitHub Actions job, and may use Python (scikit-learn, LightGBM) in a separate `research/` folder; that is a stack addition to confirm before task 5.4. The trained model ships as a small file in the repo (JSON coefficients, or ONNX run by the onnxruntime-node that Transformers.js already installs), and the hourly pipeline scores current topics in milliseconds. No paid API is involved.
+
+**Evaluation.** Train on earlier weeks and test on later ones, never shuffled. Measure, for alerts, *precision* (how often a flagged topic does break out) and *lead time* (how many hours before it reached 3 platforms); for lifespan, the error in hours; and *calibration* (70% forecasts come true about 70% of the time). A public `/forecasts` page lists every forecast next to its outcome, so the accuracy is visible rather than claimed.
+
+**Limits.** A month holds a few thousand topics and a few hundred breakouts: enough to learn from, not enough for precision. Sudden news gives no warning, so forecasts can only catch topics early in their rise. Platforms change and events are seasonal, so models are retrained regularly. Wrong topic merges become wrong labels, which is why phase 2's matching threshold is tuned first.
+
 ## Build phases
 
 About 8 weeks at 6–10 hours a week gets the full site live; the per-platform lists can go public after week 4, once a 7-day soak passes. Detailed tasks are in `TASKS.md`.
@@ -154,6 +174,7 @@ About 8 weeks at 6–10 hours a week gets the full site live; the per-platform l
 | 2 · Combined top 10 | 4–5 | Normalization, filters, embeddings, topic matching, scoring, home and topic pages | In 5 random hours, at least 8 of 10 topics make sense, with no duplicates |
 | 3 · Paid and approved sources | 6 | X with its spend cap, the Global / US toggle, Reddit and Pinterest when approved, optional TikTok and Claude topic names | Projected monthly spend within your chosen tier |
 | 4 · Polish and launch | 7–8 | Archive pages, share images, page titles, failure alerts, analytics | Launch and share the link |
+| 5 · Predictions | After 6–8 weeks of snapshots | Rising or fading and lifespan forecasts for creators and marketers, a public forecast record, later a weeks-ahead calendar | On 4 held-out weeks, breakout alerts are right at least 60% of the time and come at least 2 hours early |
 
 The 28-day purge sits in phase 1, not phase 4, so stored YouTube data never passes the 30-day limit.
 
