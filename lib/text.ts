@@ -1,5 +1,7 @@
 // Text helpers for topic matching (normalize) and display (prettyLabel).
 
+import { segmentRun } from "./segment";
+
 const URL_PATTERN = /\bhttps?:\/\/\S+|\bwww\.\S+/gi;
 // Emoji, their joiners and variation selectors, flags and keycaps.
 const EMOJI_PATTERN = /[\p{Extended_Pictographic}\p{Regional_Indicator}‍️⃣]/gu;
@@ -16,8 +18,21 @@ export function splitHashtag(tag: string): string {
     .replace(/_+/g, " ");
 }
 
+// Lowercase runs that a hashtag's capitals can't split, split into English
+// words: "nationalcoffeeday" → "national coffee day" (lib/segment.ts).
+function splitRuns(text: string): string {
+  return text.replace(/\b[a-z]+\b/g, (run) => segmentRun(run));
+}
+
 function splitHashtags(text: string): string {
-  return text.replace(/#([\p{L}\p{N}_]+)/gu, (_, body: string) => splitHashtag(body));
+  return text.replace(/#([\p{L}\p{N}_]+)/gu, (_, body: string) => splitRuns(splitHashtag(body)));
+}
+
+// Hashtags split into words; a title that is one word on its own ("aircrash",
+// "WorldSeries") is split the same way.
+function splitTitle(text: string): string {
+  const cleaned = clean(splitHashtags(text));
+  return /^[\p{L}\p{N}_]+$/u.test(cleaned) ? splitRuns(splitHashtag(cleaned)) : cleaned;
 }
 
 function clean(text: string): string {
@@ -26,12 +41,12 @@ function clean(text: string): string {
 
 // Matching form: hashtags split into words, lowercase, no URLs, emoji or #.
 export function normalize(text: string): string {
-  return clean(splitHashtags(text)).toLowerCase();
+  return splitTitle(text).toLowerCase();
 }
 
 // Display form: hashtags split into words, the source's capitalization kept.
 export function prettyLabel(text: string): string {
-  return clean(splitHashtags(text));
+  return splitTitle(text);
 }
 
 // URL slug: "World Series 2026!" → "world-series-2026".

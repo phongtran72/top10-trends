@@ -4,6 +4,7 @@ import { createEmbedder } from "@/lib/embed";
 import { describeError } from "@/lib/errors";
 import { pipelineEnv } from "@/lib/env";
 import { loadLocalEnv } from "@/lib/local-env";
+import { setSegmentation } from "@/lib/segment";
 import { createPipelineDb } from "@/pipeline/db";
 import { loadBlocklist } from "@/pipeline/filter";
 import {
@@ -19,10 +20,11 @@ import {
 
 // Replays stored hourly lists through the rank step.
 //
-//   npm run replay -- tune [--days 7] [--thresholds 0.55,0.6,0.65,0.7,0.8] [--out report.md]
+//   npm run replay -- tune [--days 7] [--thresholds 0.55,0.6,0.65,0.7,0.8] [--no-segment] [--out report.md]
 //     Read-only: copies the lists into an in-memory database, replays every
 //     hour at each threshold and reports the cross-platform merges, to pick
-//     MATCH_THRESHOLD (TASKS.md 2.9).
+//     MATCH_THRESHOLD (TASKS.md 2.9). --no-segment leaves one-word lowercase
+//     hashtags unsplit, to compare with lib/segment.ts off.
 //
 //   npm run replay -- rebuild --threshold 0.6 --yes
 //     Writes: deletes topics, rankings and snapshots in SESSION_DATABASE_URL
@@ -43,6 +45,8 @@ function parseThreshold(value: string): number {
 async function tune(argv: readonly string[]) {
   const days = Number(option(argv, "days") ?? 7);
   const thresholds = (option(argv, "thresholds") ?? "0.55,0.6,0.65,0.7,0.75,0.8").split(",").map(parseThreshold);
+  const segment = !argv.includes("--no-segment");
+  setSegmentation(segment);
   const env = pipelineEnv({ dryRun: false });
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
@@ -59,6 +63,7 @@ async function tune(argv: readonly string[]) {
       "# Matching threshold replay",
       "",
       `${slots.length} hourly slots, ${items} stored items. Replay matches on titles only (headlines and Bluesky status aren't stored).`,
+      `One-word lowercase hashtags ${segment ? "are split into words" : "are left unsplit (--no-segment)"}.`,
       "Look for wrong merges: the highest threshold with none is the one to pick.",
       "",
     ];
