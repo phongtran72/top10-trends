@@ -19,13 +19,13 @@ describe("upsertSources", () => {
   it("inserts every source, then updates in place", async () => {
     await upsertSources(t.db, planSources({ collectors: new Set(["bluesky"]), disabled: [], env: {} }));
     const first = await t.db.select().from(sources);
-    expect(first).toHaveLength(11);
+    expect(first).toHaveLength(12);
     expect(first.find((s) => s.id === "bluesky")).toMatchObject({ enabled: true, role: "lead", regions: ["global"] });
     expect(first.find((s) => s.id === "x")).toMatchObject({ enabled: false, regions: ["global", "us"] });
 
     await upsertSources(t.db, planSources({ collectors: new Set(["bluesky"]), disabled: ["bluesky"], env: {} }));
     const [bluesky] = await t.db.select().from(sources).where(eq(sources.id, "bluesky"));
     expect(bluesky.enabled).toBe(false);
-    expect(await t.db.select().from(sources)).toHaveLength(11);
+    expect(await t.db.select().from(sources)).toHaveLength(12);
   });
 });

@@ -3,6 +3,7 @@ import { bluesky } from "./bluesky";
 import { googleTrends } from "./google-trends";
 import { hackerNews } from "./hacker-news";
 import { COLLECTORS } from "./index";
+import { instagram } from "./instagram";
 import { mastodon } from "./mastodon";
 import { PLATFORMS } from "./registry";
 import { fixture, jsonFixture, routedContext } from "./test-utils";
@@ -248,9 +249,9 @@ describe("twitch", () => {
 });
 
 describe("collector registry", () => {
-  it("builds the phase 1 collectors plus X and TikTok, each under its own id", () => {
+  it("builds the phase 1 collectors plus X, TikTok and Instagram, each under its own id", () => {
     expect([...COLLECTORS.keys()].sort()).toEqual(
-      [...PLATFORMS.filter((p) => p.phase === 1).map((p) => p.id), "x", "tiktok"].sort(),
+      [...PLATFORMS.filter((p) => p.phase === 1).map((p) => p.id), "x", "tiktok", "instagram"].sort(),
     );
     for (const [id, collector] of COLLECTORS) expect(collector.id).toBe(id);
   });
@@ -359,6 +360,65 @@ describe("tiktok", () => {
     const { ctx, calls } = routedContext(routes());
     await expect(tiktok.fetch("us", ctx)).rejects.toThrow("APIFY_TOKEN is not set");
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("instagram", () => {
+  const data = jsonFixture<{ run: unknown; items: unknown }>("instagram.json");
+  const routes = (): [string, (url: string, init: RequestInit) => Response][] => [
+    ["https://api.apify.com/v2/acts/s-r~instagram-trending-scraper/runs/last", () => Response.json(data.run)],
+    ["https://api.apify.com/v2/datasets/ds012/items", () => Response.json(data.items)],
+  ];
+
+  it("reads the latest successful Apify run's topics in rank order", async () => {
+    const { ctx, calls } = routedContext(routes(), { APIFY_TOKEN: "apify-token" });
+    ctx.now = new Date("2026-10-08T12:07:00Z");
+    const items = await instagram.fetch("global", ctx);
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://api.apify.com/v2/acts/s-r~instagram-trending-scraper/runs/last?status=SUCCEEDED",
+      "https://api.apify.com/v2/datasets/ds012/items?clean=true",
+    ]);
+    expect(calls.every((c) => (c.init.headers as Record<string, string>).Authorization === "Bearer apify-token")).toBe(true);
+    expect(calls.some((c) => c.url.includes("apify-token"))).toBe(false);
+    expect(items).toEqual([
+      {
+        source: "instagram",
+        region: "global",
+        rank: 1,
+        title: "example final",
+        url: "https://www.instagram.com/popular/example-final/",
+        metricValue: 1540000,
+        metricLabel: "posts",
+      },
+      {
+        source: "instagram",
+        region: "global",
+        rank: 2,
+        title: "sample festival",
+        url: "https://www.instagram.com/popular/sample-festival/",
+        metricValue: 41000,
+        metricLabel: "posts",
+      },
+      // An unexpected slug is never put into a URL path; the topic is searched instead.
+      {
+        source: "instagram",
+        region: "global",
+        rank: 3,
+        title: "Test Launch",
+        url: "https://www.instagram.com/explore/search/keyword/?q=Test%20Launch",
+      },
+    ]);
+  });
+
+  it("has only a worldwide list", async () => {
+    const { ctx } = routedContext(routes(), { APIFY_TOKEN: "t" });
+    await expect(instagram.fetch("us", ctx)).rejects.toThrow("instagram has no us feed");
+  });
+
+  it("fails when the latest successful run is too old", async () => {
+    const { ctx } = routedContext(routes(), { APIFY_TOKEN: "t" });
+    ctx.now = new Date("2026-10-09T06:00:00Z");
+    await expect(instagram.fetch("global", ctx)).rejects.toThrow("latest Instagram run finished 24 h ago; check the Apify schedule");
   });
 });
 

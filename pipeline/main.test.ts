@@ -74,7 +74,7 @@ describe("runPipeline", () => {
     expect(out.lines).toContain("mastodon (global): error: 503 mastodon.social: Service Unavailable");
     expect(out.lines).toContain("youtube (us): skipped: missing YOUTUBE_API_KEY");
     expect(out.lines.at(-1)).toMatch(
-      /^dry run: nothing written, 1 lists ok, 1 failed, 1 skipped, 7 sources not built yet \(\d+ ms\)$/,
+      /^dry run: nothing written, 1 lists ok, 1 failed, 1 skipped, 8 sources not built yet \(\d+ ms\)$/,
     );
   });
 
@@ -93,7 +93,7 @@ describe("runPipeline", () => {
     });
 
     expect(closed).toBe(true);
-    expect(await t.db.select().from(sources)).toHaveLength(11);
+    expect(await t.db.select().from(sources)).toHaveLength(12);
     const runs = await t.db.select().from(fetchRuns).orderBy(asc(fetchRuns.id));
     expect(runs.map((r) => [r.sourceId, r.region, r.status, r.itemCount, r.error])).toEqual([
       ["bluesky", "global", "ok", 2, null],
@@ -109,7 +109,7 @@ describe("runPipeline", () => {
     expect(out.lines).toEqual([
       "error: mastodon (global): 503 mastodon.social: Service Unavailable",
       "revalidate: skipped (SITE_URL or REVALIDATE_SECRET not set)",
-      "run ok: heartbeat written, 1 lists ok, 1 failed, 1 skipped, 7 sources not built yet (0 ms)",
+      "run ok: heartbeat written, 1 lists ok, 1 failed, 1 skipped, 8 sources not built yet (0 ms)",
     ]);
   });
 

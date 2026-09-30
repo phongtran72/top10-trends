@@ -84,10 +84,10 @@ If Reddit refuses, the site runs without it.
 
 A business account, then an app at [developers.pinterest.com](https://developers.pinterest.com/docs/getting-started/set-up-app/). Wait for the review that grants Trial access, then generate an access token with the `user_accounts:read` scope → `PINTEREST_ACCESS_TOKEN`. Pinterest tokens expire; task 3.4 handles the refresh.
 
-## 12. Apify, for TikTok (optional, phase 3)
+## 12. Apify, for TikTok and Instagram (optional, phase 3)
 
 1. Create an [Apify](https://apify.com/pricing) account. The free plan includes $5 of usage a month and blocks, rather than bills, beyond it.
-2. Copy your API token (**Settings › API & Integrations**) into the GitHub secret `APIFY_TOKEN`, and set the GitHub variable `TIKTOK_ENABLED` to `true`.
+2. Copy your API token (**Settings › API & Integrations**) into the GitHub secret `APIFY_TOKEN`, and set the GitHub variables `TIKTOK_ENABLED` and `INSTAGRAM_ENABLED` to `true` for the sources you want.
 3. Open the actor [data_xplorer/tiktok-trends](https://apify.com/data_xplorer/tiktok-trends) and create a **schedule** (**Schedules › Create**) that runs it daily (cron `0 6 * * *`, UTC) with this input and a maximum cost per run of $0.25:
 
     ```json
@@ -95,8 +95,15 @@ A business account, then an app at [developers.pinterest.com](https://developers
     ```
 
     A run of 15 hashtags cost $0.048 in a test, so about $1.50 a month, inside the free $5. The pipeline only reads the latest run's results. If no run has succeeded for 48 hours, TikTok shows as failing on /status. (Since July 2026 TikTok's Creative Center shows logged-out visitors only its top 3; automation-lab/tiktok-trends-scraper returned just those 3, while this actor returned all 15.)
+4. Open the actor [s-r/instagram-trending-scraper](https://apify.com/s-r/instagram-trending-scraper) and create a schedule that runs it every 6 hours (cron `30 */6 * * *`, UTC) with this input and a maximum cost per run of $0.10:
 
-TikTok's terms ban scraping, so this source is your call.
+    ```json
+    { "maxKeywords": 10, "expandRelatedTopics": false }
+    ```
+
+    It costs $0.002 per topic with no start fee, and the free plan caps a run at 10 topics: $0.02 a run, about $2.40 a month. Together with TikTok that is about $3.90 of the free $5. If no run has succeeded for 18 hours, Instagram shows as failing on /status.
+
+TikTok's and Instagram's terms ban scraping, so these sources are your call.
 
 ## 13. Anthropic and OpenAI (optional)
 
@@ -124,8 +131,9 @@ TikTok's terms ban scraping, so this source is your call.
 | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | Reddit app credentials | Reddit collector | GitHub secrets | 3 |
 | `REDDIT_USERNAME` | Your Reddit username, for the User-Agent | Reddit collector | GitHub variable | 3 |
 | `PINTEREST_ACCESS_TOKEN` | Pinterest token (plus any refresh credentials) | Pinterest collector | GitHub secret | 3 |
-| `APIFY_TOKEN` | Apify API token | TikTok collector | GitHub secret | 3 |
+| `APIFY_TOKEN` | Apify API token | TikTok and Instagram collectors | GitHub secret | 3 |
 | `TIKTOK_ENABLED` | `true` to turn TikTok on | TikTok collector | GitHub variable | 3 |
+| `INSTAGRAM_ENABLED` | `true` to turn Instagram on | Instagram collector | GitHub variable | 3 |
 | `ANTHROPIC_API_KEY` | Anthropic API key | Topic names | GitHub secret | 3 |
 
 `GH_OWNER` and `GH_REPO` are not secrets; they live in `worker/wrangler.toml`, filled in by task 0.7.

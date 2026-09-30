@@ -2,7 +2,7 @@
 // them are in PLAN.md › Ranking; record any tuning there too (task 2.9).
 
 // Lead sources: X, Google Trends, Reddit, Bluesky, Mastodon.
-// Corroborating only: YouTube, TikTok, Twitch, Hacker News, Pinterest.
+// Corroborating only: YouTube, TikTok, Instagram, Twitch, Hacker News, Pinterest.
 export const WEIGHTS = {
   x: 1.0,
   google_trends: 1.0,
@@ -11,6 +11,7 @@ export const WEIGHTS = {
   mastodon: 0.3,
   youtube: 0.8,
   tiktok: 0.5,
+  instagram: 0.5,
   twitch: 0.3,
   hacker_news: 0.3,
   pinterest: 0.3,
