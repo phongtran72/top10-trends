@@ -1,6 +1,6 @@
 import { and, desc, eq, gt, inArray, lte, notInArray } from "drizzle-orm";
 import { PLATFORMS, type SourceDef, type SourceId } from "@/collectors/registry";
-import { FRESH_LIST_HOURS, TOP_N } from "@/config/ranking";
+import { BLUESKY_GRACE_HOURS, FRESH_LIST_HOURS, TOP_N } from "@/config/ranking";
 import { fetchRuns, rankings, topicItems, trendItems } from "@/db/schema";
 import { rankWindow, WINDOWED_SOURCES } from "@/lib/window";
 import type { Db } from "./db";
@@ -98,9 +98,15 @@ export async function windowedItems(db: Db, sourceId: SourceId, now: Date, hours
   return [...byRegion.values()].flatMap((regionRows) => rankWindow(regionRows).map((row, index) => ({ ...row, rank: index + 1 })));
 }
 
+// Sources whose topics keep counting for a while after they drop out of the
+// latest list, at the rank they were last seen with.
+export const GRACE_SOURCES: ReadonlyMap<SourceId, number> = new Map([["bluesky", BLUESKY_GRACE_HOURS]]);
+
 // Topic ranks in each source's latest successful list from the last three
 // hours; a windowed source (Google Trends) ranks every list in its window
-// instead. The upper bound matters when replaying past hours.
+// instead, and a grace source (Bluesky) adds topics it listed in the last
+// couple of hours at their last rank. The upper bound matters when replaying
+// past hours.
 export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS): Promise<ScoreEntry[]> {
   const windowed: ScoreEntry[] = [];
   for (const [sourceId, windowHours] of WINDOWED_SOURCES) {
@@ -139,7 +145,33 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
         latest.map((r) => r.id),
       ),
     );
-  return [...rows.map((r) => ({ ...r, sourceId: r.sourceId as SourceId })), ...windowed];
+  const entries = rows.map((r) => ({ ...r, sourceId: r.sourceId as SourceId }));
+
+  const graced: ScoreEntry[] = [];
+  for (const [sourceId, graceHours] of GRACE_SOURCES) {
+    const present = new Set(entries.filter((e) => e.sourceId === sourceId).map((e) => e.topicId));
+    const earlier = await db
+      .select({ topicId: topicItems.topicId, rank: trendItems.rank, metricValue: trendItems.metricValue })
+      .from(trendItems)
+      .innerJoin(topicItems, eq(topicItems.itemId, trendItems.id))
+      .innerJoin(fetchRuns, eq(fetchRuns.id, trendItems.runId))
+      .where(
+        and(
+          eq(trendItems.sourceId, sourceId),
+          eq(fetchRuns.status, "ok"),
+          gt(fetchRuns.startedAt, new Date(now.getTime() - graceHours * 60 * 60 * 1000)),
+          lte(fetchRuns.startedAt, until),
+        ),
+      )
+      .orderBy(desc(fetchRuns.startedAt), trendItems.rank);
+    // Newest sighting first, so each missing topic keeps the rank it was last seen with.
+    for (const row of earlier) {
+      if (present.has(row.topicId)) continue;
+      present.add(row.topicId);
+      graced.push({ ...row, sourceId });
+    }
+  }
+  return [...entries, ...graced, ...windowed];
 }
 
 export interface PlatformRow {

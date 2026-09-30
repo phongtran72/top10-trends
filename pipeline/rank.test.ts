@@ -145,6 +145,23 @@ describe("Google Trends window", () => {
   });
 });
 
+describe("Bluesky grace", () => {
+  it("keeps a Bluesky topic that skipped an hour at its last rank, for two hours", async () => {
+    const at = (h: number) => new Date(Date.UTC(2026, 9, 11, h, 7));
+    const google = (h: number) => list("google_trends", "us", at(h), [{ title: "delta vote" }, { title: "echo summit" }]);
+    await runOnce(at(10), [google(10), list("bluesky", "global", at(10), [{ title: "Delta vote", flags: { status: "trending" } }, { title: "Echo summit", flags: { status: "trending" } }])]);
+    // An hour later Bluesky's list no longer has "Echo summit".
+    const later = await runOnce(at(11), [google(11), list("bluesky", "global", at(11), [{ title: "Delta vote", flags: { status: "trending" } }])]);
+    expect(later.combined.find((c) => c.label === "echo summit")?.platforms).toEqual([
+      { sourceId: "google_trends", rank: 2 },
+      { sourceId: "bluesky", rank: 2 },
+    ]);
+    // Three hours after its last sighting, it no longer counts.
+    const gone = await runOnce(at(13), [google(13), list("bluesky", "global", at(13), [{ title: "Delta vote", flags: { status: "trending" } }])]);
+    expect(gone.combined.find((c) => c.label === "echo summit")?.platforms).toEqual([{ sourceId: "google_trends", rank: 2 }]);
+  });
+});
+
 describe("labels and context", () => {
   it("names a topic from its item's display form", () => {
     expect(labelFor({ title: "#WorldSeries2026" })).toBe("World Series 2026");

@@ -111,6 +111,8 @@ Each platform's top 10 keeps that platform's own order; the combined top 10 rewa
 
 **Google Trends window.** Google's "Trending now" feed lists its 10 newest US trends, newest first, not its 10 biggest: at about 21:50 UTC on 2026-09-30 the Astros, at 50,000+ searches, sat at #7 under six newer trends of 500 to 5,000, and on a busy afternoon the whole list turns over within an hour (found by the predictions work, research/findings/rq5-rhythms.md). So Google's list is every trend it published in the last 3 hours (the same freshness limit as every list), one entry per query at its latest sighting, ranked by approximate traffic, then by the newer sighting, then by feed position. The collector keeps the feed's order (invariant 3); `lib/window.ts` ranks the window, and the combined score, topic snapshots, the Google Trends page and the dashboard all use it. Decided by the owner on 2026-09-30.
 
+**Bluesky grace.** Bluesky re-cuts its trending list every hour, and a topic near the edge often drops out for an hour and comes back: 47% of its top-10 stays are such returns, 78% of them within two hours (research RQ1). So in the combined score and topic snapshots, a Bluesky topic missing from Bluesky's latest list keeps its last rank for 2 hours after it was last seen (`BLUESKY_GRACE_HOURS`). Bluesky's own page still shows Bluesky's current list, and the dashboard calls an entry new only when it was in no list of the previous 2 hours. Decided by the owner on 2026-09-30.
+
 **Combined top 10**, recomputed every run:
 
 1. Take each source's latest list only if it was fetched in the last 3 hours, so a dead collector stops counting.
