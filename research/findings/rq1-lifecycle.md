@@ -49,7 +49,9 @@ Median time in the top 10 (the half-life), and the share still listed after 1, 2
 
 - **A day of one list's attention is rare.** On Bluesky, Google and Hacker News almost nothing stayed in the top 10 for 6 hours. So "hours left in the combined top 10" will come mostly from breadth, a topic kept alive by several platforms, and from Google's 3-hour window (task 2.12), not from long stays on one list.
 - **Google's time in the list isn't lifespan.** It's the time until 10 newer trends start, and the 3-hour window keeps a Google-only topic in the snapshots for up to 3 hours after it leaves the feed. Google-led lifespans need that tail taken off (RQ5).
-- **Bluesky's lifespans need tolerance for gaps.** Counting a one-hour absence as the end halves Bluesky's half-life, 1 hour instead of 2. Snapshot labels should treat a return within an hour or two as the same life, or they'll teach the model that Bluesky topics die and are reborn.
+- **Bluesky's lifespans need tolerance for gaps.** Counting a one-hour absence as the end halves Bluesky's half-life, 1 hour instead of 2.
+  - **Done in the pipeline:** since task 2.14 (the same day), the combined score and topic snapshots keep a Bluesky topic at its newest rank for 2 hours after it drops out.
+  - **For snapshots:** a snapshot's Bluesky rank can be up to 2 hours old, and Bluesky-led lifespans carry a tail of up to 2 hours, like Google's 3-hour window. Measure Bluesky's own stays from `trend_items`, as here. Snapshot labels should treat a return within an hour or two as the same life, or they'll teach the model that Bluesky topics die and are reborn.
 - **Hacker News is the one list with a catchable rise.** It's the natural first test for the hours horizon's "rising" forecast within a single list.
 
 ## Limits
