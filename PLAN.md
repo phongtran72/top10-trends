@@ -204,6 +204,14 @@ Between refreshes the same list repeats in every hourly fetch, so those sources'
 - **Matching is about half right between 0.60 and 0.70.** Short names pass as different people or teams ("Dom Smith" and "jack smith" at 0.61, "yankees" and "Astros" at 0.70). Hashtags written as one lowercase word fell below 0.60 (47% of TikTok's titles). Task 2.13's splitting lifts those to 1.00 ("#nationalcoffeeday" against "national coffee day" went from 0.53) and loses no match. Evidence for task 2.9.
 - **Batch noise (fixed):** until phase-2 377374f, the pipeline embedded in batches of 64. The 8-bit model's output depended slightly on a title's batch-mates: pair similarities moved by up to 0.06, and about 1 in 10 pairs near 0.60 fell on either side of it. The pipeline now embeds one title at a time, which is exact and costs about 0.2 s a run.
 
+**Lifecycle** (RQ1 first look, 2026-09-30, `research/findings/rq1-lifecycle.md`; per list, before snapshots):
+- **Half-life in the top 10:** 1 hour on Bluesky and Google, 3 hours on Hacker News. Mastodon and Twitch run over 12 hours (57% of entries still listed after 12 hours).
+- **Almost nothing lasts 6 hours on one list,** so combined-top-10 lifespans will come from breadth across platforms.
+- **Three list behaviors:**
+  - Google is a queue: trends never climb and never return;
+  - Hacker News has a real rise and fall: 38% of stories climb after entering;
+  - Bluesky flickers: 47% of its spells are returns, most after missing one fetch, so a Bluesky life should allow an hour's gap (which gives a 2-hour half-life).
+
 **Lead and lag** (RQ2, 2026-09-30, `research/findings/rq2-lead-lag.md`): the method is ready, with no result yet. Matched trends (0.70) are grouped into stories, and each platform's earliest sighting is compared. Trends already listed at a source's first fetch are censored and left out, as are the slow sources. So far there's one usable story pair: Google had the Phillies–Braves game 3 hours before Bluesky. Google against X should reach about 20 stories within a few days of X's start. A lead measures when a story enters a platform's list, which favors lists that rank by novelty or velocity (Google, Bluesky) over those that rank by size (X, Twitch).
 
 **Outside data**, added in this order and only when a question or horizon needs it, all free:
