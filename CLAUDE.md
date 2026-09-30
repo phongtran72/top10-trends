@@ -27,7 +27,7 @@ collectors/           one file per source, plus registry.ts and types.ts; __fixt
 pipeline/             run.ts (collect → merge → rank → write → purge → revalidate) and one module per step
 lib/                  db clients, env validation, HTTP helper, embeddings, text normalization
 db/                   Drizzle schema and generated migrations
-config/               ranking.ts (weights, thresholds, caps) and blocklist.txt
+config/               ranking.ts (weights, thresholds, caps), costs.ts, blocklist.txt and words-en.txt (hashtag word splitting)
 scripts/              one-off tools such as eval.ts
 research/             phase 5: Python notebooks, findings/ write-ups, requirements (never imported by the site or pipeline)
 worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.json

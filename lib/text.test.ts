@@ -14,6 +14,14 @@ describe("normalize", () => {
     ["Read this https://example.com/a?b=1 now", "read this now"],
     ["dodgers vs yankees", "dodgers vs yankees"],
     ["  Already   clean phrase ", "already clean phrase"],
+    // One lowercase run is split into listed English words (lib/segment.ts).
+    ["#nationalcoffeeday", "national coffee day"],
+    ["#firstdayoffall", "first day of fall"],
+    ["#nationalcoffeeday2026", "national coffee day 2026"],
+    ["aircrash", "air crash"],
+    ["#fediverse", "fediverse"],
+    ["rihanna", "rihanna"],
+    ["photography tips", "photography tips"],
   ])("%s → %s", (input, expected) => {
     expect(normalize(input)).toBe(expected);
   });
@@ -26,6 +34,8 @@ describe("prettyLabel", () => {
     ["#MeerMittwoch", "Meer Mittwoch"],
     ["dodgers vs yankees", "dodgers vs yankees"],
     ["Man City charges case 🏆", "Man City charges case"],
+    ["#jacksmith", "jack smith"],
+    ["WorldSeries", "World Series"],
   ])("%s → %s", (input, expected) => {
     expect(prettyLabel(input)).toBe(expected);
   });
