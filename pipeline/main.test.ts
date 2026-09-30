@@ -50,9 +50,9 @@ const fakeCollectors: ReadonlyMap<SourceId, Collector> = new Map<SourceId, Colle
 ]);
 
 describe("parseArgs", () => {
-  it("accepts --dry-run and rejects anything else", () => {
-    expect(parseArgs([])).toEqual({ dryRun: false });
-    expect(parseArgs(["--dry-run"])).toEqual({ dryRun: true });
+  it("accepts --dry-run and --include-paid and rejects anything else", () => {
+    expect(parseArgs([])).toEqual({ dryRun: false, includePaid: false });
+    expect(parseArgs(["--dry-run", "--include-paid"])).toEqual({ dryRun: true, includePaid: true });
     expect(() => parseArgs(["--dryrun"])).toThrow(/unknown argument/);
   });
 });

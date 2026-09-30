@@ -8,6 +8,7 @@ import { PLATFORMS } from "./registry";
 import { fixture, jsonFixture, routedContext } from "./test-utils";
 import { twitch } from "./twitch";
 import { parseCount } from "./util";
+import { x } from "./x";
 import { youtube } from "./youtube";
 
 const xml = (body: string) => new Response(body, { headers: { "Content-Type": "application/rss+xml" } });
@@ -246,13 +247,64 @@ describe("twitch", () => {
 });
 
 describe("collector registry", () => {
-  it("builds the six phase 1 collectors, each under its own id", () => {
+  it("builds the phase 1 collectors plus X, each under its own id", () => {
     expect([...COLLECTORS.keys()].sort()).toEqual(
-      PLATFORMS.filter((p) => p.phase === 1)
-        .map((p) => p.id)
-        .sort(),
+      [...PLATFORMS.filter((p) => p.phase === 1).map((p) => p.id), "x"].sort(),
     );
     for (const [id, collector] of COLLECTORS) expect(collector.id).toBe(id);
+  });
+});
+
+describe("x", () => {
+  it("sends the Bearer token in a header, asks for the WOEID's list and maps trends", async () => {
+    const { ctx, calls } = routedContext(
+      [["https://api.x.com/2/trends/by/woeid/", () => Response.json(jsonFixture("x.json"))]],
+      { X_BEARER_TOKEN: "x-token" },
+    );
+    const items = await x.fetch("us", ctx);
+    expect(calls[0].url).toBe("https://api.x.com/2/trends/by/woeid/23424977?max_trends=20&trend.fields=trend_name%2Ctweet_count");
+    expect(calls[0].url).not.toContain("x-token");
+    expect((calls[0].init.headers as Record<string, string>).Authorization).toBe("Bearer x-token");
+    expect(items).toEqual([
+      {
+        source: "x",
+        region: "us",
+        rank: 1,
+        title: "#ExampleFinal",
+        url: "https://x.com/search?q=%23ExampleFinal&src=trend_click",
+        metricValue: 125000,
+        metricLabel: "posts",
+      },
+      { source: "x", region: "us", rank: 2, title: "Sample Senator", url: "https://x.com/search?q=Sample%20Senator&src=trend_click" },
+      {
+        source: "x",
+        region: "us",
+        rank: 3,
+        title: "Test Launch",
+        url: "https://x.com/search?q=Test%20Launch&src=trend_click",
+        metricValue: 8200,
+        metricLabel: "posts",
+      },
+    ]);
+  });
+
+  it("uses WOEID 1 for the worldwide list", async () => {
+    const { ctx, calls } = routedContext([["https://api.x.com/", () => Response.json({ data: [] })]], { X_BEARER_TOKEN: "t" });
+    await x.fetch("global", ctx);
+    expect(calls[0].url).toContain("/woeid/1?");
+  });
+
+  it("reports X's error instead of an empty list, and a payment problem by status", async () => {
+    const { ctx } = routedContext(
+      [["https://api.x.com/", () => Response.json({ errors: [{ title: "Invalid Request", detail: "bad woeid" }] })]],
+      { X_BEARER_TOKEN: "t" },
+    );
+    await expect(x.fetch("global", ctx)).rejects.toThrow("no trends: Invalid Request");
+    const unpaid = routedContext(
+      [["https://api.x.com/", () => Response.json({ title: "CreditsDepleted" }, { status: 402, statusText: "Payment Required" })]],
+      { X_BEARER_TOKEN: "t" },
+    );
+    await expect(x.fetch("global", unpaid.ctx)).rejects.toThrow("402 api.x.com");
   });
 });
 
