@@ -1,0 +1,9 @@
+{
+  "run": { "data": { "id": "run123", "finishedAt": "2026-10-08T06:01:30.000Z", "defaultDatasetId": "ds456" } },
+  "items": [
+    { "type": "hashtag", "rank": 2, "name": "sampledance", "countryCode": "US", "publishedVideoCount": 5100 },
+    { "type": "hashtag", "rank": 1, "name": "examplechallenge", "countryCode": "US", "videoViews": 98000000 },
+    { "type": "sound", "rank": 1, "name": "Example Song" },
+    { "type": "hashtag", "rank": 3, "name": "#testtrend", "countryCode": "US" }
+  ]
+}

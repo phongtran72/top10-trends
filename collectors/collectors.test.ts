@@ -6,6 +6,7 @@ import { COLLECTORS } from "./index";
 import { mastodon } from "./mastodon";
 import { PLATFORMS } from "./registry";
 import { fixture, jsonFixture, routedContext } from "./test-utils";
+import { tiktok } from "./tiktok";
 import { twitch } from "./twitch";
 import { parseCount } from "./util";
 import { x } from "./x";
@@ -247,9 +248,9 @@ describe("twitch", () => {
 });
 
 describe("collector registry", () => {
-  it("builds the phase 1 collectors plus X, each under its own id", () => {
+  it("builds the phase 1 collectors plus X and TikTok, each under its own id", () => {
     expect([...COLLECTORS.keys()].sort()).toEqual(
-      [...PLATFORMS.filter((p) => p.phase === 1).map((p) => p.id), "x"].sort(),
+      [...PLATFORMS.filter((p) => p.phase === 1).map((p) => p.id), "x", "tiktok"].sort(),
     );
     for (const [id, collector] of COLLECTORS) expect(collector.id).toBe(id);
   });
@@ -305,6 +306,53 @@ describe("x", () => {
       { X_BEARER_TOKEN: "t" },
     );
     await expect(x.fetch("global", unpaid.ctx)).rejects.toThrow("402 api.x.com");
+  });
+});
+
+describe("tiktok", () => {
+  const data = jsonFixture<{ run: unknown; items: unknown }>("tiktok.json");
+  const routes = (): [string, (url: string, init: RequestInit) => Response][] => [
+    ["https://api.apify.com/v2/acts/automation-lab~tiktok-trends-scraper/runs/last", () => Response.json(data.run)],
+    ["https://api.apify.com/v2/datasets/ds456/items", () => Response.json(data.items)],
+  ];
+
+  it("reads the latest successful Apify run's hashtags in rank order", async () => {
+    const { ctx, calls } = routedContext(routes(), { APIFY_TOKEN: "apify-token" });
+    ctx.now = new Date("2026-10-08T12:07:00Z");
+    const items = await tiktok.fetch("us", ctx);
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://api.apify.com/v2/acts/automation-lab~tiktok-trends-scraper/runs/last?status=SUCCEEDED",
+      "https://api.apify.com/v2/datasets/ds456/items?clean=true",
+    ]);
+    expect(calls.every((c) => (c.init.headers as Record<string, string>).Authorization === "Bearer apify-token")).toBe(true);
+    expect(calls.some((c) => c.url.includes("apify-token"))).toBe(false);
+    expect(items).toEqual([
+      {
+        source: "tiktok",
+        region: "us",
+        rank: 1,
+        title: "#examplechallenge",
+        url: "https://www.tiktok.com/tag/examplechallenge",
+        metricValue: 98000000,
+        metricLabel: "views",
+      },
+      {
+        source: "tiktok",
+        region: "us",
+        rank: 2,
+        title: "#sampledance",
+        url: "https://www.tiktok.com/tag/sampledance",
+        metricValue: 5100,
+        metricLabel: "videos",
+      },
+      { source: "tiktok", region: "us", rank: 3, title: "#testtrend", url: "https://www.tiktok.com/tag/testtrend" },
+    ]);
+  });
+
+  it("fails when the latest successful run is too old", async () => {
+    const { ctx } = routedContext(routes(), { APIFY_TOKEN: "t" });
+    ctx.now = new Date("2026-10-12T06:00:00Z");
+    await expect(tiktok.fetch("us", ctx)).rejects.toThrow("latest TikTok run finished 96 h ago");
   });
 });
 
