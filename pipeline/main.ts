@@ -1,12 +1,16 @@
 import { COLLECTORS } from "@/collectors/index";
 import { planSources, unknownSourceIds, type SourceId, type SourcePlan } from "@/collectors/registry";
-import type { Collector, Env } from "@/collectors/types";
+import type { Collector, Env, TrendItem } from "@/collectors/types";
 import { fetchRuns } from "@/db/schema";
+import { createEmbedder, type Embedder } from "@/lib/embed";
 import { cleanEnv, pipelineEnv, type RawEnv } from "@/lib/env";
+import { describeError } from "@/lib/errors";
 import { createHttp } from "@/lib/http";
 import { collect, formatResults, writeResults, type ListResult } from "./collect";
 import type { Db } from "./db";
+import { loadBlocklist } from "./filter";
 import { purge } from "./purge";
+import { formatRankOutcome, rankRun } from "./rank";
 import { revalidateSite } from "./revalidate";
 import { upsertSources } from "./sources";
 
@@ -16,6 +20,8 @@ export interface RunDeps {
   now?: () => Date;
   collectors?: ReadonlyMap<SourceId, Collector>;
   fetch?: typeof fetch;
+  createEmbedder?: () => Promise<Embedder>;
+  blocklist?: ReadonlySet<string>;
 }
 
 export function parseArgs(argv: readonly string[]): { dryRun: boolean } {
@@ -61,10 +67,11 @@ export function summarize(
 }
 
 // One pipeline run: collect every enabled source, then upsert sources, write
-// the lists, purge old rows, write the heartbeat, ask the site to refresh its
-// cached pages and print a summary. A failing source or refresh is recorded
-// and never fails the run. With --dry-run nothing touches the database: each
-// list is printed instead.
+// the lists, rank them (filter, embed, match to topics, score), purge old
+// rows, write the heartbeat, ask the site to refresh its cached pages and
+// print a summary. A failing source, rank step or refresh is recorded and
+// never fails the run. With --dry-run nothing touches the database: each list
+// and a combined top 10 from this run alone are printed instead.
 export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps: RunDeps): Promise<void> {
   const now = deps.now ?? (() => new Date());
   const startedAt = now();
@@ -84,15 +91,28 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
   const http = createHttp({ userAgent: env.COLLECTOR_USER_AGENT, fetch: deps.fetch });
   const results = await collect(plans, collectors, { http, env: collectorEnv, now: startedAt }, { now });
 
+  // The rank step runs after the lists are saved, in its own try/catch.
+  const rank = async (db: Db | null, itemIds: Map<TrendItem, number> | null) => {
+    try {
+      const embedder = await (deps.createEmbedder ?? createEmbedder)();
+      const outcome = await rankRun({ db, results, itemIds, now: startedAt, embedder, blocklist: deps.blocklist ?? loadBlocklist() });
+      for (const line of formatRankOutcome(outcome)) deps.log(line);
+    } catch (error) {
+      deps.log(`rank: failed: ${describeError(error)}`);
+    }
+  };
+
   if (env.dryRun) {
     deps.log("sources:");
     for (const line of formatPlan(plans)) deps.log(line);
     for (const line of formatResults(results)) deps.log(line);
+    await rank(null, null);
   } else {
     const { db, close } = deps.openDb(env.SESSION_DATABASE_URL);
     try {
       await upsertSources(db, plans);
-      await writeResults(db, results);
+      const itemIds = await writeResults(db, results);
+      await rank(db, itemIds);
       const purged = await purge(db, startedAt);
       if (purged.items > 0 || purged.runs > 0) deps.log(`purged: ${purged.items} items, ${purged.runs} runs`);
       await writeHeartbeat(db, startedAt, now());

@@ -90,8 +90,10 @@ export async function collect(
 }
 
 // One fetch_runs row per source and region, plus that list's trend_items in
-// one batch. Only the columns in PLAN.md › Data model are stored.
-export async function writeResults(db: Db, results: readonly ListResult[]): Promise<void> {
+// one batch. Only the columns in PLAN.md › Data model are stored. Returns each
+// saved item's trend_items id, for topic matching.
+export async function writeResults(db: Db, results: readonly ListResult[]): Promise<Map<TrendItem, number>> {
+  const ids = new Map<TrendItem, number>();
   for (const result of results) {
     await db.transaction(async (tx) => {
       const [run] = await tx
@@ -107,21 +109,28 @@ export async function writeResults(db: Db, results: readonly ListResult[]): Prom
         })
         .returning({ id: fetchRuns.id });
       if (result.status !== "ok" || result.items.length === 0) return;
-      await tx.insert(trendItems).values(
-        result.items.map((item) => ({
-          runId: run.id,
-          sourceId: item.source,
-          region: item.region,
-          rank: item.rank,
-          title: item.title.slice(0, 500),
-          url: item.url,
-          metricValue: item.metricValue ?? null,
-          metricLabel: item.metricLabel ?? null,
-          fetchedAt: result.finishedAt,
-        })),
-      );
+      const inserted = await tx
+        .insert(trendItems)
+        .values(
+          result.items.map((item) => ({
+            runId: run.id,
+            sourceId: item.source,
+            region: item.region,
+            rank: item.rank,
+            title: item.title.slice(0, 500),
+            url: item.url,
+            metricValue: item.metricValue ?? null,
+            metricLabel: item.metricLabel ?? null,
+            fetchedAt: result.finishedAt,
+          })),
+        )
+        .returning({ id: trendItems.id, rank: trendItems.rank });
+      // Ranks are unique within a list.
+      const idByRank = new Map(inserted.map((row) => [row.rank, row.id]));
+      for (const item of result.items) ids.set(item, idByRank.get(item.rank)!);
     });
   }
+  return ids;
 }
 
 const numberFormat = new Intl.NumberFormat("en-US");

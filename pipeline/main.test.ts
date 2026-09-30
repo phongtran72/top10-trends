@@ -2,10 +2,14 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { asc } from "drizzle-orm";
 import type { SourceId } from "@/collectors/registry";
 import type { Collector } from "@/collectors/types";
-import { fetchRuns, sources, trendItems } from "@/db/schema";
+import { fetchRuns, rankings, sources, topics, trendItems } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
 import { HttpError } from "@/lib/http";
 import { parseArgs, runPipeline } from "./main";
+import { wordEmbedder } from "./test-embedder";
+
+// Tests never load the real model or touch the network.
+const offline = { createEmbedder: async () => wordEmbedder, blocklist: new Set<string>() };
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 
@@ -66,6 +70,7 @@ describe("runPipeline", () => {
       },
       log: out.log,
       collectors: fakeCollectors,
+      ...offline,
     });
     expect(out.lines[0]).toBe("warning: DISABLED_SOURCES has unknown ids: tiktock");
     expect(out.lines).toContain("sources:");
@@ -90,6 +95,7 @@ describe("runPipeline", () => {
       log: out.log,
       now: () => start,
       collectors: fakeCollectors,
+      ...offline,
     });
 
     expect(closed).toBe(true);
@@ -106,16 +112,27 @@ describe("runPipeline", () => {
       [runs[0].id, "bluesky", 1, "Example Final", 10, "posts"],
       [runs[0].id, "bluesky", 2, "Test Launch", null, null],
     ]);
-    expect(out.lines).toEqual([
+    expect(out.lines.slice(0, 2)).toEqual([
+      "rank: 2 items kept, 0 dropped; 2 matched to topics, 2 new topics",
+      "combined top 10:",
+    ]);
+    expect(out.lines.slice(-3)).toEqual([
       "error: mastodon (global): 503 mastodon.social: Service Unavailable",
       "revalidate: skipped (SITE_URL or REVALIDATE_SECRET not set)",
       "run ok: heartbeat written, 1 lists ok, 1 failed, 1 skipped, 7 sources not built yet (0 ms)",
+    ]);
+    expect(await t.db.select().from(topics)).toHaveLength(2);
+    const ranked = await t.db.select().from(rankings);
+    expect(ranked.filter((r) => r.list === "combined").map((r) => r.rank)).toEqual([1, 2]);
+    expect(ranked.filter((r) => r.list === "bluesky").map((r) => [r.rank, r.itemId !== null, r.topicId !== null])).toEqual([
+      [1, true, true],
+      [2, true, true],
     ]);
   });
 
   it("fails a full run without SESSION_DATABASE_URL", async () => {
     await expect(
-      runPipeline([], {}, { openDb: () => ({ db: t.db, close: async () => {} }), log: () => {}, collectors: new Map() }),
+      runPipeline([], {}, { openDb: () => ({ db: t.db, close: async () => {} }), log: () => {}, collectors: new Map(), ...offline }),
     ).rejects.toThrow(/SESSION_DATABASE_URL/);
   });
 });
