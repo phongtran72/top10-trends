@@ -1,6 +1,7 @@
 import { COLLECTORS } from "@/collectors/index";
 import { pageRegion, PLATFORMS, platformSlug, type SourceDef, type SourceId } from "@/collectors/registry";
 import type { ListItem, RecentItem } from "./queries";
+import { rankWindow, WINDOWED_SOURCES } from "./window";
 
 // The home-page dashboard, computed from the last day of top-10 lists. Pure,
 // so it is tested without a database. Items are matched across runs by their
@@ -82,7 +83,18 @@ function runsFor(rows: readonly RecentItem[], source: SourceDef): Run[] {
     byRun.set(row.runId, run);
   }
   for (const run of byRun.values()) run.items.sort((a, b) => a.rank - b.rank);
-  return [...byRun.values()].sort((a, b) => b.fetchedAt.localeCompare(a.fetchedAt));
+  const runs = [...byRun.values()].sort((a, b) => b.fetchedAt.localeCompare(a.fetchedAt));
+  const hours = WINDOWED_SOURCES.get(source.id);
+  return hours === undefined ? runs : runs.map((run) => windowRun(run, runs, hours));
+}
+
+// A windowed source (Google Trends) as of one run: every item from the runs in
+// the window before it, ranked by search volume.
+function windowRun(run: Run, runs: readonly Run[], hours: number): Run {
+  const end = Date.parse(run.fetchedAt);
+  const start = end - hours * 60 * 60 * 1000;
+  const inWindow = runs.filter((r) => Date.parse(r.fetchedAt) > start && Date.parse(r.fetchedAt) <= end).flatMap((r) => r.items);
+  return { fetchedAt: run.fetchedAt, items: rankWindow(inWindow).slice(0, 10).map((item, index) => ({ ...item, rank: index + 1 })) };
 }
 
 const toListItem = ({ rank, title, url, metricValue, metricLabel }: RecentItem): ListItem => ({

@@ -3,11 +3,12 @@ import { MATCH_THRESHOLD } from "@/config/ranking";
 import type { TrendItem } from "@/collectors/types";
 import { embeddingText, type Embedder } from "@/lib/embed";
 import { prettyLabel } from "@/lib/text";
+import { rankWindow, WINDOWED_SOURCES } from "@/lib/window";
 import type { ListResult } from "./collect";
 import type { Db } from "./db";
 import { filterItems, type Dropped } from "./filter";
 import { matchItems, type MatchItem, type Topic } from "./match";
-import { currentEntries, scoreTopics, writeRankings, type PlatformRow, type ScoreEntry, type TopicScore } from "./score";
+import { currentEntries, scoreTopics, windowedItems, writeRankings, type PlatformRow, type ScoreEntry, type TopicScore } from "./score";
 import { algoVersion, buildSnapshots, writeSnapshots } from "./snapshots";
 import { loadRecentTopics, saveMatches } from "./topics";
 
@@ -81,8 +82,17 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
   const keptByList = lists.map((list) => {
     const filtered = filterItems(list.items, input.blocklist);
     dropped.push(...filtered.dropped);
-    return { list, kept: filtered.kept };
+    // A windowed source's own list is ordered by search volume, not by the feed.
+    const kept = WINDOWED_SOURCES.has(list.source.id)
+      ? rankWindow(filtered.kept.map((item) => ({ item, title: item.title, metricValue: item.metricValue, rank: item.rank, fetchedAt: list.finishedAt }))).map((w) => w.item)
+      : filtered.kept;
+    return { list, kept };
   });
+  // Ranks within each run: the source's own, or the volume order for a windowed source.
+  const runRank = new Map<TrendItem, number>();
+  for (const { list, kept: listItems } of keptByList) {
+    if (WINDOWED_SOURCES.has(list.source.id)) listItems.forEach((item, index) => runRank.set(item, index + 1));
+  }
 
   // Keys are trend_items ids in a full run, positions in a dry run.
   const kept = keptByList.flatMap((k) => k.kept);
@@ -94,7 +104,7 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
       key: keyOf.get(item)!,
       sourceId: item.source,
       role: source.role,
-      rank: item.rank,
+      rank: runRank.get(item) ?? item.rank,
       weight: source.weight,
       title: item.title,
       matchText: item.matchText,
@@ -113,7 +123,7 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
   if (input.db) await saveMatches(input.db, match);
   else match.topics.forEach((topic, index) => (topic.id ??= -(index + 1))); // temporary ids for a dry run
 
-  const platformRows: PlatformRow[] = keptByList.flatMap(({ list, kept: listItems }) =>
+  let platformRows: PlatformRow[] = keptByList.flatMap(({ list, kept: listItems }) =>
     listItems.slice(0, 10).map((item, index) => ({
       sourceId: list.source.id,
       rank: index + 1,
@@ -121,6 +131,17 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
       topicId: match.assignments.get(keyOf.get(item)!)?.id ?? null,
     })),
   );
+  // With a database, a windowed source's page list is its whole window.
+  if (input.db) {
+    for (const [sourceId, hours] of WINDOWED_SOURCES) {
+      if (!lists.some((list) => list.source.id === sourceId)) continue;
+      const window = await windowedItems(input.db, sourceId, input.now, hours);
+      platformRows = [
+        ...platformRows.filter((row) => row.sourceId !== sourceId),
+        ...window.filter((row) => row.rank <= 10).map((row) => ({ sourceId, rank: row.rank, itemId: row.itemId, topicId: row.topicId })),
+      ];
+    }
+  }
 
   let scores: TopicScore[];
   let snapshots = 0;

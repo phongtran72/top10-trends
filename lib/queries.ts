@@ -28,9 +28,13 @@ function iso(value: Date | string | null | undefined): string | null {
   return (value instanceof Date ? value : new Date(value)).toISOString();
 }
 
-// A platform's latest successful list, top 10 in the source's own order and
-// after filters when the rank step has ranked that list (phase 2); the raw
-// list otherwise.
+// Matches pipeline/score.ts RUN_LIST_MARGIN_MS: how long after a run's rankings
+// timestamp its lists may be fetched.
+const RANKING_MARGIN_MS = 15 * 60_000;
+
+// A platform's latest successful list, top 10 in the source's own order (by
+// search volume over 3 hours for Google Trends) and after filters when the
+// rank step has ranked that list (phase 2); the raw list otherwise.
 export async function platformList(db: Db, source: SourceDef, limit = 10): Promise<PlatformList | null> {
   const region = pageRegion(source);
   const [run] = await db
@@ -53,13 +57,25 @@ export async function platformList(db: Db, source: SourceDef, limit = 10): Promi
     metricValue: trendItems.metricValue,
     metricLabel: trendItems.metricLabel,
   };
-  const ranked = await db
-    .select({ rank: rankings.rank, ...fields })
+  // The filtered list the rank step wrote for that run. A run's rankings are
+  // stamped a moment before its lists are fetched; for Google Trends they can
+  // include items from earlier runs in its 3-hour window.
+  const [latestRanking] = await db
+    .select({ at: rankings.computedAt })
     .from(rankings)
-    .innerJoin(trendItems, eq(trendItems.id, rankings.itemId))
-    .where(and(eq(rankings.list, source.id), eq(trendItems.runId, run.id)))
-    .orderBy(asc(rankings.rank))
-    .limit(limit);
+    .where(eq(rankings.list, source.id))
+    .orderBy(desc(rankings.computedAt))
+    .limit(1);
+  const ranked =
+    latestRanking && latestRanking.at.getTime() >= run.startedAt.getTime() - RANKING_MARGIN_MS
+      ? await db
+          .select({ rank: rankings.rank, ...fields })
+          .from(rankings)
+          .innerJoin(trendItems, eq(trendItems.id, rankings.itemId))
+          .where(and(eq(rankings.list, source.id), eq(rankings.computedAt, latestRanking.at), eq(trendItems.region, region)))
+          .orderBy(asc(rankings.rank))
+          .limit(limit)
+      : [];
   const items =
     ranked.length > 0
       ? ranked
