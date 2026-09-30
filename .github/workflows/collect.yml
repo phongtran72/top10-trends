@@ -1,0 +1,58 @@
+name: collect
+
+# Started hourly by the Cloudflare Worker in worker/ through the
+# workflow-dispatch API. Never add a `schedule:` trigger: GitHub delays or
+# drops scheduled runs at busy times.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Fetch every enabled source and print its list; write nothing
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: collect
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Run pipeline
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+          SESSION_DATABASE_URL: ${{ secrets.SESSION_DATABASE_URL }}
+          SITE_URL: ${{ vars.SITE_URL }}
+          REVALIDATE_SECRET: ${{ secrets.REVALIDATE_SECRET }}
+          DISABLED_SOURCES: ${{ vars.DISABLED_SOURCES }}
+          COLLECTOR_USER_AGENT: ${{ vars.COLLECTOR_USER_AGENT }}
+          MASTODON_INSTANCE: ${{ vars.MASTODON_INSTANCE }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+          REDDIT_CLIENT_ID: ${{ secrets.REDDIT_CLIENT_ID }}
+          REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
+          REDDIT_USERNAME: ${{ vars.REDDIT_USERNAME }}
+          PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          TIKTOK_ENABLED: ${{ vars.TIKTOK_ENABLED }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            npm run pipeline -- --dry-run
+          else
+            npm run pipeline
+          fi
