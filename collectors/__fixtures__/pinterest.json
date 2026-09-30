@@ -1,0 +1,10 @@
+{
+  "run": { "data": { "id": "run345", "finishedAt": "2026-10-05T07:00:20.000Z", "defaultDatasetId": "ds678" } },
+  "items": [
+    { "term": "sample porch decor", "country": "US", "trendType": "growing", "rank": 2, "searchCount": 23 },
+    { "term": "example  wallpaper", "country": "US", "trendType": "growing", "rank": 1, "searchCount": 83 },
+    { "term": "exemple de recette", "country": "FR", "trendType": "growing", "rank": 1, "searchCount": 50 },
+    { "term": "test costume", "country": "US", "trendType": "seasonal", "rank": 1, "searchCount": 70 },
+    { "term": "test crafts & kids", "country": "US", "trendType": "growing", "rank": 3, "searchCount": null }
+  ]
+}

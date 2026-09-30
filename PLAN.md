@@ -2,7 +2,7 @@
 
 Synced with the Claude Docs plan on 2026-09-29; prices and limits were checked on 2026-09-28. This file is the source of truth for the build: update it whenever a decision changes.
 
-One hourly job pulls trend lists from six free sources, merges matching topics, and publishes each platform's top 10 plus a combined top 10. It costs $0 a month on free tiers and takes about 8 part-time weeks; adding X and AI topic names costs about $18 a month. Reddit and Pinterest need approval, TikTok and Instagram work only through scrapers, and Facebook, Threads and LinkedIn offer no trend source an individual can use.
+One hourly job pulls trend lists from six free sources, merges matching topics, and publishes each platform's top 10 plus a combined top 10. It costs $0 a month on free tiers and takes about 8 part-time weeks; adding X and AI topic names costs about $18 a month. Reddit needs approval, TikTok, Instagram and Pinterest are read through scrapers, and Facebook, Threads and LinkedIn offer no trend source an individual can use.
 
 ## What the site does
 
@@ -20,7 +20,7 @@ Version 1 shows one English-language list. A Global / US toggle arrives with X i
 
 ## Data sources
 
-Six sources are free and need no approval, so they form the MVP. X costs $0.010 per request, Reddit and Pinterest need approval, and TikTok and Instagram only work through scrapers.
+Six sources are free and need no approval, so they form the MVP. X costs $0.010 per request, Reddit needs approval, and TikTok, Instagram and Pinterest are read through scrapers.
 
 | Platform | Trending signal | Access | Cost | Region | Phase |
 | --- | --- | --- | --- | --- | --- |
@@ -32,7 +32,7 @@ Six sources are free and need no approval, so they form the MVP. X costs $0.010 
 | [Twitch](https://dev.twitch.tv/docs/api/reference/) | `GET /helix/games/top` (games sorted by live viewers) and `GET /helix/streams` | App access token (client credentials) | Free | Global | 1 |
 | [X](https://docs.x.com/x-api/trends/get-trends-by-woeid) | `GET /2/trends/by/woeid/{woeid}`: trend name, post count, up to 50 (default 20) | Developer account with pay-per-use credits | [$0.010 per request](https://docs.x.com/x-api/getting-started/pricing): $14.40 a month hourly for 2 regions | Worldwide (WOEID 1), US (23424977) | 3 |
 | [Reddit](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy) | `/r/popular/hot` or `/r/all/top?t=hour` on `oauth.reddit.com`: title, score, comments, subreddit, NSFW flag | OAuth app plus explicit approval; non-commercial use goes through a sign-up form | Free; 100 queries per minute | Global | 3, once approved |
-| [Pinterest](https://developers.pinterest.com/docs/getting-started/access-tiers/) | `GET /v5/trends/keywords/{region}/top/{trend_type}`: ranked keywords (growing, monthly, yearly, seasonal) | Business account plus app review | Free; Trial tier 1,000 calls a day | US and country groups | 3, after review |
+| [Pinterest](https://trends.pinterest.com/) | Pinterest Trends' growing search keywords over 30 days: term, rank, a 0–100 search index, weekly, monthly and yearly change; the site refreshes weekly | The [Apify actor automation-lab/pinterest-trends-scraper](https://apify.com/automation-lab/pinterest-trends-scraper), which reads the public Trends site. Pinterest's [own API](https://developers.pinterest.com/docs/getting-started/access-tiers/) (`GET /v5/trends/keywords/{region}/top/{trend_type}`) is free but needs a business account and app review, so it can replace the scraper later | ≈ $0.26 a month: 25 keywords twice a week at $0.03 a run, inside Apify's free $5 | US and country groups | 3, optional |
 | [TikTok](https://ads.tiktok.com/creative/creativeCenter/trends/hashtag) | Creative Center hashtags over a 7-day window; no API for individuals (the Research API is academic-only) | Third-party scraper: the [Apify actor data_xplorer/tiktok-trends](https://apify.com/data_xplorer/tiktok-trends), since Creative Center shows logged-out visitors only its top 3 and other actors return just those; TikTok's terms ban scraping | ≈ $1.70 a month: 30 hashtags daily at $0.055 a run ($0.025 plus $0.001 a hashtag), inside Apify's free $5 | Per country | 3, optional |
 | [Instagram](https://www.instagram.com/explore/) | Instagram's public trending topics (`instagram.com/popular/<topic>/`): topic, rank, all-time post count; no API (Meta's [hashtag search](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/hashtag-search/) only looks up hashtags you name, 30 per 7 days) | Third-party scraper: the [Apify actor s-r/instagram-trending-scraper](https://apify.com/s-r/instagram-trending-scraper), new in 2026 and unproven; Instagram's terms ban scraping | ≈ $2.40 a month: 10 topics every 6 hours at $0.02 a run (the free plan caps a run at 10), inside Apify's free $5 | Global only | 3, optional |
 
@@ -46,6 +46,7 @@ TikTok's actor also returns each hashtag's 7-day daily popularity curve (0–100
 | --- | --- | --- | --- | --- | --- |
 | 2026-09-30 22:07 | X | First pipeline run (Worldwide and US) | Hourly at :07 | 20 trends per region | Live |
 | 2026-10-01 06:00 | TikTok | First scheduled run of data_xplorer/tiktok-trends (test runs on 2026-09-30 21:22 with 15 hashtags and 21:47 with 30) | Daily at 06:00 | 30 US hashtags | 7 days |
+| 2026-10-01 07:00 | Pinterest | First scheduled run of automation-lab/pinterest-trends-scraper (test run on 2026-09-30 21:55) | Mondays and Thursdays at 07:00 | 25 growing US keywords | 30 days |
 | 2026-09-30 21:50 | Instagram | One-day turnover test of s-r/instagram-trending-scraper, ending 2026-10-01 21:50; the lasting cadence is set from its results | Hourly at :50 | 10 topics (free-plan cap) | Current list |
 
 ## Cost tiers
@@ -54,9 +55,9 @@ Start free; the Starter tier, about $18 a month, is the best value because X's l
 
 | Tier | Monthly cost | Platforms | What it includes |
 | --- | --- | --- | --- |
-| Free | $0 | Bluesky, Google Trends, YouTube, Mastodon, Hacker News, Twitch; Reddit and Pinterest once approved | Free APIs and hosting (Vercel, Supabase, GitHub Actions, Cloudflare), a local embedding model, topic names taken from trend lists |
+| Free | $0 | Bluesky, Google Trends, YouTube, Mastodon, Hacker News, Twitch; Reddit once approved | Free APIs and hosting (Vercel, Supabase, GitHub Actions, Cloudflare), a local embedding model, topic names taken from trend lists |
 | Starter | ≈ $18 | Free tier + X | X trends hourly for Worldwide and US ($14.40), [Claude Haiku 4.5](https://platform.claude.com/docs/en/about-claude/pricing) topic names and one-line summaries (≈ $3.24), [OpenAI embeddings](https://developers.openai.com/api/docs/pricing) (≈ $0.06) |
-| Plus | ≈ $18 | Starter + TikTok and Instagram | TikTok's top 30 US hashtags (7-day window) daily and Instagram's top 10 trending topics every 6 hours via Apify actors: about $4.10 of usage a month together, inside [Apify's free plan](https://apify.com/pricing) ($5 a month, which blocks rather than bills beyond it); both platforms' terms ban scraping |
+| Plus | ≈ $18 | Starter + TikTok, Instagram and Pinterest | TikTok's top 30 US hashtags (7-day window) daily, Instagram's top 10 trending topics every 6 hours and Pinterest's 25 growing US keywords twice a week via Apify actors: about $4.40 of usage a month together, inside [Apify's free plan](https://apify.com/pricing) ($5 a month, which blocks rather than bills beyond it; no subscription); the platforms' terms ban scraping |
 
 Above about $25, money mostly buys refresh speed (X every 15 minutes costs $57.60 a month) or enterprise listening data, which a personal top 10 does not need. Estimates assume a 30-day month of 720 hourly runs and about 5 new topics an hour to name, at roughly 600 input and 60 output tokens each.
 
@@ -156,7 +157,7 @@ About 8 weeks at 6–10 hours a week gets the full site live; the per-platform l
 | 0 · Setup | 1 | Repo, database, workflows, Cloudflare trigger, empty site on Vercel; Reddit and X applications sent | A heartbeat row lands every hour for 24 hours |
 | 1 · Per-platform lists | 2–3 | Six collectors, platform and status pages, a dashboard home page, revalidation, 28-day purge | 7-day soak at 95% success per source (runs into week 4); lists go public |
 | 2 · Combined top 10 | 4–5 | Normalization, filters, embeddings, topic matching, scoring, home and topic pages | In 5 random hours, at least 8 of 10 topics make sense, with no duplicates |
-| 3 · Paid and approved sources | 6 | X with its spend cap, the Global / US toggle, Reddit and Pinterest when approved, optional TikTok, Instagram and Claude topic names | Projected monthly spend within your chosen tier |
+| 3 · Paid and approved sources | 6 | X with its spend cap, the Global / US toggle, Reddit when approved, optional TikTok, Instagram, Pinterest and Claude topic names | Projected monthly spend within your chosen tier |
 | 4 · Polish and launch | 7–8 | Archive pages, share images, page titles, failure alerts, analytics | Launch and share the link |
 
 The 28-day purge sits in phase 1, not phase 4, so stored YouTube data never passes the 30-day limit.

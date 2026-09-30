@@ -12,7 +12,7 @@ Sections 1–8 cover phases 0–1. Sections 9–13 are for later phases or optio
 4. Let cloud sessions reach the data sources. The default network access blocks most of them. In your cloud environment's settings ([Configure cloud environments](https://code.claude.com/docs/en/cloud-environments)), choose custom network access, keep the default domains, and add:
     - Phase 1: `public.api.bsky.app`, `trends.google.com`, `mastodon.social`, `hacker-news.firebaseio.com`, `id.twitch.tv`, `api.twitch.tv`
     - Phase 2 (local embedding model): `huggingface.co`, plus any download host a blocked request names
-    - Phase 3, only for the sources you add: `api.x.com`, `www.reddit.com`, `oauth.reddit.com`, `api.pinterest.com`, `api.apify.com`, `api.anthropic.com`, `api.openai.com`
+    - Phase 3, only for the sources you add: `api.x.com`, `www.reddit.com`, `oauth.reddit.com`, `api.apify.com`, `api.anthropic.com`, `api.openai.com`
 
     The hourly job itself runs in GitHub Actions, which has no such limit; this list only lets Claude test sources inside its sessions.
 5. Start a session from the **Code** tab in the Claude app (or claude.ai/code) with the phase 0 prompt in `TASKS.md`.
@@ -82,12 +82,12 @@ If Reddit refuses, the site runs without it.
 
 ## 11. Pinterest (optional, phase 3)
 
-A business account, then an app at [developers.pinterest.com](https://developers.pinterest.com/docs/getting-started/set-up-app/). Wait for the review that grants Trial access, then generate an access token with the `user_accounts:read` scope → `PINTEREST_ACCESS_TOKEN`. Pinterest tokens expire; task 3.4 handles the refresh.
+Pinterest is read through Apify: see §12, step 5. Pinterest's own trends API is free, but it needs a business account and an app at [developers.pinterest.com](https://developers.pinterest.com/docs/getting-started/set-up-app/) that passes review for Trial access; if you ever get that, it can replace the scraper.
 
-## 12. Apify, for TikTok and Instagram (optional, phase 3)
+## 12. Apify, for TikTok, Instagram and Pinterest (optional, phase 3)
 
 1. Create an [Apify](https://apify.com/pricing) account. The free plan includes $5 of usage a month and blocks, rather than bills, beyond it.
-2. Copy your API token (**Settings › API & Integrations**) into the GitHub secret `APIFY_TOKEN`, and set the GitHub variables `TIKTOK_ENABLED` and `INSTAGRAM_ENABLED` to `true` for the sources you want.
+2. Copy your API token (**Settings › API & Integrations**) into the GitHub secret `APIFY_TOKEN`, and set the GitHub variables `TIKTOK_ENABLED`, `INSTAGRAM_ENABLED` and `PINTEREST_ENABLED` to `true` for the sources you want.
 3. Open the actor [data_xplorer/tiktok-trends](https://apify.com/data_xplorer/tiktok-trends) and create a **schedule** (**Schedules › Create**) that runs it daily (cron `0 6 * * *`, UTC) with this input and a maximum cost per run of $0.25:
 
     ```json
@@ -101,9 +101,16 @@ A business account, then an app at [developers.pinterest.com](https://developers
     { "maxKeywords": 10, "expandRelatedTopics": false }
     ```
 
-    It costs $0.002 per topic with no start fee, and the free plan caps a run at 10 topics: $0.02 a run, about $2.40 a month. Together with TikTok that is about $4.10 of the free $5. If no run has succeeded for 18 hours, Instagram shows as failing on /status.
+    It costs $0.002 per topic with no start fee, and the free plan caps a run at 10 topics: $0.02 a run, about $2.40 a month. Together with TikTok and Pinterest that is about $4.40 of the free $5. If no run has succeeded for 18 hours, Instagram shows as failing on /status.
+5. Open the actor [automation-lab/pinterest-trends-scraper](https://apify.com/automation-lab/pinterest-trends-scraper) and create a schedule that runs it on Mondays and Thursdays at 07:00 (cron `0 7 * * 1,4`, UTC) with this input and a maximum cost per run of $0.10:
 
-TikTok's and Instagram's terms ban scraping, so these sources are your call.
+    ```json
+    { "countries": ["US"], "trendTypes": ["growing"], "maxResultsPerCountry": 25 }
+    ```
+
+    25 keywords cost $0.03 in a test, so about $0.26 a month. Pinterest Trends refreshes weekly, so twice a week is enough. If no run has succeeded for 180 hours (7.5 days), Pinterest shows as failing on /status.
+
+TikTok's, Instagram's and Pinterest's terms ban scraping, so these sources are your call.
 
 ## 13. Anthropic and OpenAI (optional)
 
@@ -130,10 +137,10 @@ TikTok's and Instagram's terms ban scraping, so these sources are your call.
 | `X_BEARER_TOKEN` | X app Bearer token | X collector | GitHub secret | 3 |
 | `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | Reddit app credentials | Reddit collector | GitHub secrets | 3 |
 | `REDDIT_USERNAME` | Your Reddit username, for the User-Agent | Reddit collector | GitHub variable | 3 |
-| `PINTEREST_ACCESS_TOKEN` | Pinterest token (plus any refresh credentials) | Pinterest collector | GitHub secret | 3 |
-| `APIFY_TOKEN` | Apify API token | TikTok and Instagram collectors | GitHub secret | 3 |
+| `APIFY_TOKEN` | Apify API token | TikTok, Instagram and Pinterest collectors | GitHub secret | 3 |
 | `TIKTOK_ENABLED` | `true` to turn TikTok on | TikTok collector | GitHub variable | 3 |
 | `INSTAGRAM_ENABLED` | `true` to turn Instagram on | Instagram collector | GitHub variable | 3 |
+| `PINTEREST_ENABLED` | `true` to turn Pinterest on | Pinterest collector | GitHub variable | 3 |
 | `ANTHROPIC_API_KEY` | Anthropic API key | Topic names | GitHub secret | 3 |
 
 `GH_OWNER` and `GH_REPO` are not secrets; they live in `worker/wrangler.toml`, filled in by task 0.7.

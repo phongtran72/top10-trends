@@ -5,6 +5,7 @@ import { hackerNews } from "./hacker-news";
 import { COLLECTORS } from "./index";
 import { instagram } from "./instagram";
 import { mastodon } from "./mastodon";
+import { pinterest } from "./pinterest";
 import { PLATFORMS } from "./registry";
 import { fixture, jsonFixture, routedContext } from "./test-utils";
 import { tiktok } from "./tiktok";
@@ -249,9 +250,9 @@ describe("twitch", () => {
 });
 
 describe("collector registry", () => {
-  it("builds the phase 1 collectors plus X, TikTok and Instagram, each under its own id", () => {
+  it("builds the phase 1 collectors plus X, TikTok, Instagram and Pinterest, each under its own id", () => {
     expect([...COLLECTORS.keys()].sort()).toEqual(
-      [...PLATFORMS.filter((p) => p.phase === 1).map((p) => p.id), "x", "tiktok", "instagram"].sort(),
+      [...PLATFORMS.filter((p) => p.phase === 1).map((p) => p.id), "x", "tiktok", "instagram", "pinterest"].sort(),
     );
     for (const [id, collector] of COLLECTORS) expect(collector.id).toBe(id);
   });
@@ -431,6 +432,59 @@ describe("instagram", () => {
     const { ctx } = routedContext(routes(), { APIFY_TOKEN: "t" });
     ctx.now = new Date("2026-10-09T06:00:00Z");
     await expect(instagram.fetch("global", ctx)).rejects.toThrow("latest Instagram run finished 24 h ago; check the Apify schedule");
+  });
+});
+
+describe("pinterest", () => {
+  const data = jsonFixture<{ run: unknown; items: unknown }>("pinterest.json");
+  const routes = (): [string, (url: string, init: RequestInit) => Response][] => [
+    ["https://api.apify.com/v2/acts/automation-lab~pinterest-trends-scraper/runs/last", () => Response.json(data.run)],
+    ["https://api.apify.com/v2/datasets/ds678/items", () => Response.json(data.items)],
+  ];
+
+  it("reads the latest successful Apify run's growing US keywords in rank order", async () => {
+    const { ctx, calls } = routedContext(routes(), { APIFY_TOKEN: "apify-token" });
+    ctx.now = new Date("2026-10-06T12:07:00Z");
+    const items = await pinterest.fetch("us", ctx);
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://api.apify.com/v2/acts/automation-lab~pinterest-trends-scraper/runs/last?status=SUCCEEDED",
+      "https://api.apify.com/v2/datasets/ds678/items?clean=true",
+    ]);
+    expect(calls.every((c) => (c.init.headers as Record<string, string>).Authorization === "Bearer apify-token")).toBe(true);
+    expect(items).toEqual([
+      {
+        source: "pinterest",
+        region: "us",
+        rank: 1,
+        title: "example wallpaper",
+        url: "https://trends.pinterest.com/detail/?terms=example%20wallpaper&country=US",
+        metricValue: 83,
+        metricLabel: "search index",
+      },
+      {
+        source: "pinterest",
+        region: "us",
+        rank: 2,
+        title: "sample porch decor",
+        url: "https://trends.pinterest.com/detail/?terms=sample%20porch%20decor&country=US",
+        metricValue: 23,
+        metricLabel: "search index",
+      },
+      // Other countries and trend types are skipped; a missing count leaves the metric out.
+      {
+        source: "pinterest",
+        region: "us",
+        rank: 3,
+        title: "test crafts & kids",
+        url: "https://trends.pinterest.com/detail/?terms=test%20crafts%20%26%20kids&country=US",
+      },
+    ]);
+  });
+
+  it("fails when the twice-weekly schedule has stopped", async () => {
+    const { ctx } = routedContext(routes(), { APIFY_TOKEN: "t" });
+    ctx.now = new Date("2026-10-13T07:00:00Z");
+    await expect(pinterest.fetch("us", ctx)).rejects.toThrow("latest Pinterest run finished 192 h ago; check the Apify schedule");
   });
 });
 
