@@ -2,7 +2,7 @@
 
 Synced with the Claude Docs plan on 2026-09-29; prices and limits were checked on 2026-09-28. This file is the source of truth for the build: update it whenever a decision changes.
 
-One hourly job pulls trend lists from six free sources, merges matching topics, and publishes each platform's top 10 plus a combined top 10. It costs $0 a month on free tiers and takes about 8 part-time weeks; adding X and AI topic names costs about $18 a month. Reddit and Pinterest need approval, TikTok works only through scrapers, and Instagram, Facebook, Threads and LinkedIn offer no trend API an individual can use.
+One hourly job pulls trend lists from six free sources, merges matching topics, and publishes each platform's top 10 plus a combined top 10. It costs $0 a month on free tiers and takes about 8 part-time weeks; adding X and AI topic names costs about $18 a month. Reddit needs approval, TikTok, Instagram and Pinterest are read through scrapers, and Facebook, Threads and LinkedIn offer no trend source an individual can use.
 
 ## What the site does
 
@@ -20,7 +20,7 @@ Version 1 shows one English-language list. A Global / US toggle arrives with X i
 
 ## Data sources
 
-Six sources are free and need no approval, so they form the MVP. X costs $0.010 per request, Reddit and Pinterest need approval, and TikTok only works through scrapers.
+Six sources are free and need no approval, so they form the MVP. X costs $0.010 per request, Reddit needs approval, and TikTok, Instagram and Pinterest are read through scrapers.
 
 | Platform | Trending signal | Access | Cost | Region | Phase |
 | --- | --- | --- | --- | --- | --- |
@@ -32,10 +32,22 @@ Six sources are free and need no approval, so they form the MVP. X costs $0.010 
 | [Twitch](https://dev.twitch.tv/docs/api/reference/) | `GET /helix/games/top` (games sorted by live viewers) and `GET /helix/streams` | App access token (client credentials) | Free | Global | 1 |
 | [X](https://docs.x.com/x-api/trends/get-trends-by-woeid) | `GET /2/trends/by/woeid/{woeid}`: trend name, post count, up to 50 (default 20) | Developer account with pay-per-use credits | [$0.010 per request](https://docs.x.com/x-api/getting-started/pricing): $14.40 a month hourly for 2 regions | Worldwide (WOEID 1), US (23424977) | 3 |
 | [Reddit](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy) | `/r/popular/hot` or `/r/all/top?t=hour` on `oauth.reddit.com`: title, score, comments, subreddit, NSFW flag | OAuth app plus explicit approval; non-commercial use goes through a sign-up form | Free; 100 queries per minute | Global | 3, once approved |
-| [Pinterest](https://developers.pinterest.com/docs/getting-started/access-tiers/) | `GET /v5/trends/keywords/{region}/top/{trend_type}`: ranked keywords (growing, monthly, yearly, seasonal) | Business account plus app review | Free; Trial tier 1,000 calls a day | US and country groups | 3, after review |
-| [TikTok](https://ads.tiktok.com/creative/creativeCenter/trends/hashtag) | Creative Center hashtags over a 7-day window; no API for individuals (the Research API is academic-only) | Third-party scraper such as an [Apify actor](https://apify.com/automation-lab/tiktok-trends-scraper); TikTok's terms ban scraping | ≈ $6 a month refreshed daily | Per country | 3, optional |
+| [Pinterest](https://trends.pinterest.com/) | Pinterest Trends' growing search keywords over 30 days: term, rank, a 0–100 search index, weekly, monthly and yearly change; the site refreshes weekly | The [Apify actor automation-lab/pinterest-trends-scraper](https://apify.com/automation-lab/pinterest-trends-scraper), which reads the public Trends site. Pinterest's [own API](https://developers.pinterest.com/docs/getting-started/access-tiers/) (`GET /v5/trends/keywords/{region}/top/{trend_type}`) is free but needs a business account and app review, so it can replace the scraper later | ≈ $0.26 a month: 25 keywords twice a week at $0.03 a run, inside Apify's free $5 | US and country groups | 3, optional |
+| [TikTok](https://ads.tiktok.com/creative/creativeCenter/trends/hashtag) | Creative Center hashtags over a 7-day window; no API for individuals (the Research API is academic-only) | Third-party scraper: the [Apify actor data_xplorer/tiktok-trends](https://apify.com/data_xplorer/tiktok-trends), since Creative Center shows logged-out visitors only its top 3 and other actors return just those; TikTok's terms ban scraping | ≈ $1.70 a month: 30 hashtags daily at $0.055 a run ($0.025 plus $0.001 a hashtag), inside Apify's free $5 | Per country | 3, optional |
+| [Instagram](https://www.instagram.com/explore/) | Instagram's public trending topics (`instagram.com/popular/<topic>/`): topic, rank, all-time post count; no API (Meta's [hashtag search](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/hashtag-search/) only looks up hashtags you name, 30 per 7 days) | Third-party scraper: the [Apify actor s-r/instagram-trending-scraper](https://apify.com/s-r/instagram-trending-scraper), new in 2026 and unproven; Instagram's terms ban scraping | ≈ $2.40 a month: 10 topics every 6 hours at $0.02 a run (the free plan caps a run at 10), inside Apify's free $5 | Global only | 3, optional |
 
-Instagram, Facebook, Threads and LinkedIn are left out because none offers a trends endpoint an individual can use. [Instagram hashtag search](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/hashtag-search/) is capped at 30 hashtags per 7 days, [Threads keyword search](https://developers.facebook.com/docs/threads/keyword-search/) needs app approval, Facebook [removed Trending in 2018](https://about.fb.com/news/2018/06/removing-trending/), and [LinkedIn's self-serve API](https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access) covers only profiles and posting.
+Facebook, Threads and LinkedIn are left out because none offers a trends source an individual can use. [Threads keyword search](https://developers.facebook.com/docs/threads/keyword-search/) needs app approval, Facebook [removed Trending in 2018](https://about.fb.com/news/2018/06/removing-trending/), and [LinkedIn's self-serve API](https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access) covers only profiles and posting.
+
+TikTok's actor also returns each hashtag's 7-day daily popularity curve (0–100) and an up/down direction. The collector passes them on as `TrendItem.series` and `flags.direction`; `trend_items` doesn't store them, and phase 5 keeps them for research (PLAN.md › Predictions and research).
+
+**Source cadence log.** Forecasting models need each source sampled the same way for weeks, so record every change to a scheduled source here: the date, what changed, and the resulting cadence, depth and window. Research cuts its data at these points. Sources the hourly pipeline fetches directly are sampled hourly, from their first run.
+
+| Date (UTC) | Source | Change | Cadence | Depth | Window |
+| --- | --- | --- | --- | --- | --- |
+| 2026-09-30 22:07 | X | First pipeline run (Worldwide and US) | Hourly at :07 | 20 trends per region | Live |
+| 2026-10-01 06:00 | TikTok | First scheduled run of data_xplorer/tiktok-trends (test runs on 2026-09-30 21:22 with 15 hashtags and 21:47 with 30) | Daily at 06:00 | 30 US hashtags | 7 days |
+| 2026-10-01 07:00 | Pinterest | First scheduled run of automation-lab/pinterest-trends-scraper (test run on 2026-09-30 21:55) | Mondays and Thursdays at 07:00 | 25 growing US keywords | 30 days |
+| 2026-09-30 21:50 | Instagram | One-day turnover test of s-r/instagram-trending-scraper, ending 2026-10-01 21:50; the lasting cadence is set from its results | Hourly at :50 | 10 topics (free-plan cap) | Current list |
 
 ## Cost tiers
 
@@ -43,9 +55,9 @@ Start free; the Starter tier, about $18 a month, is the best value because X's l
 
 | Tier | Monthly cost | Platforms | What it includes |
 | --- | --- | --- | --- |
-| Free | $0 | Bluesky, Google Trends, YouTube, Mastodon, Hacker News, Twitch; Reddit and Pinterest once approved | Free APIs and hosting (Vercel, Supabase, GitHub Actions, Cloudflare), a local embedding model, topic names taken from trend lists |
+| Free | $0 | Bluesky, Google Trends, YouTube, Mastodon, Hacker News, Twitch; Reddit once approved | Free APIs and hosting (Vercel, Supabase, GitHub Actions, Cloudflare), a local embedding model, topic names taken from trend lists |
 | Starter | ≈ $18 | Free tier + X | X trends hourly for Worldwide and US ($14.40), [Claude Haiku 4.5](https://platform.claude.com/docs/en/about-claude/pricing) topic names and one-line summaries (≈ $3.24), [OpenAI embeddings](https://developers.openai.com/api/docs/pricing) (≈ $0.06) |
-| Plus | ≈ $19–24 | Starter + TikTok | TikTok hashtags once a day via an Apify actor: ≈ $6 of usage, of which [Apify's free plan](https://apify.com/pricing) covers $5; TikTok's terms ban scraping |
+| Plus | ≈ $18 | Starter + TikTok, Instagram and Pinterest | TikTok's top 30 US hashtags (7-day window) daily, Instagram's top 10 trending topics every 6 hours and Pinterest's 25 growing US keywords twice a week via Apify actors: about $4.40 of usage a month together, inside [Apify's free plan](https://apify.com/pricing) ($5 a month, which blocks rather than bills beyond it; no subscription); the platforms' terms ban scraping |
 
 Above about $25, money mostly buys refresh speed (X every 15 minutes costs $57.60 a month) or enterprise listening data, which a personal top 10 does not need. Estimates assume a 30-day month of 720 hourly runs and about 5 new topics an hour to name, at roughly 600 input and 60 output tokens each.
 
@@ -54,7 +66,7 @@ Above about $25, money mostly buys refresh speed (X every 15 minutes costs $57.6
 ```mermaid
 flowchart LR
   CF["Cloudflare Worker cron (hourly)"]
-  P["Platforms: Bluesky, Google Trends, YouTube, Mastodon, Hacker News, Twitch; later X, Reddit, Pinterest, TikTok"]
+  P["Platforms: Bluesky, Google Trends, YouTube, Mastodon, Hacker News, Twitch; later X, Reddit, Pinterest, TikTok, Instagram"]
   subgraph job ["GitHub Actions: pipeline/run.ts"]
     C["1. Collect"] --> M["2. Merge"] --> R["3. Rank"]
   end
@@ -95,7 +107,7 @@ Page caching uses Next.js 16 without Cache Components, because `next build` must
 
 Each platform's top 10 keeps that platform's own order; the combined top 10 rewards topics that rank high on several platforms, led by sources that report live trends.
 
-**Per-platform top 10.** Show the first 10 items in the order the source returns them, after filters. X, Google Trends, Bluesky, Mastodon, Twitch, Pinterest and TikTok return ranked trend lists; Reddit, YouTube and Hacker News return ranked posts or videos, shown as they are.
+**Per-platform top 10.** Show the first 10 items in the order the source returns them, after filters. X, Google Trends, Bluesky, Mastodon, Twitch, Pinterest, TikTok and Instagram return ranked trend lists; Reddit, YouTube and Hacker News return ranked posts or videos, shown as they are.
 
 **Combined top 10**, recomputed every run:
 
@@ -115,15 +127,15 @@ P(T) is the set of platforms where topic T appears, r is its best rank there, an
 | Role | Platforms and starting weights |
 | --- | --- |
 | Lead sources | X 1.0, Google Trends 1.0, Reddit 0.8, Bluesky 0.5, Mastodon 0.3 |
-| Corroborating only | YouTube 0.8, TikTok 0.5, Twitch 0.3, Hacker News 0.3, Pinterest 0.3 |
+| Corroborating only | YouTube 0.8, TikTok 0.5, Instagram 0.5, Twitch 0.3, Hacker News 0.3, Pinterest 0.3 |
 
-Corroborating sources count only when a lead source also has the topic, which keeps music videos and evergreen games out of the combined list. On the Free tier the combined list leans on Google Trends and Bluesky, and it gets much stronger once X and Reddit join; tune the weights by eye in phase 2.
+Corroborating sources count only when a lead source also has the topic, which keeps music videos and evergreen games out of the combined list. Instagram's trending topics read like search terms ("mlb playoffs", "national coffee day"), so it could become a lead source, but it starts as corroborating because its scraper is new and its list is refreshed only every 6 hours; revisit this with the phase 2 eval output. On the Free tier the combined list leans on Google Trends and Bluesky, and it gets much stronger once X and Reddit join; tune the weights by eye in phase 2.
 
 The rank step runs after the lists are saved, in its own error handler, so a failure in filtering, embedding or matching never costs the lists, the heartbeat or the page refresh. Filters run in memory because the flags and headlines they read are not stored. Each platform's page shows its list after filters, renumbered 1 to 10; the combined score uses each item's original rank.
 
 **Matching threshold.** The model is `Xenova/all-MiniLM-L6-v2` with 8-bit weights (23 MB), chosen on 2026-09-30. Measured with it, the same story worded differently scores about 0.65 to 0.70 ("world series" against "dodgers win game 4 of the world series": 0.70), a related but different topic about 0.63 ("baseball"), and unrelated text about 0.2. A first probe of one hour of real lists merged only correct pairs, and only at 0.55 to 0.65 (Deadlock on Bluesky and Twitch; Flydubai on Bluesky and Mastodon). So 0.80 is too strict for this model. `npm run replay -- tune` replays the stored lists at several thresholds. On the first 10 hours (2026-09-30), 0.60 merged only correct pairs, while 0.55 began merging related but different stories (a GTA VI article with older GTA games on Twitch; two different GPT-6.1 stories). Task 2.9 confirms the value on a week of data. Once phase 2 is live, `npm run replay -- rebuild` backfills topics, rankings and snapshots for the hours before it, while the stored lists still cover them.
 
-**Regions.** Each stored list keeps its feed's real region: `us` for Google Trends and YouTube (plus `gb`, `ca` and `au` from phase 3) and `global` for Bluesky, Mastodon, Hacker News and Twitch. Until phase 3 the site has one view, stored as `global` and built from every list. From phase 3 there are two views. US uses X's US list, the US feeds and the global lists. Global uses X's Worldwide list, the global lists, and Google Trends and YouTube for the US, UK, Canada and Australia. Per-platform pages show a source's global feed, or its US feed when it has no global one.
+**Regions.** Each stored list keeps its feed's real region: `us` for Google Trends and YouTube (plus `gb`, `ca` and `au` from phase 3) and `global` for Bluesky, Mastodon, Hacker News, Twitch and Instagram. Until phase 3 the site has one view, stored as `global` and built from every list. From phase 3 there are two views. US uses X's US list, the US feeds and the global lists. Global uses X's Worldwide list, the global lists, and Google Trends and YouTube for the US, UK, Canada and Australia. Per-platform pages show a source's global feed, or its US feed when it has no global one.
 
 ## Data model
 
@@ -131,7 +143,7 @@ Seven Postgres tables hold everything. Raw items are deleted after 28 days, insi
 
 | Table | Columns | Retention |
 | --- | --- | --- |
-| `sources` | `id` text PK (`x`, `google_trends`, `reddit`, `bluesky`, `mastodon`, `youtube`, `tiktok`, `twitch`, `hacker_news`, `pinterest`, `heartbeat`), `name` text, `role` text (`lead`, `corroborating`, `system`), `weight` real, `enabled` boolean, `regions` text[] | Permanent; upserted from `collectors/registry.ts` at the start of each run |
+| `sources` | `id` text PK (`x`, `google_trends`, `reddit`, `bluesky`, `mastodon`, `youtube`, `tiktok`, `instagram`, `twitch`, `hacker_news`, `pinterest`, `heartbeat`), `name` text, `role` text (`lead`, `corroborating`, `system`), `weight` real, `enabled` boolean, `regions` text[] | Permanent; upserted from `collectors/registry.ts` at the start of each run |
 | `fetch_runs` | `id` bigserial PK, `source_id` text → sources, `region` text, `started_at` timestamptz, `finished_at` timestamptz, `status` text (`ok`, `error`, `skipped`), `item_count` int, `error` text | 90 days |
 | `trend_items` | `id` bigserial PK, `run_id` bigint → fetch_runs, `source_id` text, `region` text, `rank` int, `title` text, `url` text, `metric_value` bigint, `metric_label` text, `fetched_at` timestamptz; index on (`source_id`, `region`, `fetched_at` desc) | 28 days |
 | `topics` | `id` bigserial PK, `slug` text unique, `label` text, `summary` text (one line of context), `centroid` real[384], `first_seen` timestamptz, `last_seen` timestamptz | Permanent |
@@ -172,7 +184,7 @@ About 8 weeks at 6–10 hours a week gets the full site live; the per-platform l
 | 0 · Setup | 1 | Repo, database, workflows, Cloudflare trigger, empty site on Vercel; Reddit and X applications sent | A heartbeat row lands every hour for 24 hours |
 | 1 · Per-platform lists | 2–3 | Six collectors, platform and status pages, a dashboard home page, revalidation, 28-day purge | 7-day soak at 95% success per source (runs into week 4); lists go public |
 | 2 · Combined top 10 | 4–5 | Normalization, filters, embeddings, topic matching, scoring, home and topic pages | In 5 random hours, at least 8 of 10 topics make sense, with no duplicates |
-| 3 · Paid and approved sources | 6 | X with its spend cap, the Global / US toggle, Reddit and Pinterest when approved, optional TikTok and Claude topic names | Projected monthly spend within your chosen tier |
+| 3 · Paid and approved sources | 6 | X with its spend cap, the Global / US toggle, Reddit when approved, optional TikTok, Instagram, Pinterest and Claude topic names | Projected monthly spend within your chosen tier |
 | 4 · Polish and launch | 7–8 | Archive pages, share images, page titles, failure alerts, analytics | Launch and share the link |
 | 5 · Predictions | After 6–8 weeks of snapshots | Rising or fading and lifespan forecasts for creators and marketers, a public forecast record, later a weeks-ahead calendar | On 4 held-out weeks, breakout alerts are right at least 60% of the time and come at least 2 hours early |
 
@@ -180,13 +192,14 @@ The 28-day purge sits in phase 1, not phase 4, so stored YouTube data never pass
 
 ## Risks
 
-The biggest risks are a thin combined list on the Free tier, access changes at Reddit and X, and scraper breakage at TikTok. Any source can be switched off with the `DISABLED_SOURCES` variable, and one failing source never blanks the site.
+The biggest risks are a thin combined list on the Free tier, access changes at Reddit and X, and scraper breakage at TikTok and Instagram. Any source can be switched off with the `DISABLED_SOURCES` variable, and one failing source never blanks the site.
 
 | Risk | Likelihood | Fallback |
 | --- | --- | --- |
 | The Free-tier combined list feels thin, because few free sources share topics | High | Add X in phase 3; attach Google Trends headlines to items to improve matching |
 | Reddit delays or refuses API access (explicit approval required under its [Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy), updated June 2026) | High | Launch without Reddit; apply in week 1 and add it when approved |
 | The TikTok scraper breaks, or TikTok enforces its [no-scraping terms](https://t.tiktok.com/legal/page/us/terms-of-service/en) | High | Keep TikTok optional, daily and flagged; drop it after 3 failed days in a row |
+| The Instagram scraper breaks (it is new, with few users), Instagram reshapes its trending pages, or Instagram enforces its no-scraping terms | High | Keep Instagram optional (`INSTAGRAM_ENABLED`) and corroborating only, so losing it never changes which topics can appear; /status flags it after 18 hours without a successful run |
 | Bluesky changes its "unspecced" trends endpoints | Medium | Count hashtags from the [Jetstream](https://bsky.network/docs/jetstream/) firehose instead |
 | X changes pricing again (pay-per-use launched in February 2026) | Medium | Hard cap of 60 trend requests a day in code; X switches off when the cap is hit |
 | Breaking a data policy, such as YouTube's [30-day storage rule](https://developers.google.com/youtube/terms/developer-policies) or missing attribution | Medium | Purge items at 28 days, never name topics from video titles, and link every item to its source |
@@ -210,8 +223,8 @@ Opened on 2026-09-28, except where noted.
 - [Google Trends "Trending now" help](https://support.google.com/trends/answer/3076011), [Google Trends API alpha](https://developers.google.com/search/apis/trends)
 - [Twitch Helix API reference](https://dev.twitch.tv/docs/api/reference/), [Hacker News API](https://github.com/HackerNews/API)
 - [Pinterest access tiers](https://developers.pinterest.com/docs/getting-started/access-tiers/), [rate limits](https://developers.pinterest.com/docs/reference/rate-limits/)
-- [TikTok Research API](https://developers.tiktok.com/products/research-api/), [Creative Center hashtags](https://ads.tiktok.com/creative/creativeCenter/trends/hashtag), [terms of service](https://t.tiktok.com/legal/page/us/terms-of-service/en), [Apify TikTok trends actor](https://apify.com/automation-lab/tiktok-trends-scraper)
-- [Instagram hashtag search](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/hashtag-search/), [Threads keyword search](https://developers.facebook.com/docs/threads/keyword-search/), [Facebook removes Trending](https://about.fb.com/news/2018/06/removing-trending/), [LinkedIn API access](https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access)
+- [TikTok Research API](https://developers.tiktok.com/products/research-api/), [Creative Center hashtags](https://ads.tiktok.com/creative/creativeCenter/trends/hashtag), [terms of service](https://t.tiktok.com/legal/page/us/terms-of-service/en), [Apify TikTok trends actor](https://apify.com/data_xplorer/tiktok-trends)
+- [Instagram hashtag search](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-facebook-login/hashtag-search/), [Apify Instagram trending actor](https://apify.com/s-r/instagram-trending-scraper), [Threads keyword search](https://developers.facebook.com/docs/threads/keyword-search/), [Facebook removes Trending](https://about.fb.com/news/2018/06/removing-trending/), [LinkedIn API access](https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access)
 
 **Hosting and tools**
 

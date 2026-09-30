@@ -13,7 +13,7 @@ export interface SourceDef {
   regions: readonly Region[];
   // Keys the source needs; when any is missing the source is skipped.
   env: readonly string[];
-  // A variable that must be "true" to turn the source on (TikTok).
+  // A variable that must be "true" to turn the source on (the Apify sources).
   optIn?: string;
   phase: 0 | 1 | 2 | 3;
   homepage?: string;
@@ -29,9 +29,10 @@ export const SOURCES: readonly SourceDef[] = [
   { id: "mastodon", name: "Mastodon", role: "lead", weight: WEIGHTS.mastodon, regions: ["global"], env: [], phase: 1, homepage: "https://mastodon.social/explore/tags" },
   { id: "youtube", name: "YouTube", role: "corroborating", weight: WEIGHTS.youtube, regions: ["us"], env: ["YOUTUBE_API_KEY"], phase: 1, homepage: "https://www.youtube.com" },
   { id: "tiktok", name: "TikTok", role: "corroborating", weight: WEIGHTS.tiktok, regions: ["us"], env: ["APIFY_TOKEN"], optIn: "TIKTOK_ENABLED", phase: 3, homepage: "https://www.tiktok.com" },
+  { id: "instagram", name: "Instagram", role: "corroborating", weight: WEIGHTS.instagram, regions: ["global"], env: ["APIFY_TOKEN"], optIn: "INSTAGRAM_ENABLED", phase: 3, homepage: "https://www.instagram.com/explore/" },
   { id: "twitch", name: "Twitch", role: "corroborating", weight: WEIGHTS.twitch, regions: ["global"], env: ["TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET"], phase: 1, homepage: "https://www.twitch.tv/directory" },
   { id: "hacker_news", name: "Hacker News", role: "corroborating", weight: WEIGHTS.hacker_news, regions: ["global"], env: [], phase: 1, homepage: "https://news.ycombinator.com" },
-  { id: "pinterest", name: "Pinterest", role: "corroborating", weight: WEIGHTS.pinterest, regions: ["us"], env: ["PINTEREST_ACCESS_TOKEN"], phase: 3, homepage: "https://www.pinterest.com/today/" },
+  { id: "pinterest", name: "Pinterest", role: "corroborating", weight: WEIGHTS.pinterest, regions: ["us"], env: ["APIFY_TOKEN"], optIn: "PINTEREST_ENABLED", phase: 3, homepage: "https://www.pinterest.com/today/" },
   { id: "heartbeat", name: "Heartbeat", role: "system", weight: 0, regions: ["global"], env: [], phase: 0 },
 ];
 

@@ -1,0 +1,29 @@
+// Prices behind the spend estimate on /status (TASKS.md 3.7). Checked on
+// 2026-09-30; update them when a provider changes its prices.
+
+// X pay-per-use: each trends request, from prepaid credits.
+export const X_COST_PER_REQUEST = 0.01;
+
+// Apify actors run on schedules set up in Apify (SETUP.md §12), so their cost
+// is estimated from the schedule: the cost of one run × runs per day.
+export interface ApifySchedule {
+  source: "tiktok" | "instagram" | "pinterest";
+  service: string;
+  costPerRun: number;
+  runsPerDay: number;
+}
+
+export const APIFY_SCHEDULES: readonly ApifySchedule[] = [
+  // data_xplorer/tiktok-trends: 30 US hashtags cost $0.055 in a test run
+  // ($0.025 a run plus $0.001 a hashtag).
+  { source: "tiktok", service: "TikTok (Apify)", costPerRun: 0.055, runsPerDay: 1 },
+  // s-r/instagram-trending-scraper: $0.002 per topic and no start fee; the
+  // free plan caps a run at 10 topics.
+  { source: "instagram", service: "Instagram (Apify)", costPerRun: 10 * 0.002, runsPerDay: 4 },
+  // automation-lab/pinterest-trends-scraper: 25 growing US keywords cost $0.03
+  // in a test run; it runs twice a week.
+  { source: "pinterest", service: "Pinterest (Apify)", costPerRun: 0.03, runsPerDay: 2 / 7 },
+];
+
+// Apify's free plan includes this much usage a month, then blocks until the next month.
+export const APIFY_FREE_MONTHLY_CREDIT = 5;

@@ -54,9 +54,9 @@ const fakeCollectors: ReadonlyMap<SourceId, Collector> = new Map<SourceId, Colle
 ]);
 
 describe("parseArgs", () => {
-  it("accepts --dry-run and rejects anything else", () => {
-    expect(parseArgs([])).toEqual({ dryRun: false });
-    expect(parseArgs(["--dry-run"])).toEqual({ dryRun: true });
+  it("accepts --dry-run and --include-paid and rejects anything else", () => {
+    expect(parseArgs([])).toEqual({ dryRun: false, includePaid: false });
+    expect(parseArgs(["--dry-run", "--include-paid"])).toEqual({ dryRun: true, includePaid: true });
     expect(() => parseArgs(["--dryrun"])).toThrow(/unknown argument/);
   });
 });
@@ -79,7 +79,7 @@ describe("runPipeline", () => {
     expect(out.lines).toContain("mastodon (global): error: 503 mastodon.social: Service Unavailable");
     expect(out.lines).toContain("youtube (us): skipped: missing YOUTUBE_API_KEY");
     expect(out.lines.at(-1)).toMatch(
-      /^dry run: nothing written, 1 lists ok, 1 failed, 1 skipped, 7 sources not built yet \(\d+ ms\)$/,
+      /^dry run: nothing written, 1 lists ok, 1 failed, 1 skipped, 8 sources not built yet \(\d+ ms\)$/,
     );
   });
 
@@ -99,7 +99,7 @@ describe("runPipeline", () => {
     });
 
     expect(closed).toBe(true);
-    expect(await t.db.select().from(sources)).toHaveLength(11);
+    expect(await t.db.select().from(sources)).toHaveLength(12);
     const runs = await t.db.select().from(fetchRuns).orderBy(asc(fetchRuns.id));
     expect(runs.map((r) => [r.sourceId, r.region, r.status, r.itemCount, r.error])).toEqual([
       ["bluesky", "global", "ok", 2, null],
@@ -119,7 +119,7 @@ describe("runPipeline", () => {
     expect(out.lines.slice(-3)).toEqual([
       "error: mastodon (global): 503 mastodon.social: Service Unavailable",
       "revalidate: skipped (SITE_URL or REVALIDATE_SECRET not set)",
-      "run ok: heartbeat written, 1 lists ok, 1 failed, 1 skipped, 7 sources not built yet (0 ms)",
+      "run ok: heartbeat written, 1 lists ok, 1 failed, 1 skipped, 8 sources not built yet (0 ms)",
     ]);
     expect(await t.db.select().from(topics)).toHaveLength(2);
     const ranked = await t.db.select().from(rankings);

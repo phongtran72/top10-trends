@@ -1,9 +1,10 @@
+import { COLLECTORS } from "@/collectors/index";
 import { pageRegion, PLATFORMS, platformSlug, type SourceDef, type SourceId } from "@/collectors/registry";
 import type { ListItem, RecentItem } from "./queries";
 
 // The home-page dashboard, computed from the last day of top-10 lists. Pure,
 // so it is tested without a database. Items are matched across runs by their
-// normalized title, which is stable for every phase 1 source.
+// normalized title, which is stable for every source.
 
 export interface PlatformCard {
   id: SourceId;
@@ -57,6 +58,8 @@ const HIGHLIGHT_LABELS: Partial<Record<SourceId, string>> = {
   bluesky: "Most-posted topic",
   hacker_news: "Most-upvoted story",
   mastodon: "Most-used tag",
+  x: "Most-posted X trend",
+  tiktok: "Most-viewed TikTok hashtag",
 };
 
 export function normalizeTitle(title: string): string {
@@ -93,7 +96,7 @@ const toListItem = ({ rank, title, url, metricValue, metricLabel }: RecentItem):
 export function buildDashboard(
   rows: readonly RecentItem[],
   now: Date,
-  platforms: readonly SourceDef[] = PLATFORMS.filter((p) => p.phase <= 1),
+  platforms: readonly SourceDef[] = PLATFORMS.filter((p) => COLLECTORS.has(p.id)),
 ): Dashboard {
   const stayingSince = new Date(now.getTime() - STAYING_HOURS * 60 * 60 * 1000).toISOString();
   const cards: PlatformCard[] = [];

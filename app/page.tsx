@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import { COLLECTORS } from "@/collectors/index";
 import { PLATFORMS } from "@/collectors/registry";
 import { PlatformBadges } from "@/components/PlatformBadges";
 import { RankChange } from "@/components/RankChange";
@@ -56,7 +57,7 @@ export default async function Home() {
   await connection();
   const combined = await getCombinedTop();
   const data = await getDashboard();
-  const later = PLATFORMS.filter((p) => p.phase > 1).map((p) => p.name);
+  const later = PLATFORMS.filter((p) => !COLLECTORS.has(p.id)).map((p) => p.name);
 
   return (
     <>
