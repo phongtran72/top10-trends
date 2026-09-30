@@ -23,6 +23,7 @@ Sections 1–8 cover phases 0–1. Sections 9–13 are for later phases or optio
 2. Open **Connect** and copy two pooler connection strings. Don't use the direct connection: it is IPv6-only without a paid add-on, and GitHub's hosted runners are IPv4-only.
     - **Transaction pooler** (port 6543) → `DATABASE_URL`, used only by the website on Vercel
     - **Session pooler** (port 5432) → `SESSION_DATABASE_URL`, used by the hourly pipeline and by migrations
+3. Or, on Windows with the GitHub CLI logged in, run `powershell -ExecutionPolicy Bypass -File scripts/set-db-secrets.ps1` from the repo root. It asks for the password once (hidden), sets the `SESSION_DATABASE_URL` secret and writes both strings to `.env.local`, encoding any symbols. Use it again after resetting the password. A failed `migrate` or pipeline run prints the string's user, host, port and database with warnings about the password's format, never the password.
 
 ## 3. YouTube Data API key (phase 1)
 
