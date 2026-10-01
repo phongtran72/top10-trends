@@ -24,7 +24,7 @@ export interface SourceDef {
 export const SOURCES: readonly SourceDef[] = [
   { id: "x", name: "X", role: "lead", weight: WEIGHTS.x, regions: ["global", "us"], env: ["X_BEARER_TOKEN"], phase: 3, homepage: "https://x.com/explore" },
   { id: "google_trends", name: "Google Trends", role: "lead", weight: WEIGHTS.google_trends, regions: ["us"], env: [], phase: 1, homepage: "https://trends.google.com/trending" },
-  { id: "reddit", name: "Reddit", role: "lead", weight: WEIGHTS.reddit, regions: ["global"], env: ["REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET", "REDDIT_USERNAME"], phase: 3, homepage: "https://www.reddit.com/r/popular/" },
+  { id: "reddit", name: "Reddit", role: "lead", weight: WEIGHTS.reddit, regions: ["global"], env: [], phase: 3, homepage: "https://www.reddit.com/r/popular/" },
   { id: "bluesky", name: "Bluesky", role: "lead", weight: WEIGHTS.bluesky, regions: ["global"], env: [], phase: 1, homepage: "https://bsky.app" },
   { id: "mastodon", name: "Mastodon", role: "lead", weight: WEIGHTS.mastodon, regions: ["global"], env: [], phase: 1, homepage: "https://mastodon.social/explore/tags" },
   { id: "youtube", name: "YouTube", role: "corroborating", weight: WEIGHTS.youtube, regions: ["us"], env: ["YOUTUBE_API_KEY"], phase: 1, homepage: "https://www.youtube.com" },

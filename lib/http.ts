@@ -90,8 +90,8 @@ const xmlParser = new XMLParser({
   parseTagValue: false,
   htmlEntities: true,
   trimValues: true,
-  // RSS items and Google Trends news items are lists even when there is one.
-  isArray: (name) => name === "item" || name === "ht:news_item",
+  // RSS items, Atom entries and Google Trends news items are lists even when there is one.
+  isArray: (name) => name === "item" || name === "entry" || name === "ht:news_item",
 });
 
 export function parseXml(text: string): unknown {
@@ -160,7 +160,7 @@ export function createHttp(config: HttpConfig = {}): Http {
       return json(url, await request("GET", url, "application/json", options));
     },
     async getXml(url, options) {
-      const text = await request("GET", url, "application/rss+xml, application/xml, text/xml", options);
+      const text = await request("GET", url, "application/rss+xml, application/atom+xml, application/xml, text/xml", options);
       try {
         return parseXml(text);
       } catch {
