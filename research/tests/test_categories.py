@@ -1,6 +1,7 @@
 import json
 
 import pandas as pd
+import pytest
 
 from topnews import categories
 
@@ -52,3 +53,33 @@ def test_final_prefers_a_persons_correction():
     out = categories.final(table)
     assert out["category"].tolist() == ["sports", "calendar"]
     assert out["news"].tolist() == [True, False]
+
+
+def test_new_drafts_are_unchecked_until_a_check_is_recorded(tmp_path):
+    store = tmp_path / "categories.csv"
+    trends = pd.DataFrame({"source_id": ["x", "x", "mastodon"], "key": ["crochet", "astros", "wip wednesday"],
+                           "title": ["Crochet", "astros", "#wipwednesday"], "context": ["X trend"] * 2 + ["Mastodon hashtag"]})
+    post = fake_model({"Crochet": "lifestyle", "astros": "sports", "#wipwednesday": "meme"})
+    assert not categories.label(trends, store, post, cache_dir=None)["checked"].any()
+    table = categories.mark_checked([0, 2], {0: "sports", 2: "calendar"}, store=store)
+    assert table["checked"].tolist() == [True, False, True]
+    final = categories.final(categories.read(store))
+    assert final["category"].tolist() == ["sports", "sports", "calendar"]
+    assert final["news"].tolist()[2] is False  # a calendar moment isn't news
+
+
+def test_mark_checked_refuses_corrections_it_cant_place(tmp_path):
+    store = tmp_path / "categories.csv"
+    trends = pd.DataFrame({"source_id": ["x"], "key": ["astros"], "title": ["astros"], "context": ["X trend"]})
+    categories.label(trends, store, fake_model({"astros": "sports"}), cache_dir=None)
+    with pytest.raises(ValueError):
+        categories.mark_checked([0], {1: "sports"}, store=store)  # row 1 isn't among the checked rows
+    with pytest.raises(ValueError):
+        categories.mark_checked([0], {0: "baseball"}, store=store)  # not one of the categories
+
+
+def test_a_store_from_before_the_checked_column_reads_as_unchecked(tmp_path):
+    store = tmp_path / "categories.csv"
+    pd.DataFrame({"source_id": ["x"], "key": ["astros"], "title": ["astros"], "context": ["X trend"], "llm_category": ["sports"],
+                  "llm_news": [True], "reviewed_category": [pd.NA], "reviewed_news": [pd.NA]}).to_csv(store, index=False)
+    assert categories.read(store)["checked"].tolist() == [False]

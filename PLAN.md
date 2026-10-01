@@ -314,30 +314,32 @@ Outside items are linked to topics with the same embedding model. Each source is
 
 **A language-model forecaster as a feature: moved** (2026-10-01). The experiment planned here as task 5.13 asked OpenForecaster-8B, with plain Qwen3.5-9B as a control, whether a news topic would have major new developments in 3 days, and added that probability to the lifespan model. Trend Forecaster now runs it, on the same GPU and with the same questions-by-time scoring. If its probability helps, the pipeline can later import it as a nightly feature file, never through a paid API.
 
-**Category as a live feature** (task 5.14, proposed 2026-10-01; no code until the owner confirms).
-- **Why:** category predicts spread and lifespan (*Categories* above), but the labels exist only for 876 past trends and need the GPU to draft. The pipeline can't call a language model, yet it already has every title's vector.
+**Category as a live feature** (task 5.14; the owner confirmed it on 2026-10-01).
+- **Why:** category predicts spread and lifespan (*Categories* above), but the labels exist only for past trends and need the GPU to draft. The pipeline can't call a language model, yet it already has every title's vector.
 - **The idea:** distill the labels into a small classifier that the pipeline runs.
   1. Offline, the local model drafts a category for a few thousand stored trends, with the context it gets today, and Claude checks a sample.
   2. A small classifier (logistic regression) learns the category from the pipeline's 384-number vector and the platform, split by time.
   3. It ships as a JSON file under `config/models/`, and the pipeline writes each topic's category from its lead-source items' vectors, never YouTube's.
   4. Category becomes a feature in the training table and the models, and is kept only if the held-out weeks improve.
-- **First look** (scratch, 743 checked trends, trained on the first 70% by time):
+- **First numbers** (2026-10-01, `research/findings/category-model.md`): 959 checked trends, trained on the oldest 70% and tested on the newest 288.
 
-  | Method | Right on the later 30% |
+  | Method | Right on the test trends |
   | --- | --- |
-  | Each platform's most common category | 36% |
-  | Classifier on the vectors | 51% |
-  | Nearest labeled trend | 52% |
-  | The local model's draft, for comparison | 83% |
+  | Each platform's most common category | 31% |
+  | The nearest labeled trend's category | 38% |
+  | Classifier, always answering | 53% |
+  | The local model's draft, for comparison | 81% |
 
-  - **It's far from the local model so far, and still improving with more labels:** 31% with 65 training trends, 48% with 260, 51% with 520.
-  - **It's right where it's confident:** answering only above 0.6 confidence, it answers 39% of trends and is right on 83%.
-  - **Strong and weak spots:** tech 94% and sports 86%; X's bare names 31%, and Reddit 19% with no Reddit trend in training.
+  - **At the confidence chosen in training (0.75) it answers 37% of trends and is right on 83%.** The targets are 50% and 85%, so it isn't shipped yet.
+  - **It's sure about sports, tech, politics and gaming** (91–100% right where it answers) and misses incidents, which are named by a place or a person.
+  - **More labels help slowly:** 40% right with 65 training trends, 52% with 520, 53% with 671.
+  - **Leaving "other" out of the classes was tried and was worse.**
 - **So the shape is a classifier that may answer "unknown".** A wrong category is worse for a model than none.
+- **Next:** label each day's new trends (about 300) and re-run at about 2,000 and 3,000 labels. If it flattens below the targets, either settle for the few sure categories or keep category as a research label only.
 - **Starting targets, to revise once there are a few thousand labels:** where it answers, it matches the checked label on at least 85% of a held-out, time-split set, and it answers at least half of the topics; and adding category improves the task 5.6 models on the held-out weeks.
 - **Open choices:**
   - where the category is stored. A nullable `topics.category` column is the natural place, with the model's version beside it. It needs a migration, announced to Trend Forecaster first;
-  - whether to merge the 14 labels into fewer. 8 coarser ones scored 56%, so that alone doesn't fix it;
+  - whether to merge the 14 labels into fewer. 8 coarser ones scored 56% in a first try, so that alone doesn't fix it;
   - the news flag stays out: the local model's flag wasn't checked, and `news_count` already says whether headlines exist.
 - **Not doing yet,** by the owner's decision:
   - no fine-tuning of a language model on this data. A month holds a few thousand topics and about a hundred breakouts, which a model with billions of weights would memorize;
