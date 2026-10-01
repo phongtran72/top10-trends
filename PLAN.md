@@ -216,7 +216,9 @@ Between refreshes the same list repeats in every hourly fetch, so those sources'
 - **A better matching model** (2026-10-01, `research/findings/matching.md`):
   - **The test:** 238 checked pairs of trends, drafted by Qwen3.5-9B on this PC's GPU and corrected by hand, scored against seven Hugging Face models run on the CPU through Transformers.js.
   - **The result:** at 90% right merges, the pipeline's all-MiniLM-L6-v2 catches 37% of same-story pairs (AUC 0.82). `nomic-ai/nomic-embed-text-v1.5` (q8, mean pooling, `clustering: ` prefix, 768 dimensions) catches 66% (AUC 0.94), at about 8 ms a title.
-  - **Switching is task 2.9's call:** it means 768-number centroids, a threshold near 0.85 to confirm on a week, a new `algo_version` family and a rebuild.
+  - **Cut to 384 numbers it loses nothing** (Matryoshka: layer norm, truncate, renormalize; AUC 0.936, still 66% caught), so `topics.centroid` stays `real[384]`.
+  - **Switching is task 2.9's call:** a threshold near 0.85 to confirm on a week, a new `algo_version` family and a rebuild.
+  - **Every topic's centroid is needed for good:** the days horizon's "how similar past topics fared" and RQ1's categories read them long after the 48-hour matching window. They can't be rebuilt from member items after 28 days.
 
 **Lifecycle** (RQ1 first look, 2026-09-30, `research/findings/rq1-lifecycle.md`; per list, before snapshots):
 - **Half-life in the top 10:** 1 hour on Bluesky and Google (79% and 72% of entries were gone at the next fetch), and 3 hours on Hacker News. Mastodon and Twitch run over 12 hours (57% of entries still listed after 12 hours).

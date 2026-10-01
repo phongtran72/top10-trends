@@ -38,12 +38,26 @@ Every model embedded exactly the pipeline's text: titles cleaned by `lib/text.ts
 
 The losing downloads were deleted after the test. nomic-embed-text-v1.5 stays in the worktree's model cache.
 
+## Shorter vectors
+
+nomic-embed-text-v1.5 was trained so its vectors can be cut short (Matryoshka). You layer-normalize, keep the first numbers and renormalize. On the same pairs:
+
+| Numbers kept | Separation (AUC) | Caught at 90% right | Caught at 95% right | Storage per year (about 44,000 topics) |
+| --- | --- | --- | --- | --- |
+| 768 | 0.939 | 66% | 66% | 135 MB |
+| 512 | 0.940 | 66% | 66% | 90 MB |
+| **384** | **0.936** | **66%** | **66%** | **67 MB** |
+| 256 | 0.937 | 67% | 57% | 45 MB |
+| 128 | 0.927 | 63% | 57% | 22 MB |
+
+At 384 it loses nothing, so topics keep `real[384]` centroids, the same size as today's. 256 and 128 start to lose at the strict end. They could still serve as a compact archive for old topics if storage ever runs short.
+
 ## What it means
 
 If the pipeline moved to nomic-embed-text-v1.5, cross-platform topics would merge about twice as often for the same rate of wrong merges. That means more breakouts, spreads and leads seen, and cleaner labels. It's the web-app session's call (task 2.9), because it changes:
 
 - **the model:** `nomic-ai/nomic-embed-text-v1.5`, q8, mean pooling, with `clustering: ` before every text. It's 137 MB in the Actions cache and adds about 3 seconds a run;
-- **the centroids:** 768 numbers instead of 384. `topics.centroid` is `real[384]` in the schema; Postgres doesn't enforce the length, but the docs and tests would change;
+- **the centroids:** none, if the vectors are cut to 384 numbers (layer norm, keep the first 384, renormalize), which loses nothing (above);
 - **the threshold:** about 0.85 on this set, for 90–95% right merges. That needs confirming on a week with `replay -- tune`;
 - **the history:** a new `algo_version` family, and a `replay -- rebuild` to re-embed past hours while the stored lists still cover them (before 2026-10-28).
 
