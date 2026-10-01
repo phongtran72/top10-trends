@@ -87,4 +87,12 @@ describe("helpers", () => {
     expect(terms.has("mondaymotivation")).toBe(true);
     expect([...terms].some((t) => t.startsWith("#"))).toBe(false);
   });
+
+  it("blocks the greetings that trend on X every day, but not a real holiday", () => {
+    const terms = loadBlocklist();
+    const blocked = (title: string) => checkItem(item(title), terms)?.reason === "blocklist";
+    expect(["Good Thursday", "Happy New Month", "#HappySunday", "Hello October", "hellooctober"].every(blocked)).toBe(true);
+    expect(blocked("Good Friday")).toBe(false);
+    expect(blocked("Happy New Year")).toBe(false);
+  });
 });

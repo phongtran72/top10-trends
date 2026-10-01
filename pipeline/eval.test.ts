@@ -57,3 +57,15 @@ describe("eval", () => {
     ]);
   });
 });
+
+describe("eval members", () => {
+  it("shows a Google trend that left the feed but still counts in its window", async () => {
+    const at = new Date(Date.UTC(2026, 9, 8, 13, 7));
+    const results = [list("google_trends", "us", at, ["flood watch"])];
+    const itemIds = await writeResults(t.db, results);
+    await rankRun({ db: t.db, results, itemIds, now: at, embedder: wordEmbedder, blocklist: new Set() });
+    const lines = formatEvalHour(await evalHour(t.db, at));
+    expect(lines).toContain("        google_trends #1: flood watch");
+    expect(lines).toContain("        google_trends #2: world series  [left the feed; still in its 3-hour window]");
+  });
+});

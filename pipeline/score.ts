@@ -15,6 +15,10 @@ export interface ScoreEntry {
   sourceId: SourceId;
   rank: number;
   metricValue?: number | null;
+  // For the eval tool: what the entry is and where it came from.
+  title?: string;
+  region?: string;
+  via?: "window" | "grace"; // not from the source's latest list
 }
 
 export interface TopicScore {
@@ -110,8 +114,13 @@ export const GRACE_SOURCES: ReadonlyMap<SourceId, number> = new Map([["bluesky",
 export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS): Promise<ScoreEntry[]> {
   const windowed: ScoreEntry[] = [];
   for (const [sourceId, windowHours] of WINDOWED_SOURCES) {
-    for (const row of await windowedItems(db, sourceId, now, windowHours)) {
-      windowed.push({ topicId: row.topicId, sourceId, rank: row.rank, metricValue: row.metricValue });
+    const rows = await windowedItems(db, sourceId, now, windowHours);
+    // Marked "window" only when the item has already left the source's latest list.
+    const newest = new Map<string, number>();
+    for (const row of rows) newest.set(row.region, Math.max(newest.get(row.region) ?? 0, row.fetchedAt.getTime()));
+    for (const row of rows) {
+      const left = row.fetchedAt.getTime() < newest.get(row.region)!;
+      windowed.push({ topicId: row.topicId, sourceId, rank: row.rank, metricValue: row.metricValue, title: row.title, region: row.region, via: left ? "window" : undefined });
     }
   }
   const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
@@ -137,6 +146,8 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
       sourceId: trendItems.sourceId,
       rank: trendItems.rank,
       metricValue: trendItems.metricValue,
+      title: trendItems.title,
+      region: trendItems.region,
     })
     .from(trendItems)
     .innerJoin(topicItems, eq(topicItems.itemId, trendItems.id))
@@ -146,13 +157,19 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
         latest.map((r) => r.id),
       ),
     );
-  const entries = rows.map((r) => ({ ...r, sourceId: r.sourceId as SourceId }));
+  const entries: ScoreEntry[] = rows.map((r) => ({ ...r, sourceId: r.sourceId as SourceId }));
 
   const graced: ScoreEntry[] = [];
   for (const [sourceId, graceHours] of GRACE_SOURCES) {
     const present = new Set(entries.filter((e) => e.sourceId === sourceId).map((e) => e.topicId));
     const earlier = await db
-      .select({ topicId: topicItems.topicId, rank: trendItems.rank, metricValue: trendItems.metricValue })
+      .select({
+        topicId: topicItems.topicId,
+        rank: trendItems.rank,
+        metricValue: trendItems.metricValue,
+        title: trendItems.title,
+        region: trendItems.region,
+      })
       .from(trendItems)
       .innerJoin(topicItems, eq(topicItems.itemId, trendItems.id))
       .innerJoin(fetchRuns, eq(fetchRuns.id, trendItems.runId))
@@ -169,7 +186,7 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
     for (const row of earlier) {
       if (present.has(row.topicId)) continue;
       present.add(row.topicId);
-      graced.push({ ...row, sourceId });
+      graced.push({ ...row, sourceId, via: "grace" });
     }
   }
   return [...entries, ...graced, ...windowed];
