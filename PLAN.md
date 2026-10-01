@@ -188,9 +188,13 @@ Phase 5 turns the stored history into two things of equal weight, built on one d
 | --- | --- | --- | --- |
 | Hours (0–12) | "Should I post about this now?" | Rising or fading: the chance it reaches 3 or more platforms, or the combined top 3, within 6 hours | Topic snapshots: momentum, breadth, which platform had it first, `news_count` |
 | Days (1–7) | "Will it still matter when my video is ready?" | Expected lifespan: hours left in the combined top 10 | The above, plus how similar past topics fared (nearest topic centroids) |
-| Weeks (1–8) | "What goes on next month's calendar?" | Scheduled and recurring moments, and how big they were last time | Outside calendars and multi-year history (below); our own data can't see an event before it trends |
+| Weeks (1–8) | "What goes on next month's calendar?" | **Moved to Trend Forecaster** (2026-10-01): its daily page of what will trend tomorrow and this week | Not built here; see *Split with Trend Forecaster* below |
 
-**Data.** Features come only from `topic_snapshots` (hourly, permanent, never YouTube), `topics` (labels, centroids, first and last seen) and the combined rankings. The hours and days work needs 6 to 8 weeks of snapshots; the weeks horizon and seasonal rhythms need a year of our own data or outside history. Labels: *breakout* means reaching 3 or more platforms, or the combined top 3, within 6 hours of the forecast; *lifespan* means the hours until the topic last appears in the combined top 10. The dataset (task 5.2, `research/topnews/dataset.py`) defines them precisely:
+**Split with Trend Forecaster** (the owner's decision, 2026-10-01). This project forecasts what happens to a topic that is already trending: the hours and days rows above. The owner's separate project Trend Forecaster forecasts which names will be on a list tomorrow and next week, including names on no list yet. Each borrows the other's output; neither retrains the other's model.
+- **Stays here:** RQ1–RQ6, the categories and the checked pairs; the hours and days horizons; the `forecasts` table, the retraining workflow and the outside-data collectors that run in the pipeline. All of it runs in TypeScript on GitHub's CPUs.
+- **Moves there:** naming new trends; every language-model job (Qwen's labels, OpenForecaster), because that project runs Python on the owner's GPU; the weeks horizon's "coming up" list; and day and week questions about exact names, with its own scored record.
+
+**Data.** Features come only from `topic_snapshots` (hourly, permanent, never YouTube), `topics` (labels, centroids, first and last seen) and the combined rankings. The hours and days work needs 6 to 8 weeks of snapshots; seasonal rhythms need a year of our own data or outside history. Labels: *breakout* means reaching 3 or more platforms, or the combined top 3, within 6 hours of the forecast; *lifespan* means the hours until the topic last appears in the combined top 10. The dataset (task 5.2, `research/topnews/dataset.py`) defines them precisely:
 - **The combined top 10 is the snapshot position,** which leaves YouTube out, unlike the combined rankings table.
 - **A lifespan allows gaps of up to 2 hours,** because Bluesky flickers (RQ1).
 - **An easier *spread* label** (a second platform within 6 hours) sits beside breakout, because breakouts are rare (RQ6).
@@ -263,7 +267,7 @@ Reddit joined on 2026-10-01 as a corroborating source, with its first list in th
   - "other" is the rest.
 - **On the first day, news-linked meant sports:** 9 of 11 were X names during the MLB wild card.
 - **Calendar moments crossed platforms most often.** 35% were also on another list besides Google, against 4% for "other", but that's 2 stories: the first day of fall and national coffee day. Both crossed through the slow lists (TikTok, Pinterest, Instagram); on the hourly lists calendar moments spread 7% of the time (*Categories* above).
-- **For the weeks horizon:** calendar moments are its predictable case. The planned event calendars don't cover observances.
+- **For a weeks-ahead list** (now Trend Forecaster's): calendar moments are its predictable case. The planned event calendars don't cover observances.
 - **Lifespans can't be compared by category yet.**
 
 **Breakout** (RQ3, 2026-09-30, `research/findings/rq3-breakout.md`): the method is ready, with no result yet.
@@ -273,13 +277,13 @@ Reddit joined on 2026-10-01 as a corroborating source, with its first list in th
 
 **Lead and lag** (RQ2, 2026-09-30, `research/findings/rq2-lead-lag.md`): the method is ready, with no result yet. Matched trends (0.70) are grouped into stories, and each platform's earliest sighting is compared. Trends already listed at a source's first fetch are censored and left out, as are the slow sources. So far there's one usable story pair: Google had the Phillies–Braves game 3 hours before Bluesky. Google against X should reach about 20 stories within a few days of X's start. A lead measures when a story enters a platform's list, which favors lists that rank by novelty or velocity (Google, Bluesky) over those that rank by size (X, Twitch).
 
-**Outside data**, added in this order and only when a question or horizon needs it, all free:
+**Outside data**, added in this order and only when a question or horizon needs it, all free. Each is a feature for the hours and days models (Wikipedia, for example, says how well known a name was before it trended):
 
 1. Wikipedia pageviews: daily attention history since 2015 from the Wikimedia REST API, no key. The best source for seasonal baselines and for how big a past topic got.
    - **Status:** in research since 2026-10-01 (`research/topnews/wiki.py`, `research/findings/wikipedia.md`); the pipeline collector waits until a model needs live figures.
    - **Linking:** topics link to articles through Wikipedia's search, and only exact matches are used. That gives about half of the top-10 topics, nearly all names and places.
    - **What it shows:** calendar moments peak in their month every year (National Day for Truth and Reconciliation 6.7× in September, Fat Bear Week 4.6× in October).
-   - **Lag:** figures arrive a day late, so they help the days and weeks horizons, not the hours one.
+   - **Lag:** figures arrive a day late, so they help the days horizon, not the hours one.
 2. GDELT: news volume and tone, updated every 15 minutes.
 3. Event calendars: TheSportsDB (fixtures), Nager.Date (holidays), TMDB (film and TV releases) and IGDB (game releases, through the existing Twitch app).
 
@@ -297,19 +301,21 @@ Outside items are linked to topics with the same embedding model. Each source is
 - **Rules learned in the daytime miss the evening,** so lifespan models need hour of day as a feature.
 - **The breakout rule can't be scored until 6 hours of every list follow a forecast hour.**
 
-**Experiment: a language-model forecaster as a feature** (noted 2026-10-01, to run with task 5.6).
-- **The model:** [OpenForecaster-8B](https://huggingface.co/nikhilchandak/OpenForecaster-8B) is Qwen3-8B fine-tuned on about 52,000 news-derived questions to give a short answer and a calibrated probability for open-ended questions about world events. Its knowledge ends in April 2025, so it needs current headlines as context.
-- **Why it's only a feature:** it can't make the hours and days forecasts itself. Those depend on how each list behaves, which only our data shows, and the pipeline runs on GitHub's CPUs.
-- **The test:** for news topics, ask it "given these headlines, will this story have major new developments in the next 3 days?" on the owner's GPU, and add its probability to the lifespan model. Keep it only if it improves the held-out weeks over the tabular model alone. Compare it with plain Qwen3.5-9B on the same prompt, to see whether the forecasting fine-tune matters.
-- **Scope:** research only. If it helps, a nightly local job could write the feature, never a paid API.
+**A language-model forecaster as a feature: moved** (2026-10-01). The experiment planned here as task 5.13 asked OpenForecaster-8B, with plain Qwen3.5-9B as a control, whether a news topic would have major new developments in 3 days, and added that probability to the lifespan model. Trend Forecaster now runs it, on the same GPU and with the same questions-by-time scoring. If its probability helps, the pipeline can later import it as a nightly feature file, never through a paid API.
 
 **Evaluation.** Train on earlier weeks and test on later ones, never shuffled. Measure, for alerts, *precision* (how often a flagged topic does break out) and *lead time* (how many hours before it reached 3 platforms); for lifespan, the error in hours; and *calibration* (70% forecasts come true about 70% of the time). A public `/forecasts` page lists every forecast next to its outcome, so the accuracy is visible rather than claimed.
 
 **Limits.** A month holds a few thousand topics and a few hundred breakouts: enough to learn from, not enough for precision. Sudden news gives no warning, so forecasts can only catch topics early in their rise. Platforms change and events are seasonal, so findings are re-checked and models retrained regularly. Wrong topic merges become wrong labels, which is why phase 2's matching threshold is tuned first.
 
-**A second reader.** The owner's separate, private project Trend Forecaster (2026-10-01) reads this database through the same read-only role, `research_reader`, to ask and score forecast questions about the day's stories. It never writes here. Changes to the tables it reads (`trend_items`, `topic_snapshots`, `topics`, `tiktok_curves`), to the role's grants or to retention affect it too.
+**A second reader.** The owner's separate, private project Trend Forecaster (2026-10-01) reads this database through the same read-only role, `research_reader`, to forecast which names will be on a list tomorrow and next week and to score those forecasts. It never writes here.
+- **What it reads:** `trend_items`, `fetch_runs`, `topics` and `topic_snapshots`, every hour. It plans to copy them to its own disk before the first stored lists are purged on 2026-10-28.
+- **What it borrows from research:** the checked categories and matching pairs (`research/data/categories.csv` and `match_pairs_union.csv`, on the owner's PC only) and `research/topnews/wiki.py`. The label checks were Claude's, not the owner's, so it treats them as drafts. Those files aren't moved or deleted without telling it first.
+- **The shared rule:** three kinds of change are announced to Trend Forecaster before they happen:
+  - a schema change, or a change to the role's grants;
+  - a re-tune of the matching threshold, with its `algo_version` change and rebuild;
+  - a retention change.
 
-**Who does what.** One Claude session owns the dataset, research, models, outside-data collectors and the `forecasts` table, working on the `predictions` branch in its own worktree. The other owns the web app: every page, including those that show forecasts (task 5.9), built on `lib/forecast-queries.ts`. Phase 2's threshold tuning (2.9) and the production rebuild stay with the web-app session, which finishes phase 2.
+**Who does what.** One Claude session owns the dataset, research, models, outside-data collectors and the `forecasts` table, working on the `predictions` branch in its own worktree. The other owns the web app: every page, including those that show forecasts (task 5.9), built on `lib/forecast-queries.ts`. Phase 2's threshold tuning (2.9) and the production rebuild stay with the web-app session, which finishes phase 2. A third session builds Trend Forecaster in its own repository (*Split with Trend Forecaster* above), and the owner uses one more session as orchestrator across both projects.
 
 ## Build phases
 
@@ -322,7 +328,7 @@ About 8 weeks at 6–10 hours a week gets the full site live; the per-platform l
 | 2 · Combined top 10 | 4–5 | Normalization, filters, embeddings, topic matching, scoring, home and topic pages | In 5 random hours, at least 8 of 10 topics make sense, with no duplicates |
 | 3 · Paid and approved sources | 6 | X with its spend cap, the Global / US toggle, Reddit from its public feed, optional TikTok, Instagram, Pinterest and Claude topic names | Projected monthly spend within your chosen tier |
 | 4 · Polish and launch | 7–8 | Archive pages, share images, page titles, failure alerts, analytics | Launch and share the link |
-| 5 · Predictions and research | After 6–8 weeks of snapshots | Research findings on attention (lifecycle first); rising-or-fading and lifespan forecasts for creators and marketers; a public forecast record; later a weeks-ahead calendar | On 4 held-out weeks, breakout alerts are right at least 60% of the time and come at least 2 hours early |
+| 5 · Predictions and research | After 6–8 weeks of snapshots | Research findings on attention (lifecycle first); rising-or-fading and lifespan forecasts for creators and marketers; a public forecast record | On 4 held-out weeks, breakout alerts are right at least 60% of the time and come at least 2 hours early |
 
 The 28-day purge sits in phase 1, not phase 4, so stored YouTube data never passes the 30-day limit.
 

@@ -188,15 +188,15 @@ Research on attention and forecasts for creators and marketers, built on one dat
 - [ ] **5.7 Forecasts in the pipeline.** A permanent `forecasts` table: `made_at`, `topic_id`, `horizon`, `value`, `model_version`, `outcome`, `resolved_at`; no YouTube inputs.
     - Each run scores current topics after the rank step, in its own try/catch, and fills in the outcomes of past forecasts whose horizon has passed.
     - `lib/forecast-queries.ts` gives the pages what they need.
-- [ ] **5.8 Outside data.** Free collectors, each with fixtures, tests and a SETUP.md step for any key, in order:
+- [ ] **5.8 Outside data.** Free collectors that give the hours and days models their features, each with fixtures, tests and a SETUP.md step for any key, in order:
     1. Wikipedia pageviews (the research module `topnews.wiki` and notebook 08 are done; the pipeline collector comes when a model needs live figures);
     2. GDELT;
     3. event calendars (TheSportsDB, Nager.Date, TMDB, IGDB through the Twitch app).
 
-    Adds the weeks horizon: a "coming up" list of scheduled moments, with how big similar ones were before.
+    The weeks-ahead "coming up" list isn't built here: it moved to Trend Forecaster (PLAN.md › Forecast horizons).
 - [ ] **5.9 Pages** (web-app session). "Rising" and "expected lifespan" on the home and topic pages. `/forecasts` lists recent forecasts with their outcomes and the running precision, lead time and calibration. An optional `/research` page summarizes the findings.
 - [ ] **5.10 Retraining.** A manual `train` workflow rebuilds the dataset, retrains, compares the new model with the current one on the newest weeks, and swaps it in only if it is better.
-- [ ] **5.13 Experiment: a language-model forecaster as a feature.** With 5.6: on the owner's GPU, ask OpenForecaster-8B (and plain Qwen3.5-9B, as a control) whether each news topic will have major new developments in the next 3 days, given its headlines; add the probability to the lifespan model and keep it only if the held-out weeks improve. Research only (PLAN.md › Predictions and research).
+- **5.13 dropped** (2026-10-01). The language-model forecaster experiment (OpenForecaster-8B against Qwen3.5-9B as a lifespan feature) moved to Trend Forecaster, which has the GPU and runs Python. If its probability helps, the pipeline can import a nightly feature file later (PLAN.md › Predictions and research).
 - [x] **5.11 TikTok curves table.** Migration 0003 adds the permanent `tiktok_curves` table with its `research_read` policy. The pipeline stores each TikTok hashtag's 7-day curve (from task 3.9) right after the lists are written, in its own try/catch; hourly re-reads of the same Apify run add nothing. `topnews.db.tiktok_curves` reads it.
 - [x] **5.12 Bluesky status.** Migration 0004 adds a nullable `status` column to `trend_items`, and the pipeline stores Bluesky's lifecycle label (`trending`, `saturating`, `cooling`, `stale`) for every Bluesky item, before the filters. It gives research Bluesky's own stage of each topic, and lets the cooling filter's effect be measured from stored lists.
 
