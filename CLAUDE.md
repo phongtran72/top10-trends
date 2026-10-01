@@ -49,7 +49,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 3. **Collectors only fetch and map.** Each returns `TrendItem[]` in the source's own order (rank 1 is first). Filtering, matching and scoring happen in `pipeline/`.
 4. **Store only the columns listed in PLAN.md › Data model.** Never store full API responses or item embeddings.
 5. **28-day retention.** Every run deletes `trend_items`, `topic_items` and per-platform `rankings` older than 28 days, because YouTube's policy caps stored API data at 30 days. Topics, combined rankings and topic snapshots are kept; snapshots never include YouTube data.
-6. **Source roles.** Lead sources: X, Google Trends, Reddit, Bluesky, Mastodon. Corroborating-only sources: YouTube, TikTok, Instagram, Twitch, Hacker News, Pinterest. Weights live in `config/ranking.ts`; their starting values are in PLAN.md › Ranking.
+6. **Source roles.** Lead sources: X, Google Trends, Bluesky, Mastodon. Corroborating-only sources: YouTube, Reddit, TikTok, Instagram, Twitch, Hacker News, Pinterest. Weights live in `config/ranking.ts`; their starting values are in PLAN.md › Ranking.
 7. **Combined score** = sum over platforms of `weight / log2(rank + 1)`. A corroborating source counts only when a lead source also has the topic. Only lists fetched in the last 3 hours count.
 8. **Topic matching** assigns each item to the nearest topic centroid from the last 48 hours when cosine similarity is at least `MATCH_THRESHOLD` (0.86 for nomic at 384 dimensions, confirmed in task 2.9; see PLAN.md › Ranking › Matching model and threshold); otherwise a lead item starts a new topic. Never cluster item to item.
 9. **Topic names** come only from lead-source items (an X trend, Google query, Bluesky topic or Mastodon tag), never from video or post titles.
@@ -69,7 +69,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 - If nextjs.org is blocked from a cloud session, use the docs bundled in the installed package (`node_modules/next/dist/docs/`).
 - Cloud sessions reach only allowed hosts. When a request is blocked, name the host so the human can allow it (SETUP.md §1).
 - Pushing `.github/workflows/*` from a cloud session can be refused for lack of workflow permission. Commit workflow files separately; if the push is refused, move them to `ci/workflows/` and ask the human to create each file through GitHub's web editor.
-- Reddit requires the User-Agent format `<platform>:<app ID>:<version> (by /u/<username>)`, and its API needs explicit approval first (SETUP.md).
+- Reddit refused Data API access (2026-10-01), so the collector reads r/popular's public Atom feed with the normal collector User-Agent: titles and post ids only, no scores or NSFW flags. The XML parser ignores attributes, so the post link is built from the entry's `id`, not its `<link href>`.
 - Bluesky's trends endpoints are "unspecced": `link` is a relative path, `status` is free text (seen: `trending`, `saturating`, `cooling`, `stale`) and `topic` is an opaque id. Validate with zod so a schema change fails only that source.
 - YouTube's `chart=mostPopular` has no worldwide option and, since July 2025, draws from the music, movies and gaming charts.
 - Google Trends' "Trending now" RSS is per country with no worldwide feed, and each item's `<link>` is only the feed URL. It lists the 10 newest trends, not the biggest, so the pipeline, the platform page and the dashboard rank its last 3 hours by approximate traffic (`lib/window.ts`, PLAN.md › Ranking › Google Trends window).
