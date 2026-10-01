@@ -62,7 +62,7 @@ async function tune(argv: readonly string[]) {
     const report = [
       "# Matching threshold replay",
       "",
-      `${slots.length} hourly slots, ${items} stored items. Replay matches on titles only (headlines and Bluesky status aren't stored).`,
+      `${slots.length} hourly slots, ${items} stored items. Replay matches on titles only (headlines aren't stored; Bluesky's status is, from 2026-10-01 15:07 UTC).`,
       `One-word lowercase hashtags ${segment ? "are split into words" : "are left unsplit (--no-segment)"}.`,
       "Look for wrong merges: the highest threshold with none is the one to pick.",
       "",

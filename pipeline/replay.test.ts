@@ -82,6 +82,26 @@ describe("tuning in a scratch copy", () => {
   });
 });
 
+describe("stored Bluesky status", () => {
+  it("is restored on replayed items, so cooling trends are dropped as in a live run", async () => {
+    const db = await createTestDb();
+    try {
+      await upsertSources(db.db, planSources({ collectors: new Set(), disabled: [], env: {} }));
+      const at = hour(15);
+      const bluesky = list("bluesky", "global", at, ["Fresh story", "Fading story"]);
+      bluesky.items[0].flags = { status: "trending" };
+      bluesky.items[1].flags = { status: "cooling" };
+      await writeResults(db.db, [bluesky, list("mastodon", "global", at, ["#sometag"])]);
+      const slots = await loadSlots(db.db);
+      expect(slots[0].results.map((r) => r.items.map((i) => i.flags?.status))).toEqual([["trending", "cooling"], [undefined]]);
+      await replaySlots(db.db, slots, { threshold: 0.8, embedder: wordEmbedder, blocklist: new Set() });
+      expect((await db.db.select().from(topics)).map((t) => t.label).sort()).toEqual(["Fresh story", "some tag"]);
+    } finally {
+      await db.close();
+    }
+  });
+});
+
 describe("memoEmbedder", () => {
   it("embeds each distinct text once", async () => {
     let calls = 0;
