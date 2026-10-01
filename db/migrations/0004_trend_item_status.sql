@@ -1,0 +1,1 @@
+ALTER TABLE "trend_items" ADD COLUMN "status" text;

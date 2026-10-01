@@ -101,16 +101,28 @@ def fetch_runs(eng: Engine, days: float | None = 7) -> pd.DataFrame:
     )
 
 
+def has_column(eng: Engine, table: str, column: str) -> bool:
+    """Whether the database has this column yet (a migration may not be applied everywhere)."""
+    found = query(
+        eng, "select 1 from information_schema.columns where table_name = :table and column_name = :column",
+        table=table, column=column,
+    )
+    return not found.empty
+
+
 def trend_items(eng: Engine, days: float | None = 7, include_youtube: bool = False) -> pd.DataFrame:
-    """Stored list items (kept 28 days): source, region, rank, title, url, metric, fetched_at."""
+    """Stored list items (kept 28 days): source, region, rank, title, url, metric, status, fetched_at.
+    `status` is Bluesky's lifecycle label (trending, saturating, cooling, stale), stored since migration
+    0004; it's empty before that and for other sources."""
     where = _since(days).format(col="fetched_at")
+    status = "status" if has_column(eng, "trend_items", "status") else "null::text as status"
     excluded = "" if include_youtube else "and source_id <> all(:excluded)"
     params: dict = {} if days is None else {"seconds": days * 86400}
     if not include_youtube:
         params["excluded"] = list(EXCLUDED_BY_DEFAULT)
     return query(
         eng,
-        "select run_id, source_id, region, rank, title, url, metric_value, metric_label, fetched_at "
+        f"select run_id, source_id, region, rank, title, url, metric_value, metric_label, {status}, fetched_at "
         f"from trend_items where true {where} {excluded} order by fetched_at, source_id, rank",
         **params,
     )

@@ -1,9 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { asc } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
-import { planSources, type SourceId } from "@/collectors/registry";
+import { getSource, planSources, type SourceId } from "@/collectors/registry";
 import type { Collector, CollectorContext } from "@/collectors/types";
+import { trendItems } from "@/db/schema";
+import { createTestDb } from "@/db/test-db";
 import { createHttp } from "@/lib/http";
-import { collect, describeCollectorError } from "./collect";
+import { collect, describeCollectorError, writeResults, type ListResult } from "./collect";
+import { upsertSources } from "./sources";
 
 const ctx: CollectorContext = {
   http: createHttp({ fetch: (async () => new Response("unused")) as typeof fetch }),
@@ -52,6 +56,41 @@ describe("collect", () => {
     const results = await collect(plansFor(["twitch"]), collectors, ctx);
     expect(results.map((r) => [r.source.id, r.status, r.error])).toEqual([
       ["twitch", "skipped", "missing TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET"],
+    ]);
+  });
+});
+
+describe("writeResults", () => {
+  let t: Awaited<ReturnType<typeof createTestDb>>;
+
+  beforeAll(async () => {
+    t = await createTestDb();
+    await upsertSources(t.db, plansFor(["bluesky", "mastodon"]));
+  });
+
+  afterAll(async () => {
+    await t.close();
+  });
+
+  it("stores Bluesky's status label for every item, tidied, and null where a source has none", async () => {
+    const at = new Date("2026-10-01T03:08:00Z");
+    const list = (id: SourceId, items: ListResult["items"]): ListResult => ({
+      source: getSource(id), region: "global", status: "ok", items, startedAt: at, finishedAt: at,
+    });
+    await writeResults(t.db, [
+      list("bluesky", [
+        { source: "bluesky", region: "global", rank: 1, title: "A", url: "https://bsky.app/a", flags: { status: " Trending " } },
+        { source: "bluesky", region: "global", rank: 2, title: "B", url: "https://bsky.app/b", flags: { status: "cooling" } },
+        { source: "bluesky", region: "global", rank: 3, title: "C", url: "https://bsky.app/c", flags: { status: "" } },
+      ]),
+      list("mastodon", [{ source: "mastodon", region: "global", rank: 1, title: "#tag", url: "https://mastodon.social/tags/tag" }]),
+    ]);
+    const rows = await t.db.select().from(trendItems).orderBy(asc(trendItems.sourceId), asc(trendItems.rank));
+    expect(rows.map((r) => [r.sourceId, r.rank, r.status])).toEqual([
+      ["bluesky", 1, "trending"],
+      ["bluesky", 2, "cooling"], // kept though the rank step will drop it
+      ["bluesky", 3, null],
+      ["mastodon", 1, null],
     ]);
   });
 });
