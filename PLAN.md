@@ -191,8 +191,8 @@ Phase 5 turns the stored history into two things of equal weight, built on one d
 | Weeks (1–8) | "What goes on next month's calendar?" | **Moved to Trend Forecaster** (2026-10-01): its daily page of what will trend tomorrow and this week | Not built here; see *Split with Trend Forecaster* below |
 
 **Split with Trend Forecaster** (the owner's decision, 2026-10-01). This project forecasts what happens to a topic that is already trending: the hours and days rows above. The owner's separate project Trend Forecaster forecasts which names will be on a list tomorrow and next week, including names on no list yet. Each borrows the other's output; neither retrains the other's model.
-- **Stays here:** RQ1–RQ6, the categories and the checked pairs; the hours and days horizons; the `forecasts` table, the retraining workflow and the outside-data collectors that run in the pipeline. All of it runs in TypeScript on GitHub's CPUs.
-- **Moves there:** naming new trends; every language-model job (Qwen's labels, OpenForecaster), because that project runs Python on the owner's GPU; the weeks horizon's "coming up" list; and day and week questions about exact names, with its own scored record.
+- **Stays here:** RQ1–RQ6, the categories and the checked pairs, including drafting their labels with the local model as a research step; the hours and days horizons; the `forecasts` table, the retraining workflow and the outside-data collectors that run in the pipeline. All of it runs in TypeScript on GitHub's CPUs.
+- **Moves there:** naming new trends; every language-model job at forecast time (Qwen's candidates and probabilities, OpenForecaster), because that project runs Python on the owner's GPU; the weeks horizon's "coming up" list; and day and week questions about exact names, with its own scored record.
 
 **Data.** Features come only from `topic_snapshots` (hourly, permanent, never YouTube), `topics` (labels, centroids, first and last seen) and the combined rankings. The hours and days work needs 6 to 8 weeks of snapshots; seasonal rhythms need a year of our own data or outside history. Labels: *breakout* means reaching 3 or more platforms, or the combined top 3, within 6 hours of the forecast; *lifespan* means the hours until the topic last appears in the combined top 10. The dataset (task 5.2, `research/topnews/dataset.py`) defines them precisely:
 - **The combined top 10 is the snapshot position,** which leaves YouTube out, unlike the combined rankings table.
@@ -313,6 +313,35 @@ Outside items are linked to topics with the same embedding model. Each source is
 - **The breakout rule can't be scored until 6 hours of every list follow a forecast hour.**
 
 **A language-model forecaster as a feature: moved** (2026-10-01). The experiment planned here as task 5.13 asked OpenForecaster-8B, with plain Qwen3.5-9B as a control, whether a news topic would have major new developments in 3 days, and added that probability to the lifespan model. Trend Forecaster now runs it, on the same GPU and with the same questions-by-time scoring. If its probability helps, the pipeline can later import it as a nightly feature file, never through a paid API.
+
+**Category as a live feature** (task 5.14, proposed 2026-10-01; no code until the owner confirms).
+- **Why:** category predicts spread and lifespan (*Categories* above), but the labels exist only for 876 past trends and need the GPU to draft. The pipeline can't call a language model, yet it already has every title's vector.
+- **The idea:** distill the labels into a small classifier that the pipeline runs.
+  1. Offline, the local model drafts a category for a few thousand stored trends, with the context it gets today, and Claude checks a sample.
+  2. A small classifier (logistic regression) learns the category from the pipeline's 384-number vector and the platform, split by time.
+  3. It ships as a JSON file under `config/models/`, and the pipeline writes each topic's category from its lead-source items' vectors, never YouTube's.
+  4. Category becomes a feature in the training table and the models, and is kept only if the held-out weeks improve.
+- **First look** (scratch, 743 checked trends, trained on the first 70% by time):
+
+  | Method | Right on the later 30% |
+  | --- | --- |
+  | Each platform's most common category | 36% |
+  | Classifier on the vectors | 51% |
+  | Nearest labeled trend | 52% |
+  | The local model's draft, for comparison | 83% |
+
+  - **It's far from the local model so far, and still improving with more labels:** 31% with 65 training trends, 48% with 260, 51% with 520.
+  - **It's right where it's confident:** answering only above 0.6 confidence, it answers 39% of trends and is right on 83%.
+  - **Strong and weak spots:** tech 94% and sports 86%; X's bare names 31%, and Reddit 19% with no Reddit trend in training.
+- **So the shape is a classifier that may answer "unknown".** A wrong category is worse for a model than none.
+- **Starting targets, to revise once there are a few thousand labels:** where it answers, it matches the checked label on at least 85% of a held-out, time-split set, and it answers at least half of the topics; and adding category improves the task 5.6 models on the held-out weeks.
+- **Open choices:**
+  - where the category is stored. A nullable `topics.category` column is the natural place, with the model's version beside it. It needs a migration, announced to Trend Forecaster first;
+  - whether to merge the 14 labels into fewer. 8 coarser ones scored 56%, so that alone doesn't fix it;
+  - the news flag stays out: the local model's flag wasn't checked, and `news_count` already says whether headlines exist.
+- **Not doing yet,** by the owner's decision:
+  - no fine-tuning of a language model on this data. A month holds a few thousand topics and about a hundred breakouts, which a model with billions of weights would memorize;
+  - no fine-tuning of the embedding model on same-story pairs until there are thousands of checked pairs, not 238.
 
 **Evaluation.** Train on earlier weeks and test on later ones, never shuffled. Measure, for alerts, *precision* (how often a flagged topic does break out) and *lead time* (how many hours before it reached 3 platforms); for lifespan, the error in hours; and *calibration* (70% forecasts come true about 70% of the time). A public `/forecasts` page lists every forecast next to its outcome, so the accuracy is visible rather than claimed.
 
