@@ -50,3 +50,12 @@ def test_cosine_pairs_from_vectors():
     sims = matching.cosine_pairs(pairs, {"a": unit(1), "b": unit(1, 1)})
     assert sims.iloc[0] == pytest.approx(1 / np.sqrt(2), rel=1e-5)
     assert np.isnan(sims.iloc[1])
+
+
+def test_containment_reads_words_not_order_or_case():
+    assert matching.containment("rick ross", "Rick Ross battery charge") == ("contained", 2)
+    assert matching.containment("Phillies force Game 3 in Atlanta", "phillies") == ("contained", 1)
+    assert matching.containment("braves vs phillies", "Phillies vs Braves") == ("equal", 3)
+    assert matching.containment("yankees", "astros") == ("no", 1)
+    assert matching.containment("flores", "floresta") == ("no", 1)  # whole words only
+    assert matching.containment("", "astros") == ("no", 0)

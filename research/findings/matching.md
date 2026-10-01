@@ -61,6 +61,34 @@ If the pipeline moved to nomic-embed-text-v1.5, cross-platform topics would merg
 - **the threshold:** about 0.85 on this set, for 90–95% right merges. That needs confirming on a week with `replay -- tune`;
 - **the history:** a new `algo_version` family, and a `replay -- rebuild` to re-embed past hours while the stored lists still cover them (before 2026-10-28).
 
+## A title inside a longer title (2026-10-01)
+
+The first live hour kept "rick ross" (X, Google) and "rick ross battery charge" (Google) as two topics at 0.86. That's a refinement, one title's words all inside the other's, not a short-name error. The checked pairs show whether a rule for it would beat a lower threshold (`matching.containment`, on the pipeline's embedding texts).
+
+**41 of the 230 scored pairs are contained, and 37 of them are the same story.** Their similarities run from 0.81 to 0.97 (median 0.89); 7 of the 37 fall below 0.86 and are missed today.
+
+| Below 0.86, contained | Right | Wrong |
+| --- | --- | --- |
+| Short title has 2 or more words | 5: "White Sox", "Mike Tomlin", "#truthandreconciliation", "jack smith" twice | 0 |
+| Short title is one word | 2: "Mystics", "#flydubai" | 3: "Flores" in "flores amarillas dibujo", "Minecraft" twice |
+
+Rules compared on the 230 pairs (85 the same story):
+
+| Rule | Merged | Right | Wrong | Right merges | Same-story pairs caught |
+| --- | --- | --- | --- | --- | --- |
+| 0.86 (today) | 60 | 57 | 3 | 95% | 67% |
+| 0.86, or contained with 2 or more words in the short title | 65 | 62 | 3 | 95% | 73% |
+| 0.86, or contained with any short title | 70 | 64 | 6 | 91% | 75% |
+| 0.84 | 74 | 61 | 13 | 82% | 72% |
+| 0.82 | 93 | 69 | 24 | 74% | 81% |
+
+- **The containment rule beats lowering the threshold.** With two or more words in the short title it adds 5 right merges and no wrong one. Going to 0.84 adds 4 right and 10 wrong.
+- **One-word titles should stay on the threshold alone.** They're where a word means two things ("Flores", "Minecraft").
+- **It's 5 pairs from 4 stories,** so it shows the rule is worth a replay test, not that it's safe.
+- **Not tested here:**
+  - every contained pair in the set is at 0.80 or more, because that's how pairs were picked, so the set can't say whether the rule needs a floor;
+  - the pipeline matches an item to a topic's centroid, not to one title. A short two-word name inside many different stories ("jack smith" in each day's Jack Smith story) could chain them into one topic, which a pair test can't show.
+
 ## Limits
 
 - 238 pairs from one day, heavy on the MLB playoffs. The differences between the top two models are within noise.

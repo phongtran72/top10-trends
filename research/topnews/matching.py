@@ -14,6 +14,8 @@ gitignored research/data/, like every other export.
 
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 
@@ -98,3 +100,20 @@ def best_threshold(same: pd.Series, sims: pd.Series, min_precision: float = 0.9)
         return {"threshold": float("nan"), "precision": float("nan"), "recall": float("nan")}
     row = ok.iloc[0]
     return {"threshold": float(row["threshold"]), "precision": float(row["precision"]), "recall": float(row["recall"])}
+
+
+def _words(text: str) -> frozenset[str]:
+    return frozenset(re.findall(r"[a-z0-9]+", text.lower()))
+
+
+def containment(text_a: str, text_b: str) -> tuple[str, int]:
+    """How two titles' words relate, and how many words the shorter one has: "equal" (the same words),
+    "contained" (every word of one is in the other: "rick ross" and "rick ross battery charge") or "no".
+    Pass the pipeline's embedding texts, so hashtags are already split into words."""
+    a, b = _words(text_a), _words(text_b)
+    short = min(len(a), len(b))
+    if not short:
+        return "no", 0
+    if a == b:
+        return "equal", short
+    return ("contained" if a < b or b < a else "no"), short
