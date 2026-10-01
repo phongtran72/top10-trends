@@ -68,7 +68,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 - If nextjs.org is blocked from a cloud session, use the docs bundled in the installed package (`node_modules/next/dist/docs/`).
 - Cloud sessions reach only allowed hosts. When a request is blocked, name the host so the human can allow it (SETUP.md §1).
 - Pushing `.github/workflows/*` from a cloud session can be refused for lack of workflow permission. Commit workflow files separately; if the push is refused, move them to `ci/workflows/` and ask the human to create each file through GitHub's web editor.
-- Reddit requires the User-Agent format `<platform>:<app ID>:<version> (by /u/<username>)`, and its API needs explicit approval first (SETUP.md).
+- Reddit refused Data API access (2026-10-01), so the collector reads r/popular's public Atom feed with the normal collector User-Agent: titles and post ids only, no scores or NSFW flags. The XML parser ignores attributes, so the post link is built from the entry's `id`, not its `<link href>`.
 - Bluesky's trends endpoints are "unspecced": `link` is a relative path, `status` is free text (seen: `trending`, `saturating`, `cooling`, `stale`) and `topic` is an opaque id. Validate with zod so a schema change fails only that source.
 - YouTube's `chart=mostPopular` has no worldwide option and, since July 2025, draws from the music, movies and gaming charts.
 - Google Trends' "Trending now" RSS is per country with no worldwide feed, and each item's `<link>` is only the feed URL.
