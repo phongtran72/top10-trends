@@ -213,6 +213,10 @@ Between refreshes the same list repeats in every hourly fetch, so those sources'
 - **Breakouts are rare.** Only 2 stories reached 3 or more platforms all day, so the breakout labels will be very unbalanced; "2 or more platforms" may be worth adding as a label.
 - **Matching is about half right between 0.60 and 0.70.** Short names pass as different people or teams ("Dom Smith" and "jack smith" at 0.61, "yankees" and "Astros" at 0.70). Hashtags written as one lowercase word fell below 0.60 (47% of TikTok's titles). Task 2.13's splitting lifts those to 1.00 ("#nationalcoffeeday" against "national coffee day" went from 0.53) and loses no match. Evidence for task 2.9.
 - **Batch noise (fixed):** until phase-2 377374f, the pipeline embedded in batches of 64. The 8-bit model's output depended slightly on a title's batch-mates: pair similarities moved by up to 0.06, and about 1 in 10 pairs near 0.60 fell on either side of it. The pipeline now embeds one title at a time, which is exact and costs about 0.2 s a run.
+- **A better matching model** (2026-10-01, `research/findings/matching.md`):
+  - **The test:** 238 checked pairs of trends, drafted by Qwen3.5-9B on this PC's GPU and corrected by hand, scored against seven Hugging Face models run on the CPU through Transformers.js.
+  - **The result:** at 90% right merges, the pipeline's all-MiniLM-L6-v2 catches 37% of same-story pairs (AUC 0.82). `nomic-ai/nomic-embed-text-v1.5` (q8, mean pooling, `clustering: ` prefix, 768 dimensions) catches 66% (AUC 0.94), at about 8 ms a title.
+  - **Switching is task 2.9's call:** it means 768-number centroids, a threshold near 0.85 to confirm on a week, a new `algo_version` family and a rebuild.
 
 **Lifecycle** (RQ1 first look, 2026-09-30, `research/findings/rq1-lifecycle.md`; per list, before snapshots):
 - **Half-life in the top 10:** 1 hour on Bluesky and Google (79% and 72% of entries were gone at the next fetch), and 3 hours on Hacker News. Mastodon and Twitch run over 12 hours (57% of entries still listed after 12 hours).
