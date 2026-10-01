@@ -47,6 +47,31 @@ THRESHOLDS = tuple(round(HEADLINE_THRESHOLD + step, 2) for step in (-0.08, -0.04
 SLACK_HOURS = 24.0
 RUN_MARGIN = pd.to_timedelta(15, unit="min")  # like the pipeline's RUN_LIST_MARGIN_MS
 
+# A list that describes an earlier period pairs only with lists whose window covers that period.
+# TikTok's runs about a week behind (PLAN.md › Predictions and research), so a match with an hourly
+# list is the same story a week apart, not at the same time; Pinterest's 30-day window covers
+# TikTok's week. The pipeline goes further and doesn't match TikTok at all (UNSCORED_SOURCES).
+LAGGED_PARTNERS: dict[str, frozenset[str]] = {"tiktok": frozenset({"pinterest"})}
+
+
+def pipeline_unscored(config: Path = REPO_ROOT / "config" / "ranking.ts") -> frozenset[str]:
+    """The sources the pipeline leaves out of matching and the combined score (UNSCORED_SOURCES)."""
+    match = re.search(r"export const UNSCORED_SOURCES[^=]*=\s*new Set\(\[([^\]]*)\]\)", config.read_text(encoding="utf-8"))
+    if not match:
+        raise ValueError(f"no UNSCORED_SOURCES in {config}")
+    return frozenset(re.findall(r"[\"']([a-z_]+)[\"']", match.group(1)))
+
+
+def may_pair(source: np.ndarray, lagged: dict[str, frozenset[str]] = LAGGED_PARTNERS) -> np.ndarray:
+    """Row trend against column trend: True when the two platforms may be matched at all.
+    Never a platform with itself, and a lagged list only with its listed partners."""
+    allowed = source[:, None] != source[None, :]
+    for lagging, partners in lagged.items():
+        is_lagging, is_partner = source == lagging, np.isin(source, sorted(partners))
+        blocked = is_lagging[:, None] & ~is_partner[None, :]
+        allowed &= ~(blocked | blocked.T)
+    return allowed
+
 
 def since_all_present(items: pd.DataFrame) -> pd.DataFrame:
     """The items from the first fetch time by which every source in `items` has a list.
@@ -143,6 +168,7 @@ def _seconds(times: pd.Series) -> np.ndarray:
 
 def cross_platform(table: pd.DataFrame, vectors: np.ndarray, slack_hours: float = SLACK_HOURS) -> pd.DataFrame:
     """Per trend: its best similarity to each other platform's trends seen within `slack_hours`.
+    A lagged list (TikTok) is compared only with its LAGGED_PARTNERS.
 
     Returns the trend table with `sim_<platform>` columns (NaN for its own
     platform) and `match_<platform>` columns (that best match's trend_id),
@@ -154,7 +180,7 @@ def cross_platform(table: pd.DataFrame, vectors: np.ndarray, slack_hours: float 
     slack = slack_hours * 3600
     near_in_time = (first[:, None] <= last[None, :] + slack) & (first[None, :] <= last[:, None] + slack)
     source = table["source_id"].to_numpy()
-    allowed = near_in_time & (source[:, None] != source[None, :])
+    allowed = near_in_time & may_pair(source)
     masked = np.where(allowed, sims, -np.inf)
 
     out = table.copy()

@@ -34,7 +34,7 @@ def matches(rows, vectors):
 
 
 # Every source's data starts at T0 - 5 h, so nothing here is censored unless a test says so.
-STARTS = pd.Series({s: T0 - pd.to_timedelta(5, unit="h") for s in ["bluesky", "google_trends", "x", "tiktok", "mastodon"]})
+STARTS = pd.Series({s: T0 - pd.to_timedelta(5, unit="h") for s in ["bluesky", "google_trends", "x", "instagram", "mastodon"]})
 
 
 def test_lead_pairs_measure_who_had_it_first_once_per_pair():
@@ -81,7 +81,7 @@ def test_a_sighting_from_before_the_other_source_was_collected_cant_be_compared(
 
 
 def test_slow_sources_are_left_out_unless_asked():
-    cp = matches([("google_trends", "fall", 0), ("tiktok", "#fall", 3)], [unit(1), unit(1)])
+    cp = matches([("google_trends", "fall", 0), ("instagram", "#fall", 3)], [unit(1), unit(1)])
     pairs = leadlag.lead_pairs(cp, STARTS)
     assert pairs["slow"].tolist() == [True]
     assert leadlag.usable(pairs).empty

@@ -83,6 +83,38 @@ def test_cross_platform_finds_the_best_match_on_each_other_platform_within_the_s
     assert cp.loc["google_trends", "match_google_trends"] is None
 
 
+def test_a_lagged_list_pairs_only_with_its_partners():
+    t = table(
+        [
+            ("tiktok", "#firstdayoffall", 0, 1, 1),
+            ("x", "first day of fall", 0, 1, 2),
+            ("pinterest", "first day of fall", 0, 1, 1),
+        ]
+    )
+    cp = echo.cross_platform(t, np.stack([unit(1), unit(1), unit(1, 0.2)])).set_index("source_id")
+    assert np.isnan(cp.loc["tiktok", "sim_x"]) and np.isnan(cp.loc["x", "sim_tiktok"])  # a week apart
+    assert cp.loc["tiktok", "best_platform"] == "pinterest"  # though X's title is the closer one
+    assert cp.loc["pinterest", "match_tiktok"] == "t0"
+    assert cp.loc["x", "best_platform"] == "pinterest"  # the other lists pair as before
+
+
+def test_may_pair_takes_any_lagged_map():
+    source = np.array(["a", "b", "c", "a"])
+    allowed = echo.may_pair(source, {"a": frozenset()})
+    assert not allowed[0].any() and not allowed[:, 3].any()  # "a" pairs with nothing
+    assert allowed[1, 2] and allowed[2, 1] and not allowed[1, 1]
+
+
+def test_every_source_the_pipeline_leaves_unscored_is_lagged_here(tmp_path):
+    config = tmp_path / "ranking.ts"
+    config.write_text('export const UNSCORED_SOURCES: ReadonlySet<string> = new Set(["tiktok", "pinterest"]);\n')
+    assert echo.pipeline_unscored(config) == {"tiktok", "pinterest"}
+    config.write_text("export const MATCH_THRESHOLD = 0.86;\n")
+    with pytest.raises(ValueError):
+        echo.pipeline_unscored(config)
+    assert echo.pipeline_unscored() <= set(echo.LAGGED_PARTNERS)  # the real config
+
+
 def test_echo_shares_count_trends_alone_at_each_threshold_and_weight_by_fetches():
     shares = echo.echo_shares(cp_fixture(), thresholds=(0.9,)).set_index("source_id")
     assert shares.loc["twitch", "share"] == 1.0

@@ -118,6 +118,19 @@ Share of each platform's trends with no match on any other list:
   - Ronaldo leaving Portugal's camp (Google, X, Bluesky).
 - **Matches just above 0.86 are nearly all right.** Of the 23 trends between 0.86 and 0.90, the wrong ones are "Luis Rojas" with "luis garcia" and X's "Flores" with TikTok's "#floresamarillas".
 
+## TikTok pairs only with Pinterest (2026-10-01)
+
+TikTok's list describes the week before (see Limits), so the pipeline no longer matches or scores it (task 2.16, `UNSCORED_SOURCES`). Research follows with a narrower rule, `echo.LAGGED_PARTNERS`: TikTok is compared only with Pinterest, whose 30-day window covers TikTok's week, and never with the hourly lists. Every tool built on these matches (lead and lag, breakout, news and memes, the baselines) inherits it.
+
+Measured on the stored lists to 2026-10-01 12:08 UTC (718 trends over 26 hours), with the rule off and on:
+
+- **Two matches go.** Both paired TikTok with an hourly list:
+  - Twitch's "Aniimo" with "#aniimo" (1.00): the same game, a week apart;
+  - X's "Flores" with "#floresamarillas" (0.90): a wrong match.
+- **TikTok with Pinterest stays:** "#firstdayoffall" and "#floresamarillas", with 7 of Pinterest's 25 searches.
+- **The shares barely move:** TikTok's trends found nowhere else go from 87% to 90%, Twitch's from 93% to 95%, and no other list changes.
+- **Still wrong:** X's "Flores" now pairs with Pinterest's "flores amarillas" searches at 0.865. That's the short-name problem, not the lag, so the rule doesn't touch it.
+
 ## What it means for the forecasts
 
 - **Breakouts are rare, so the labels will be very unbalanced.** Perhaps two stories a day reach 3 or more platforms. A 60% precision target has to be judged against that low base rate. "2 or more platforms" may be worth adding as an easier, more common label.
@@ -128,7 +141,7 @@ Share of each platform's trends with no match on any other list:
 
 - One day, and only two runs with every list.
 - TikTok (7 days) and Pinterest (30 days) cover windows much longer than the data they're matched against, so they can look lonelier than they are.
-- TikTok's list also lags. On 2026-10-01 its 7-day window was 2026-09-21 to 2026-09-27, so its hashtags describe the week before. A match between TikTok and a fast list is the same story a week apart, not at the same time; TikTok with Pinterest (the first day of fall) matches because Pinterest's window is 30 days.
+- TikTok's list also lags. On 2026-10-01 its 7-day window was 2026-09-21 to 2026-09-27, so its hashtags describe the week before. A match between TikTok and a fast list is the same story a week apart, not at the same time; TikTok with Pinterest (the first day of fall) matches because Pinterest's window is 30 days. Since 2026-10-01 the tools compare TikTok only with Pinterest (the section above); the tables before that section still include TikTok's matches with the hourly lists.
 - Only titles: stored lists keep no headlines, which the pipeline uses for Google and for deciding which runs to keep whole.
 - YouTube and Reddit are missing, so "nowhere else" means none of these nine lists.
 - The hand check is small, and near 0.60 it runs about half right. From 0.60 up, every list except X, Google and Instagram stays at 84% or more alone in both cuts.
