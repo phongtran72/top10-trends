@@ -164,10 +164,12 @@ Research on attention and forecasts for creators and marketers, built on one dat
     - Python notebooks in `research/` for analysis and training (PLAN.md › Predictions and research › Methods): yes;
     - a read-only Postgres role for them: yes. The SETUP.md step comes with 5.1.
 - [x] **5.1 Research setup.** A `research/` folder with Python notebooks, pinned requirements and a shared data loader, kept out of the TypeScript tooling. A SETUP.md step for the read-only role, with its connection string only in `.env.local`.
-- [ ] **5.2 Dataset.** `npm run dataset` builds one training table from `topic_snapshots`, `topics` and the combined rankings: one row per topic per hour, with features and labels.
-    - Features: platform ranks, platform count, position and score, plus their 1-, 3- and 6-hour changes; hours since first seen; the first platform; hour of day and weekday; `news_count`.
-    - Labels: breakout within 6 hours; hours left in the combined top 10.
-    - Rows from other `algo_version` families are left out. Splits are by time. It prints row counts and label balance and writes CSV to a gitignored `data/` folder.
+- [x] **5.2 Dataset.** `python -m topnews.dataset` (in `research/`) builds one training table from `topic_snapshots` and `topics`: one row per topic per hour, with features and labels.
+    - Features: platform ranks, platform count, position and score, plus their 1-, 3- and 6-hour changes; hours since first seen; the first platform; hour of day and weekday; `news_count`; whether the hour was replayed.
+    - Labels: breakout within 6 hours (3 or more platforms or the top 3), spread to a second platform within 6 hours, and hours left in the top 10 (with gaps of up to 2 hours allowed, censored where it could still go on). Each is left unknown where the data can't answer yet.
+    - The top 10 is the snapshot position, which leaves YouTube out, not the combined rankings table, whose order includes it.
+    - Rows from other `algo_version` families are left out. Splits are by time, with a 6-hour embargo before the test set. It prints row counts and label balance and writes CSV to the gitignored `research/data/`.
+    - Before production has snapshots, `npx tsx scripts/replay-snapshots.ts` rebuilds them from the stored lists in memory (read-only), and `--source replay` uses those.
 - [ ] **5.3 RQ1 · Lifecycle.** Lifecycle curves (rise, peak, decay) and half-life by topic category, where categories come from clustering the topic centroids. A short write-up in `research/findings/rq1-lifecycle.md`; the key numbers go into PLAN.md › Predictions and research.
 - [ ] **5.4 RQ2–RQ6.** One notebook and a short write-up each:
     - RQ2 lead and lag between platforms;

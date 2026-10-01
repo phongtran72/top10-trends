@@ -185,7 +185,14 @@ Phase 5 turns the stored history into two things of equal weight, built on one d
 | Days (1–7) | "Will it still matter when my video is ready?" | Expected lifespan: hours left in the combined top 10 | The above, plus how similar past topics fared (nearest topic centroids) |
 | Weeks (1–8) | "What goes on next month's calendar?" | Scheduled and recurring moments, and how big they were last time | Outside calendars and multi-year history (below); our own data can't see an event before it trends |
 
-**Data.** Features come only from `topic_snapshots` (hourly, permanent, never YouTube), `topics` (labels, centroids, first and last seen) and the combined rankings. The hours and days work needs 6 to 8 weeks of snapshots; the weeks horizon and seasonal rhythms need a year of our own data or outside history. Labels: *breakout* means reaching 3 or more platforms, or the combined top 3, within 6 hours of the forecast; *lifespan* means the hours until the topic last appears in the combined top 10. Each snapshot records its `algo_version` (embedding model and weights, matching threshold and `RANKING_VERSION`, plus "+replay" for rebuilt hours), so analyses and training can keep to one version or compare versions. Replayed hours have a `news_count` of 0, because past lists' headlines weren't stored. Some sources move in steps, not hourly:
+**Data.** Features come only from `topic_snapshots` (hourly, permanent, never YouTube), `topics` (labels, centroids, first and last seen) and the combined rankings. The hours and days work needs 6 to 8 weeks of snapshots; the weeks horizon and seasonal rhythms need a year of our own data or outside history. Labels: *breakout* means reaching 3 or more platforms, or the combined top 3, within 6 hours of the forecast; *lifespan* means the hours until the topic last appears in the combined top 10. The dataset (task 5.2, `research/topnews/dataset.py`) defines them precisely:
+- **The combined top 10 is the snapshot position,** which leaves YouTube out, unlike the combined rankings table.
+- **A lifespan allows gaps of up to 2 hours,** because Bluesky flickers (RQ1).
+- **An easier *spread* label** (a second platform within 6 hours) sits beside breakout, because breakouts are rare (RQ6).
+- **Each label is left unknown where the data can't answer yet.** Lifespans still running at the end are censored with their lower bound.
+- **Splits are by time,** with a 6-hour embargo before the test set, so no training label looks into it.
+
+Each snapshot records its `algo_version` (embedding model and weights, matching threshold and `RANKING_VERSION`, plus "+replay" for rebuilt hours), so analyses and training can keep to one version or compare versions. Replayed hours have a `news_count` of 0, because past lists' headlines weren't stored. Some sources move in steps, not hourly:
 - **TikTok:** the 7-day hashtag list refreshes once a day.
 - **Instagram:** its 10 worldwide topics refresh every 6 hours.
 - **Pinterest:** Pinterest Trends refreshes about weekly, and it's fetched twice a week.

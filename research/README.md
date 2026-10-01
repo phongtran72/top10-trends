@@ -54,6 +54,10 @@ research/
   topnews/db.py      read-only data access
   topnews/rhythms.py RQ5: turnover, novelty and flow of the stored lists by hour
   topnews/lifecycle.py RQ1: spells in each list's top 10, half-lives (Kaplan–Meier), rank paths
+  topnews/dataset.py 5.2: the training table from topic snapshots
+                     (python -m topnews.dataset [--source replay]; before production
+                     has snapshots, npx tsx scripts/replay-snapshots.ts at the repo
+                     root rebuilds them from the stored lists, read-only)
   topnews/baselines.py 5.5: rule-based lifespan and breakout forecasts, scored by time split
   topnews/news.py    RQ4: google, calendar, news-linked or other, with lifespans and spread
   topnews/breakout.py RQ3: which trends spread to other lists, by what was known at first sighting
