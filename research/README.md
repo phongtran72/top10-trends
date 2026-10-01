@@ -58,6 +58,7 @@ research/
                      (python -m topnews.dataset [--source replay]; before production
                      has snapshots, npx tsx scripts/replay-snapshots.ts at the repo
                      root rebuilds them from the stored lists, read-only)
+  topnews/wiki.py    5.8: Wikipedia links and daily pageviews (no key; cached in data/wiki/)
   topnews/baselines.py 5.5: rule-based lifespan and breakout forecasts, scored by time split
   topnews/news.py    RQ4: google, calendar, news-linked or other, with lifespans and spread
   topnews/breakout.py RQ3: which trends spread to other lists, by what was known at first sighting

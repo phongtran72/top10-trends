@@ -243,6 +243,10 @@ Between refreshes the same list repeats in every hourly fetch, so those sources'
 **Outside data**, added in this order and only when a question or horizon needs it, all free:
 
 1. Wikipedia pageviews: daily attention history since 2015 from the Wikimedia REST API, no key. The best source for seasonal baselines and for how big a past topic got.
+   - **Status:** in research since 2026-10-01 (`research/topnews/wiki.py`, `research/findings/wikipedia.md`); the pipeline collector waits until a model needs live figures.
+   - **Linking:** topics link to articles through Wikipedia's search, and only exact matches are used. That gives about half of the top-10 topics, nearly all names and places.
+   - **What it shows:** calendar moments peak in their month every year (National Day for Truth and Reconciliation 6.7× in September, Fat Bear Week 4.6× in October).
+   - **Lag:** figures arrive a day late, so they help the days and weeks horizons, not the hours one.
 2. GDELT: news volume and tone, updated every 15 minutes.
 3. Event calendars: TheSportsDB (fixtures), Nager.Date (holidays), TMDB (film and TV releases) and IGDB (game releases, through the existing Twitch app).
 

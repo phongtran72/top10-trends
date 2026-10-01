@@ -183,7 +183,7 @@ Research on attention and forecasts for creators and marketers, built on one dat
     - Each run scores current topics after the rank step, in its own try/catch, and fills in the outcomes of past forecasts whose horizon has passed.
     - `lib/forecast-queries.ts` gives the pages what they need.
 - [ ] **5.8 Outside data.** Free collectors, each with fixtures, tests and a SETUP.md step for any key, in order:
-    1. Wikipedia pageviews;
+    1. Wikipedia pageviews (the research module `topnews.wiki` and notebook 08 are done; the pipeline collector comes when a model needs live figures);
     2. GDELT;
     3. event calendars (TheSportsDB, Nager.Date, TMDB, IGDB through the Twitch app).
 
