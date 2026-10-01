@@ -29,10 +29,10 @@ import pandas as pd
 # changes aren't signal (PLAN.md › Predictions and research).
 SLOW_SOURCES = frozenset({"tiktok", "instagram", "pinterest"})
 
-# Sources whose url stays the same while the title changes: Bluesky rewrites a
-# topic's title as the story moves on (the url holds the feed id), and Hacker
-# News titles get edited.
-URL_IDENTITY = frozenset({"bluesky", "hacker_news"})
+# Sources whose url is the item's identity: Bluesky rewrites a topic's title
+# as the story moves on (the url holds the feed id), Hacker News titles get
+# edited, and Reddit's url holds the post id.
+URL_IDENTITY = frozenset({"bluesky", "hacker_news", "reddit"})
 
 # Metrics too coarse for growth: Google's searches come in buckets (200+,
 # 500+, 1,000+ …), so most hours show no change.

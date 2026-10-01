@@ -30,6 +30,7 @@ PLATFORM = {
     "bluesky": "Bluesky trending topic",
     "mastodon": "Mastodon hashtag",
     "hacker_news": "Hacker News story",
+    "reddit": "Reddit post from r/popular",
     "twitch": "Twitch streaming category",
     "tiktok": "TikTok hashtag (US)",
     "instagram": "Instagram trending topic",

@@ -199,6 +199,8 @@ Each snapshot records its `algo_version` (embedding model and weights, matching 
 
 Between refreshes the same list repeats in every hourly fetch, so those sources' hour-to-hour changes aren't signal. Instagram's `posts` metric is an all-time media count, not trending volume, so it isn't momentum either. X can have `skipped` runs with the reason `daily cap`: those hours have no X ranks, not low ones.
 
+Reddit joined on 2026-10-01 as a corroborating source: the 25 hot posts of r/popular, read every hour from its public feed. It has no metric, and research follows a post by its url, which holds the post id. As with every source that joins late, its first list is censored: what it showed before then is unknown.
+
 **What the lists are** (RQ5 first look, 2026-09-30, `research/findings/rq5-rhythms.md`):
 - **Google Trends:** its feed is the 10 *newest* US trends, newest first, not the 10 biggest. Its rank is age, and a trend leaves the feed when 10 newer ones start, which takes under an hour on a busy afternoon. Since task 2.12 the combined score and snapshots rank Google over a 3-hour window by searches (Ranking › Google Trends window), while `trend_items` keeps the feed's own order. Two consequences for research:
   - a topic that only Google has stays in the snapshots for up to 3 hours after its last sighting, so Google-led lifespans carry a tail of up to 3 hours; measure Google's own time on the feed from `trend_items`;

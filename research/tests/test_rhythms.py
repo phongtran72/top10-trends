@@ -59,6 +59,12 @@ def test_turnover_follows_a_bluesky_topic_through_a_title_change():
     assert rhythms.turnover(rhythms.list_runs(items))["new"].tolist() == [0]
 
 
+def test_reddit_posts_are_followed_by_their_url():
+    items = fetches("reddit", "2026-10-01T00:07", [["Same title"], ["Same title"]],
+                    urls=["https://www.reddit.com/comments/abc1/", "https://www.reddit.com/comments/xyz9/"])
+    assert rhythms.turnover(rhythms.list_runs(items))["new"].tolist() == [1]  # two posts, though the titles agree
+
+
 def test_turnover_only_looks_at_the_top_ten():
     deep = [f"t{n}" for n in range(12)]
     reordered = deep[10:] + deep[:10]  # t10 and t11 move up into the top 10
