@@ -227,7 +227,7 @@ Reddit joined on 2026-10-01 as a corroborating source, with its first list in th
 - **Matching is about half right between 0.60 and 0.70.** Short names pass as different people or teams ("Dom Smith" and "jack smith" at 0.61, "yankees" and "Astros" at 0.70). Hashtags written as one lowercase word fell below 0.60 (47% of TikTok's titles). Task 2.13's splitting lifts those to 1.00 ("#nationalcoffeeday" against "national coffee day" went from 0.53) and loses no match. Evidence for task 2.9.
 - **Batch noise (fixed):** until phase-2 377374f, the pipeline embedded in batches of 64. The 8-bit model's output depended slightly on a title's batch-mates: pair similarities moved by up to 0.06, and about 1 in 10 pairs near 0.60 fell on either side of it. The pipeline now embeds one title at a time, which is exact and costs about 0.2 s a run.
 - **A better matching model** (2026-10-01, `research/findings/matching.md`):
-  - **The test:** 238 checked pairs of trends, drafted by Qwen3.5-9B on this PC's GPU and corrected by hand, scored against seven Hugging Face models run on the CPU through Transformers.js.
+  - **The test:** 238 checked pairs of trends, drafted by Qwen3.5-9B on this PC's GPU and corrected one by one by the research assistant (Claude), scored against seven Hugging Face models run on the CPU through Transformers.js.
   - **The result:** at 90% right merges, the pipeline's all-MiniLM-L6-v2 catches 37% of same-story pairs (AUC 0.82). `nomic-ai/nomic-embed-text-v1.5` (q8, mean pooling, `clustering: ` prefix, 768 dimensions) catches 66% (AUC 0.94), at about 8 ms a title.
   - **Cut to 384 numbers it loses nothing** (Matryoshka: layer norm, truncate, renormalize; AUC 0.936, still 66% caught), so `topics.centroid` stays `real[384]`.
   - **Switching is task 2.9's call:** a threshold near 0.85 to confirm on a week, a new `algo_version` family and a rebuild.
@@ -248,10 +248,11 @@ Reddit joined on 2026-10-01 as a corroborating source, with its first list in th
   - Hacker News has a real rise and fall: 38% of stories climb after entering;
   - Bluesky flickers: 47% of its spells are returns, most after missing one fetch, so a Bluesky life should allow an hour's gap. That doubles the share still going after 1 hour (21% to 44%); the median stays 1 hour.
 
-**Categories** (2026-10-01, `research/findings/categories.md`): all 528 trends of the first day got a category and a news flag. The local Qwen3.5-9B drafted them with each trend's platform and linked article as context, and a person checked them (88% agreed).
-- **Each platform has a signature:** Bluesky politics (53%), Google and X sports (about half, on a playoff day), Hacker News tech, Twitch gaming, Mastodon calendar tags, Pinterest lifestyle.
-- **The most news-driven category spreads least.** Politics is 95% news-driven, yet only 3% of its trends were on another list; sports (23%) and calendar moments (22%) crossed most.
-- **Sports trends are the shortest-lived** (2% still in a top 10 after 3 hours); tech (Hacker News) the longest (43%).
+**Categories** (2026-10-01, `research/findings/categories.md`): all 876 trends up to 2026-10-01 13:07 UTC have a category and a news flag. The local Qwen3.5-9B drafted them with each trend's platform and linked article as context, and the research assistant (Claude, not the owner) checked every draft. The model agreed on 86%: 94–100% where a trend links to an article, 70% on X's bare names.
+- **Each platform has a signature**, and it held on the second day: Bluesky politics (47%), Google and X sports (about half, on playoff days), Hacker News tech, Twitch gaming, Mastodon calendar tags, Pinterest lifestyle.
+- **Sports is the only category that clearly spreads on the hourly lists:** 25% of its trends were on another list besides Google, against 8% or less for every other category. Politics is 89% news-driven and at 8%.
+- **Calendar moments cross through the slow lists.** Over every list 25% of them were matched elsewhere, but only 7% on the hourly lists; the rest are on Instagram, Pinterest and TikTok, where timing isn't reliable. An earlier note here gave 22% as if it were the hourly lists.
+- **Sports trends are the shortest-lived** (6% still in a top 10 after 3 hours); calendar tags (76%) and tech (46%) the longest.
 - **Caveat:** category and platform are tangled until there are more days. Category is a forecast feature; topics will take their members' category.
 
 **News and memes** (RQ4 first look, 2026-10-01, `research/findings/rq4-news-memes.md`):
@@ -261,7 +262,7 @@ Reddit joined on 2026-10-01 as a corroborating source, with its first list in th
   - "calendar" covers weekday hashtags, "national … day" and a season's first day;
   - "other" is the rest.
 - **On the first day, news-linked meant sports:** 9 of 11 were X names during the MLB wild card.
-- **Calendar moments crossed platforms most often.** 35% were also on another list besides Google, against 4% for "other", but that's 2 stories: the first day of fall and national coffee day.
+- **Calendar moments crossed platforms most often.** 35% were also on another list besides Google, against 4% for "other", but that's 2 stories: the first day of fall and national coffee day. Both crossed through the slow lists (TikTok, Pinterest, Instagram); on the hourly lists calendar moments spread 7% of the time (*Categories* above).
 - **For the weeks horizon:** calendar moments are its predictable case. The planned event calendars don't cover observances.
 - **Lifespans can't be compared by category yet.**
 

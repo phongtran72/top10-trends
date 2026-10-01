@@ -6,7 +6,7 @@
 
 - **The candidates.** Each trend's best match on every other platform: 228 pairs at similarity 0.45 or more on the pipeline's model (all-MiniLM-L6-v2), plus 26 more that nomic-embed-text-v1.5 rated 0.80 or more. Picking from both models keeps the test from favoring either. The data is stored lists from 2026-09-30 11:32 to 2026-10-01 02:08 UTC, with no YouTube.
 - **Drafted by a local model.** Qwen3.5-9B in LM Studio, on this PC's GPU, drafted "same story?" for every pair (`topnews.llm`, about 1 pair a second).
-- **Checked by hand.** Every draft was checked, which left 238 labeled pairs (86 same, 152 different), with 16 excluded as too unclear to call. The draft agreed with the check on 88% of pairs. Most of its errors linked things with only a loose connection ("ken paxton" with "#nolanwells", "happy first day of fall" with "#hellooctober").
+- **Checked one by one.** Every draft was checked by the research assistant (Claude, which also writes these notes), not by the owner. That left 238 labeled pairs (86 same, 152 different), with 16 excluded as too unclear to call. The draft agreed with the check on 88% of pairs. Most of its errors linked things with only a loose connection ("ken paxton" with "#nolanwells", "happy first day of fall" with "#hellooctober").
 - **Labeling rules:**
   - the same event, person, team, product or occasion is the same story;
   - a team and its game are the same ("braves" and "phillies - braves");
@@ -64,6 +64,6 @@ If the pipeline moved to nomic-embed-text-v1.5, cross-platform topics would merg
 ## Limits
 
 - 238 pairs from one day, heavy on the MLB playoffs. The differences between the top two models are within noise.
-- One person's labels, drafted by a local model, with fixed rules.
+- One reviewer's labels (the research assistant's, not the owner's), drafted by a local model, with fixed rules.
 - Pairs that both models miss aren't in the set, so the shares caught are relative, not absolute.
 - Titles only: the pipeline also embeds Google's headlines, which this didn't.

@@ -61,6 +61,8 @@ With nomic-embed-text-v1.5 at the pipeline's 0.86 and data to 2026-10-01 03:08 U
 
 News-linked trends now spread as often as calendar moments. With the hand-checked categories (`findings/categories.md`), the split is sharper: calendar 30%, sports 29%, gaming 10%, politics 6%, entertainment 2%.
 
+**Correction (2026-10-01, data to 13:07 UTC):** calendar moments cross mostly through the slow lists. Over every list 25% of them were matched on another list; on the hourly lists only 7% (3 of 42), because the rest of the matches are on Instagram, Pinterest and TikTok, and the TikTok–Pinterest ones are a week apart. Sports is the one kind that clearly spreads on the hourly lists (25%). The tables are in `findings/categories.md` › Second set.
+
 ## What it means for the forecasts
 
 - **"News" needs subtypes.** On a playoff day, news-driven means sports. RQ4 should split news by kind (sports, politics, entertainment), for example by clustering topic centroids as RQ1 plans, before asking whether news lasts longer than memes.
