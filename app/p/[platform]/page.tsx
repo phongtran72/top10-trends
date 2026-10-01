@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { COLLECTORS } from "@/collectors/index";
-import { pageRegion, platformBySlug } from "@/collectors/registry";
+import { pageRegion, platformBySlug, type SourceDef } from "@/collectors/registry";
 import { RelativeTime } from "@/components/RelativeTime";
 import { getDb } from "@/lib/db";
 import { hostOf, metricText, REGION_NAMES } from "@/lib/format";
+import { WINDOWED_SOURCES } from "@/lib/window";
 import { platformList } from "@/lib/queries";
 import styles from "./page.module.css";
 
@@ -24,8 +25,15 @@ export async function generateMetadata({ params }: PageProps<"/p/[platform]">): 
   if (!source) return {};
   return {
     title: `${source.name} top 10`,
-    description: `The top 10 on ${source.name} right now, in ${source.name}'s own order, refreshed every hour.`,
+    description: `The top 10 on ${source.name} right now, ${orderText(source)}, refreshed every hour.`,
   };
+}
+
+// How the list is ordered: the source's own ranking, or, for a source whose
+// feed is in time order (Google Trends), its last few hours by volume.
+function orderText(source: SourceDef): string {
+  const hours = WINDOWED_SOURCES.get(source.id);
+  return hours === undefined ? `in ${source.name}'s own order` : `the last ${hours} hours' trends by search volume`;
 }
 
 export default async function PlatformPage({ params }: PageProps<"/p/[platform]">) {
@@ -38,7 +46,7 @@ export default async function PlatformPage({ params }: PageProps<"/p/[platform]"
     <>
       <h1 className="page-title">{source.name} top 10</h1>
       <p className="lede">
-        {region} · in {source.name}&apos;s own order ·{" "}
+        {region} · {orderText(source)} ·{" "}
         {list ? <RelativeTime iso={list.fetchedAt} prefix="updated" /> : "no list yet"}
       </p>
       {source.note && <p className={styles.note}>{source.note}</p>}

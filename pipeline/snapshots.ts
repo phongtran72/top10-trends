@@ -18,7 +18,7 @@ export const EXCLUDED_FROM_HISTORY: ReadonlySet<SourceId> = new Set<SourceId>(["
 // How a snapshot was made, e.g. "nomic-embed-text-v1.5.q8.384/t0.86/r1": the
 // embedding model, weights and dimensions, the matching threshold and the
 // ranking version, plus
-// "+replay" for hours rebuilt from stored lists (titles only: no headlines, no
+// "+replay" for hours rebuilt from stored lists (titles only: no headlines, and no
 // Bluesky status filter).
 export function algoVersion(threshold: number, replay = false): string {
   const model = EMBEDDING_MODEL.split("/").pop()!.toLowerCase();

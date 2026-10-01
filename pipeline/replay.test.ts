@@ -17,7 +17,7 @@ function list(sourceId: SourceId, region: Region, at: Date, titles: string[]): L
     source: getSource(sourceId),
     region,
     status: "ok",
-    items: titles.map((title, i) => ({ source: sourceId, region, rank: i + 1, title, url: `https://example.com/${sourceId}/${i}` })),
+    items: titles.map((title, i) => ({ source: sourceId, region, rank: i + 1, title, url: `https://example.com/${sourceId}/${encodeURIComponent(title)}` })),
     startedAt: at,
     finishedAt: at,
   };
@@ -79,6 +79,26 @@ describe("tuning in a scratch copy", () => {
     expect(unmatched.crossPlatform.map((t) => [t.label, Object.keys(t.titles).sort()])).toEqual([
       ["world series", ["bluesky", "google_trends"]],
     ]);
+  });
+});
+
+describe("stored Bluesky status", () => {
+  it("is restored on replayed items, so cooling trends are dropped as in a live run", async () => {
+    const db = await createTestDb();
+    try {
+      await upsertSources(db.db, planSources({ collectors: new Set(), disabled: [], env: {} }));
+      const at = hour(15);
+      const bluesky = list("bluesky", "global", at, ["Fresh story", "Fading story"]);
+      bluesky.items[0].flags = { status: "trending" };
+      bluesky.items[1].flags = { status: "cooling" };
+      await writeResults(db.db, [bluesky, list("mastodon", "global", at, ["#sometag"])]);
+      const slots = await loadSlots(db.db);
+      expect(slots[0].results.map((r) => r.items.map((i) => i.flags?.status))).toEqual([["trending", "cooling"], [undefined]]);
+      await replaySlots(db.db, slots, { threshold: 0.8, embedder: wordEmbedder, blocklist: new Set() });
+      expect((await db.db.select().from(topics)).map((t) => t.label).sort()).toEqual(["Fresh story", "some tag"]);
+    } finally {
+      await db.close();
+    }
   });
 });
 
