@@ -7,7 +7,7 @@ export default defineConfig({
   },
   test: {
     include: ["**/*.test.ts"],
-    exclude: ["node_modules/**", "worker/**", ".next/**", ".claude/**"],
+    exclude: ["node_modules/**", "worker/**", ".next/**", ".claude/**", "research/**"],
     environment: "node",
     passWithNoTests: true,
   },

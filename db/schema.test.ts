@@ -19,7 +19,7 @@ describe("migrations", () => {
        where relnamespace = 'public'::regnamespace and relkind = 'r' order by relname`,
     );
     expect(rows).toEqual(
-      ["fetch_runs", "rankings", "sources", "topic_items", "topic_snapshots", "topics", "trend_items"].map((relname) => ({
+      ["fetch_runs", "rankings", "sources", "tiktok_curves", "topic_items", "topic_snapshots", "topics", "trend_items"].map((relname) => ({
         relname,
         relrowsecurity: true,
       })),

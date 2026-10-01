@@ -38,7 +38,7 @@ Six sources are free and need no approval, so they form the MVP. X costs $0.010 
 
 Facebook, Threads and LinkedIn are left out because none offers a trends source an individual can use. [Threads keyword search](https://developers.facebook.com/docs/threads/keyword-search/) needs app approval, Facebook [removed Trending in 2018](https://about.fb.com/news/2018/06/removing-trending/), and [LinkedIn's self-serve API](https://learn.microsoft.com/en-us/linkedin/shared/authentication/getting-access) covers only profiles and posting.
 
-TikTok's actor also returns each hashtag's 7-day daily popularity curve (0–100) and an up/down direction. The collector passes them on as `TrendItem.series` and `flags.direction`; `trend_items` doesn't store them, and phase 5 keeps them for research (PLAN.md › Predictions and research).
+TikTok's actor also returns each hashtag's 7-day daily popularity curve (0–100) and an up/down direction. The collector passes them on as `TrendItem.series` and `flags.direction`; `trend_items` doesn't store them, but the pipeline keeps them permanently in `tiktok_curves` for research (Data model).
 
 **Source cadence log.** Forecasting models need each source sampled the same way for weeks, so record every change to a scheduled source here: the date, what changed, and the resulting cadence, depth and window. Research cuts its data at these points. Sources the hourly pipeline fetches directly are sampled hourly, from their first run.
 
@@ -148,25 +148,41 @@ The rank step runs after the lists are saved, in its own error handler, so a fai
 
 ## Data model
 
-Seven Postgres tables hold everything. Raw items are deleted after 28 days, inside YouTube's 30-day storage limit; combined rankings are kept for good.
+Eight Postgres tables hold everything. Raw items are deleted after 28 days, inside YouTube's 30-day storage limit; combined rankings are kept for good.
 
 | Table | Columns | Retention |
 | --- | --- | --- |
 | `sources` | `id` text PK (`x`, `google_trends`, `reddit`, `bluesky`, `mastodon`, `youtube`, `tiktok`, `instagram`, `twitch`, `hacker_news`, `pinterest`, `heartbeat`), `name` text, `role` text (`lead`, `corroborating`, `system`), `weight` real, `enabled` boolean, `regions` text[] | Permanent; upserted from `collectors/registry.ts` at the start of each run |
 | `fetch_runs` | `id` bigserial PK, `source_id` text → sources, `region` text, `started_at` timestamptz, `finished_at` timestamptz, `status` text (`ok`, `error`, `skipped`), `item_count` int, `error` text | 90 days |
-| `trend_items` | `id` bigserial PK, `run_id` bigint → fetch_runs, `source_id` text, `region` text, `rank` int, `title` text, `url` text, `metric_value` bigint, `metric_label` text, `fetched_at` timestamptz; index on (`source_id`, `region`, `fetched_at` desc) | 28 days |
+| `trend_items` | `id` bigserial PK, `run_id` bigint → fetch_runs, `source_id` text, `region` text, `rank` int, `title` text, `url` text, `metric_value` bigint, `metric_label` text, `status` text (Bluesky's lifecycle label: `trending`, `saturating`, `cooling` or `stale`; null for other sources), `fetched_at` timestamptz; index on (`source_id`, `region`, `fetched_at` desc) | 28 days |
 | `topics` | `id` bigserial PK, `slug` text unique, `label` text, `summary` text (one line of context), `centroid` real[384], `first_seen` timestamptz, `last_seen` timestamptz | Permanent |
 | `topic_items` | `topic_id` bigint → topics, `item_id` bigint → trend_items on delete cascade; PK (`topic_id`, `item_id`) | 28 days, with their items |
 | `rankings` | `id` bigserial PK, `computed_at` timestamptz, `list` text (`combined` or a source id), `region` text, `rank` int, `topic_id` bigint → topics, `item_id` bigint → trend_items on delete cascade, `score` real; index on (`list`, `region`, `computed_at` desc) | Combined permanent; per-platform 28 days (cascades with items) |
 | `topic_snapshots` | `taken_at` timestamptz, `region` text, `topic_id` bigint → topics, `position` int (place among scored topics, null without a lead platform), `score` real, `platform_count` int, `news_count` int (distinct Google Trends headlines attached that run), `algo_version` text (embedding model, threshold, ranking version, `+replay` for rebuilt hours), `ranks` jsonb (source → best rank), `metrics` jsonb (source → metric); PK (`topic_id`, `taken_at`, `region`); index on `taken_at` | Permanent, never with YouTube data |
+| `tiktok_curves` | `title` text (the hashtag, `#name`), `window_end` date (the curve's last day), `day` date, `value` real (0–100), `direction` text (`up`, `down`, `stable` or null), `fetched_at` timestamptz (the first run that saw the curve); PK (`title`, `window_end`, `day`) | Permanent |
 
 In `trend_items` and `fetch_runs`, `region` is the feed's real region (`global` or `us`, plus `gb`, `ca` and `au` from phase 3); in `rankings` it is the view (`global` or `us`). At about 195 items per hourly run, `trend_items` holds roughly 131,000 rows at 28-day retention: about 39 MB, under 100 MB with indexes, well inside Supabase's 500 MB. Phase 3's extra country feeds raise this to about 300 items per run, or about 60 MB. Store only these columns rather than full API responses.
 
-**Topic snapshots** record, every run, where each current topic stands on each platform: the hour-by-hour history a future prediction model needs (for example, whether a topic will break out to more platforms). Items are deleted after 28 days, so snapshots are the only lasting record, at about 50 rows an hour, or 6 MB a month. Each row names the method that made it (`algo_version`), so analyses survive retuning, and counts the news headlines attached to its topic (`news_count`), the first news signal for the research. Hours rebuilt from stored lists carry `+replay` and a news count of 0, because headlines are not stored. YouTube is left out entirely, including from the snapshot score: its developer policies (III.E.4) allow storing API data for at most 30 days and forbid using it "to create new or derived data or metrics". This is a personal MVP: the owner accepts the platforms' terms risk of using their data to train a personal model, and would revisit it if the site ever went commercial. The same clause also bears on YouTube's place in the combined score and topic matching. The owner decided on 2026-09-30 to keep YouTube there as planned for this personal MVP, and to leave it out of permanent snapshots only. Compute item embeddings inside the job instead of storing them; a few hundred items per run fit in memory, so pgvector is optional. Every table has row-level security turned on with no policies, so Supabase's public Data API exposes nothing; the site and pipeline connect as the table owner, which bypasses it.
+**Topic snapshots** record, every run, where each current topic stands on each platform: the hour-by-hour history a future prediction model needs (for example, whether a topic will break out to more platforms). Items are deleted after 28 days, so snapshots are the only lasting record, at about 50 rows an hour, or 6 MB a month. Each row names the method that made it (`algo_version`), so analyses survive retuning, and counts the news headlines attached to its topic (`news_count`), the first news signal for the research. Hours rebuilt from stored lists carry `+replay` and a news count of 0, because headlines are not stored. YouTube is left out entirely, including from the snapshot score: its developer policies (III.E.4) allow storing API data for at most 30 days and forbid using it "to create new or derived data or metrics". This is a personal MVP: the owner accepts the platforms' terms risk of using their data to train a personal model, and would revisit it if the site ever went commercial. The same clause also bears on YouTube's place in the combined score and topic matching. The owner decided on 2026-09-30 to keep YouTube there as planned for this personal MVP, and to leave it out of permanent snapshots only. Compute item embeddings inside the job instead of storing them; a few hundred items per run fit in memory, so pgvector is optional. Every table has row-level security turned on with no policies, so Supabase's public Data API exposes nothing; the site and pipeline connect as the table owner, which bypasses it. The one exception is `research_reader` (migration 0002, SETUP.md §14): a role for the research notebooks with `SELECT`-only grants, one read policy per table and read-only sessions. It has no login until the owner sets a password. A new table needs its own `research_read` policy.
 
-## Predictions (phase 5)
+**TikTok curves** keep the one daily history TikTok gives: each listed hashtag's 7-day popularity curve, as Creative Center reports it (migration 0003). A curve is named by its hashtag and its last day. Each daily Apify run brings a new curve, and a day's value can differ from one curve to the next (the values run 0–100 within a curve), so every curve is kept whole; the hourly runs in between read the same curves again and add nothing. That's 30 hashtags × 7 days, about 210 rows a day or 77,000 a year: under 10 MB with its index. The step runs right after the lists are written, in its own error handler like the rank step, so a failure there never costs the run.
 
-Phase 5 turns the stored history into forecasts for creators and marketers planning content: is a topic worth making content about, and when? The same data also answers research questions about attention, such as how long topics last and which platform tends to have them first.
+## Predictions and research (phase 5)
+
+Phase 5 turns the stored history into two things of equal weight, built on one dataset: **research on attention** (how topics rise, peak and fade, which platform moves first, and what separates topics that spread from those that stay on one platform), and **forecasts for creators and marketers** planning content (is a topic worth making content about, and when?). The research findings become the forecasts' features and baselines, and the forecasts' track record tests the research.
+
+### Research questions
+
+| RQ | Question | First data |
+| --- | --- | --- |
+| RQ1 · Lifecycle (first) | How do topics rise, peak and decay, and what is the half-life by category? | Topic snapshots |
+| RQ2 · Lead and lag | Which platform tends to have a topic first, and by how long? | Topic snapshots |
+| RQ3 · Breakout | What separates topics that spread to several platforms from those that don't? | Snapshots, `news_count` |
+| RQ4 · Staying power | Do news-driven topics last longer than memes? | Snapshots, `news_count`, later GDELT |
+| RQ5 · Rhythms | How does attention vary by hour, weekday and season? | Snapshots; seasons need Wikipedia pageviews |
+| RQ6 · Echo chambers | What share of each platform's trends never appears anywhere else? | Topic snapshots |
+
+### Forecast horizons
 
 | Horizon | The creator's question | Forecast | Inputs |
 | --- | --- | --- | --- |
@@ -174,15 +190,126 @@ Phase 5 turns the stored history into forecasts for creators and marketers plann
 | Days (1–7) | "Will it still matter when my video is ready?" | Expected lifespan: hours left in the combined top 10 | The above, plus how similar past topics fared (nearest topic centroids) |
 | Weeks (1–8) | "What goes on next month's calendar?" | Scheduled and recurring moments, and how big they were last time | Outside calendars and multi-year history (below); our own data can't see an event before it trends |
 
-**Data.** Features come only from `topic_snapshots` (hourly, permanent, never YouTube), `topics` (labels, centroids, first and last seen) and the combined rankings. The hours and days models need 6 to 8 weeks of snapshots; the weeks horizon needs a year of our own data or outside history. Labels: *breakout* means reaching 3 or more platforms, or the combined top 3, within 6 hours of the forecast; *lifespan* means the hours until the topic last appears in the combined top 10. Each snapshot records its `algo_version`, so training can leave out rows made under an older threshold or ranking.
+**Data.** Features come only from `topic_snapshots` (hourly, permanent, never YouTube), `topics` (labels, centroids, first and last seen) and the combined rankings. The hours and days work needs 6 to 8 weeks of snapshots; the weeks horizon and seasonal rhythms need a year of our own data or outside history. Labels: *breakout* means reaching 3 or more platforms, or the combined top 3, within 6 hours of the forecast; *lifespan* means the hours until the topic last appears in the combined top 10. The dataset (task 5.2, `research/topnews/dataset.py`) defines them precisely:
+- **The combined top 10 is the snapshot position,** which leaves YouTube out, unlike the combined rankings table.
+- **A lifespan allows gaps of up to 2 hours,** because Bluesky flickers (RQ1).
+- **An easier *spread* label** (a second platform within 6 hours) sits beside breakout, because breakouts are rare (RQ6).
+- **Each label is left unknown where the data can't answer yet.** Lifespans still running at the end are censored with their lower bound.
+- **Splits are by time,** with a 6-hour embargo before the test set, so no training label looks into it.
 
-**Outside data**, added only when a horizon needs it, all free: Wikipedia pageviews (attention history since 2015, from the Wikimedia REST API), GDELT (news volume and tone, updated every 15 minutes), and event calendars: Nager.Date (holidays), TMDB (film and TV releases), IGDB (game releases, through the existing Twitch app) and TheSportsDB (fixtures). Each is a collector like the others: it only fetches and maps, runs in its own try/catch, and no page view ever calls it.
+Each snapshot records its `algo_version` (embedding model and weights, matching threshold and `RANKING_VERSION`, plus "+replay" for rebuilt hours), so analyses and training can keep to one version or compare versions. Replayed hours have a `news_count` of 0, because past lists' headlines weren't stored. Some sources move in steps, not hourly:
+- **TikTok:** the 7-day hashtag list is fetched once a day, at 06:00 UTC, and it lags: on 2026-10-01 every hashtag's curve covered 2026-09-21 to 2026-09-27, a Monday-to-Sunday week that ended four days earlier.
+  - **Its ranks describe last week, not today** (#firstdayoffall, #21stnightofseptember). Research never reads TikTok as same-time with other platforms: a match with a fast list is a story a week apart, and any lead or lag would only show that delay.
+  - **Research compares TikTok only with Pinterest** (`echo.LAGGED_PARTNERS`), whose 30-day window covers TikTok's week. On the first day's lists the rule removed two matches with hourly lists (one the same game a week apart, one wrong) and kept the two TikTok–Pinterest stories (`research/findings/rq6-echo.md`). The pipeline goes further and leaves TikTok out of matching altogether (see *TikTok* under Ranking), so snapshots carry no TikTok rank.
+  - **Whether the window rolls daily or weekly isn't known yet.** The first fetch whose last curve day changes will tell.
+  - **Each curve looks scaled within its own window:** the lowest day is 0 and the highest 100.
+- **Instagram:** its 10 worldwide topics refresh at the source about every 3 hours. An hourly test (2026-09-30 21:50 to 2026-10-01 about 13:00 UTC) saw 5 changes, each 3 hours apart, with a median of 5 hours in the list. From 2026-10-01 13:50 UTC it's fetched three times a day (01:50, 13:50 and 19:50 UTC), so its list repeats for 6, 6 and 12 hours, and refreshes in between are missed.
+- **Pinterest:** Pinterest Trends refreshes about weekly, and it's fetched on Mondays and Thursdays at 07:23 UTC. The first scheduled fetch (2026-10-01) failed, so its stored list is the 2026-09-30 21:55 test's until 2026-10-05.
 
-**Models.** Rules first, as baselines to beat (for example, "on 2 platforms within 2 hours of first appearing"). Then logistic regression for breakouts, and gradient-boosted trees or a survival model for lifespan, on tabular features. Training runs offline, on a computer or in a manual GitHub Actions job, and may use Python (scikit-learn, LightGBM) in a separate `research/` folder; that is a stack addition to confirm before task 5.4. The trained model ships as a small file in the repo (JSON coefficients, or ONNX run by the onnxruntime-node that Transformers.js already installs), and the hourly pipeline scores current topics in milliseconds. No paid API is involved.
+The source cadence log (Data sources) has every change with its time: cut analyses of these sources at those times.
+
+Between refreshes the same list repeats in every hourly fetch, so those sources' hour-to-hour changes aren't signal. Instagram's `posts` metric is an all-time media count, not trending volume, so it isn't momentum either. X can have `skipped` runs with the reason `daily cap`: those hours have no X ranks, not low ones.
+
+Reddit joined on 2026-10-01 as a corroborating source, with its first list in the 12:07 UTC run: the 25 hot posts of r/popular, read every hour from its public feed. It has no metric, and research follows a post by its url, which holds the post id. As with every source that joins late, its first list is censored: what it showed before then is unknown.
+
+**What the lists are** (RQ5 first look, 2026-09-30, `research/findings/rq5-rhythms.md`):
+- **Google Trends:** its feed is the 10 *newest* US trends, newest first, not the 10 biggest. Its rank is age, and a trend leaves the feed when 10 newer ones start, which takes under an hour on a busy afternoon. Since task 2.12 the combined score and snapshots rank Google over a 3-hour window by searches (Ranking › Google Trends window), while `trend_items` keeps the feed's own order. Two consequences for research:
+  - a topic that only Google has stays in the snapshots for up to 3 hours after its last sighting, so Google-led lifespans carry a tail of up to 3 hours; measure Google's own time on the feed from `trend_items`;
+  - snapshots made before 2.12 ranked Google by feed order. None reached production, and `r1` means "with the window".
+- **Bluesky's grace (task 2.14):** Bluesky's list drops and re-adds topics from hour to hour (RQ1). So the combined score and snapshots keep a Bluesky topic at its newest rank for 2 hours after it drops out of the list, and `ranks.bluesky` in a snapshot can come from a sighting up to 2 hours old. Bluesky-led lifespans in snapshots carry that tail, like Google's; measure Bluesky's own stays from `trend_items`. Bluesky's page and per-platform rankings still use only the current list.
+- **Metrics:** every stored metric is a running total for its item (Bluesky posts, Hacker News points, Google searches in buckets, Mastodon's uses today), so features use growth between fetches, never levels.
+- **Titles:** Bluesky renames a topic as the story moves on, under the same url, so research matches Bluesky and Hacker News items by url.
+- **Churn:** on the first weekday, the share of each top 10 that was new since the hour before was Google 61%, Bluesky 53%, Hacker News 26%, Mastodon 8% and Twitch 7%. An hour-of-day rhythm needs at least 3 days of data, and about a week to trust.
+
+**Echo chambers** (RQ6 first look, 2026-09-30, `research/findings/rq6-echo.md`):
+- **Most trends stay on their own platform.** Titles were matched across lists with the pipeline's own model at 0.60. Over the first day, 93–99% of each phase-1 list's trends appeared on no other list. In the first two runs with every list, X (73%), Instagram (67%) and Google (79%) were the least alone, sharing sports and news names with each other. TikTok, Pinterest, Twitch, Hacker News and Mastodon were 84–100% alone.
+- **Breakouts are rare.** Only 2 stories reached 3 or more platforms all day, so the breakout labels will be very unbalanced; "2 or more platforms" may be worth adding as a label.
+- **Matching is about half right between 0.60 and 0.70.** Short names pass as different people or teams ("Dom Smith" and "jack smith" at 0.61, "yankees" and "Astros" at 0.70). Hashtags written as one lowercase word fell below 0.60 (47% of TikTok's titles). Task 2.13's splitting lifts those to 1.00 ("#nationalcoffeeday" against "national coffee day" went from 0.53) and loses no match. Evidence for task 2.9.
+- **Batch noise (fixed):** until phase-2 377374f, the pipeline embedded in batches of 64. The 8-bit model's output depended slightly on a title's batch-mates: pair similarities moved by up to 0.06, and about 1 in 10 pairs near 0.60 fell on either side of it. The pipeline now embeds one title at a time, which is exact and costs about 0.2 s a run.
+- **A better matching model** (2026-10-01, `research/findings/matching.md`):
+  - **The test:** 238 checked pairs of trends, drafted by Qwen3.5-9B on this PC's GPU and corrected one by one by the research assistant (Claude), scored against seven Hugging Face models run on the CPU through Transformers.js.
+  - **The result:** at 90% right merges, the pipeline's all-MiniLM-L6-v2 catches 37% of same-story pairs (AUC 0.82). `nomic-ai/nomic-embed-text-v1.5` (q8, mean pooling, `clustering: ` prefix, 768 dimensions) catches 66% (AUC 0.94), at about 8 ms a title.
+  - **Cut to 384 numbers it loses nothing** (Matryoshka: layer norm, truncate, renormalize; AUC 0.936, still 66% caught), so `topics.centroid` stays `real[384]`.
+  - **Switching is task 2.9's call:** a threshold near 0.85 to confirm on a week, a new `algo_version` family and a rebuild.
+  - **Every topic's centroid is needed for good:** the days horizon's "how similar past topics fared" and RQ1's categories read them long after the 48-hour matching window. They can't be rebuilt from member items after 28 days.
+
+**On the new matcher** (2026-10-01): research reads its threshold from `config/ranking.ts`, so it follows the pipeline's model (nomic-embed-text-v1.5 at 384 numbers, 0.86). Re-run on data to 03:08 UTC on 2026-10-01:
+- **Echo chambers:** the picture holds. In 6 hours with every list, X, Pinterest and Instagram were 72–73% alone and Google 75%; the others 90–100%. Four stories reached 3 or more platforms (two playoff games, Jack Smith's testimony, Ronaldo).
+- **Lead and lag:** 13 usable story pairs. Across 8 Google-and-X stories, Google had it first in 5 and tied in 3, by a median of 1 hour.
+- **Breakout:** 7 of 146 phase-1 trends spread (4.8%), all right matches.
+- **News and memes:** news-linked and calendar trends both spread 40% of the time, against 6% for the rest.
+- **Censoring rule:** a lead now counts only when the earlier sighting came after both sources were being collected.
+
+**Lifecycle** (RQ1 first look, 2026-09-30, `research/findings/rq1-lifecycle.md`; per list, before snapshots):
+- **Half-life in the top 10:** 1 hour on Bluesky and Google (79% and 72% of entries were gone at the next fetch), and 3 hours on Hacker News. Mastodon and Twitch run over 12 hours (57% of entries still listed after 12 hours).
+- **Almost nothing lasts 6 hours on one list,** so combined-top-10 lifespans will come from breadth across platforms.
+- **Three list behaviors:**
+  - Google is a queue: trends never climb and never return;
+  - Hacker News has a real rise and fall: 38% of stories climb after entering;
+  - Bluesky flickers: 47% of its spells are returns, most after missing one fetch, so a Bluesky life should allow an hour's gap. That doubles the share still going after 1 hour (21% to 44%); the median stays 1 hour.
+
+**Categories** (2026-10-01, `research/findings/categories.md`): all 876 trends up to 2026-10-01 13:07 UTC have a category and a news flag. The local Qwen3.5-9B drafted them with each trend's platform and linked article as context, and the research assistant (Claude, not the owner) checked every draft. The model agreed on 86%: 94–100% where a trend links to an article, 70% on X's bare names.
+- **Each platform has a signature**, and it held on the second day: Bluesky politics (47%), Google and X sports (about half, on playoff days), Hacker News tech, Twitch gaming, Mastodon calendar tags, Pinterest lifestyle.
+- **Sports is the only category that clearly spreads on the hourly lists:** 25% of its trends were on another list besides Google, against 8% or less for every other category. Politics is 89% news-driven and at 8%.
+- **Calendar moments cross through the slow lists.** Over every list 25% of them were matched elsewhere, but only 7% on the hourly lists; the rest are on Instagram, Pinterest and TikTok, where timing isn't reliable. An earlier note here gave 22% as if it were the hourly lists.
+- **Sports trends are the shortest-lived** (6% still in a top 10 after 3 hours); calendar tags (76%) and tech (46%) the longest.
+- **Caveat:** category and platform are tangled until there are more days. Category is a forecast feature; topics will take their members' category.
+
+**News and memes** (RQ4 first look, 2026-10-01, `research/findings/rq4-news-memes.md`):
+- **Categories,** by rule:
+  - Google's trends are news by construction (all come with a story);
+  - "news-linked" means matched to a Google trend at 0.70;
+  - "calendar" covers weekday hashtags, "national … day" and a season's first day;
+  - "other" is the rest.
+- **On the first day, news-linked meant sports:** 9 of 11 were X names during the MLB wild card.
+- **Calendar moments crossed platforms most often.** 35% were also on another list besides Google, against 4% for "other", but that's 2 stories: the first day of fall and national coffee day. Both crossed through the slow lists (TikTok, Pinterest, Instagram); on the hourly lists calendar moments spread 7% of the time (*Categories* above).
+- **For the weeks horizon:** calendar moments are its predictable case. The planned event calendars don't cover observances.
+- **Lifespans can't be compared by category yet.**
+
+**Breakout** (RQ3, 2026-09-30, `research/findings/rq3-breakout.md`): the method is ready, with no result yet.
+- **Outcome and features:** "spread" means matched on another list at 0.70. The features are those known at first sighting: platform, entry rank, metric against the list's median, hour and title length. Only trends with a seen entry and 6 hours of data after it count.
+- **On the five all-day lists, none of 96 trends spread.** The 95% upper bound is 3.8%, so a spread model there must beat a 96% "never" baseline.
+- **The day's shared stories ran on X, Google and Instagram in the evening,** so that cut is where RQ3 starts. Its model cell waits for 30 spread trends.
+
+**Lead and lag** (RQ2, 2026-09-30, `research/findings/rq2-lead-lag.md`): the method is ready, with no result yet. Matched trends (0.70) are grouped into stories, and each platform's earliest sighting is compared. Trends already listed at a source's first fetch are censored and left out, as are the slow sources. So far there's one usable story pair: Google had the Phillies–Braves game 3 hours before Bluesky. Google against X should reach about 20 stories within a few days of X's start. A lead measures when a story enters a platform's list, which favors lists that rank by novelty or velocity (Google, Bluesky) over those that rank by size (X, Twitch).
+
+**Outside data**, added in this order and only when a question or horizon needs it, all free:
+
+1. Wikipedia pageviews: daily attention history since 2015 from the Wikimedia REST API, no key. The best source for seasonal baselines and for how big a past topic got.
+   - **Status:** in research since 2026-10-01 (`research/topnews/wiki.py`, `research/findings/wikipedia.md`); the pipeline collector waits until a model needs live figures.
+   - **Linking:** topics link to articles through Wikipedia's search, and only exact matches are used. That gives about half of the top-10 topics, nearly all names and places.
+   - **What it shows:** calendar moments peak in their month every year (National Day for Truth and Reconciliation 6.7× in September, Fat Bear Week 4.6× in October).
+   - **Lag:** figures arrive a day late, so they help the days and weeks horizons, not the hours one.
+2. GDELT: news volume and tone, updated every 15 minutes.
+3. Event calendars: TheSportsDB (fixtures), Nager.Date (holidays), TMDB (film and TV releases) and IGDB (game releases, through the existing Twitch app).
+
+Outside items are linked to topics with the same embedding model. Each source is a collector like the others: it only fetches and maps, runs in its own try/catch, and no page view ever calls it.
+
+**Methods.**
+- **Analysis:** descriptive statistics and lifecycle curves first (RQ1). Then time-to-event (survival) models for breakout, peak and drop-out, and later a Hawkes process for how one platform's trends excite another's (RQ2).
+- **Forecasts:** rules first, as baselines to beat (for example, "on 2 platforms within 2 hours of first appearing"). Then logistic regression for breakouts, and gradient-boosted trees or a survival model for lifespan, on tabular features.
+- **Tooling:** analysis and training run offline in Python notebooks (pandas, lifelines, statsmodels, LightGBM) in a separate `research/` folder, reading Supabase through a read-only Postgres role. The owner approved both on 2026-09-30, and chose to build the hours and days horizons first. Python stays in `research/`: the site, the pipeline and the Worker remain TypeScript, and nothing in production depends on Python.
+- **Shipping:** a trained model ships as a small file in the repo (JSON coefficients, or ONNX run by the onnxruntime-node that Transformers.js already installs). The hourly pipeline, still TypeScript, scores current topics in milliseconds. No paid API is involved.
+
+**Baselines** (task 5.5 first look, 2026-10-01, `research/findings/baselines.md`):
+- **Scoring:** lifespan rules are scored by "still listed k hours later?", because error in hours can only be scored on stays that ended, which on a short test stretch are the short ones.
+- **No rule beats the majority answer.** The Kaplan–Meier median of the time left matches it on each list: Google and Bluesky trends are gone within the hour, and the others stay. That majority answer is the bar.
+- **Rules learned in the daytime miss the evening,** so lifespan models need hour of day as a feature.
+- **The breakout rule can't be scored until 6 hours of every list follow a forecast hour.**
+
+**Experiment: a language-model forecaster as a feature** (noted 2026-10-01, to run with task 5.6).
+- **The model:** [OpenForecaster-8B](https://huggingface.co/nikhilchandak/OpenForecaster-8B) is Qwen3-8B fine-tuned on about 52,000 news-derived questions to give a short answer and a calibrated probability for open-ended questions about world events. Its knowledge ends in April 2025, so it needs current headlines as context.
+- **Why it's only a feature:** it can't make the hours and days forecasts itself. Those depend on how each list behaves, which only our data shows, and the pipeline runs on GitHub's CPUs.
+- **The test:** for news topics, ask it "given these headlines, will this story have major new developments in the next 3 days?" on the owner's GPU, and add its probability to the lifespan model. Keep it only if it improves the held-out weeks over the tabular model alone. Compare it with plain Qwen3.5-9B on the same prompt, to see whether the forecasting fine-tune matters.
+- **Scope:** research only. If it helps, a nightly local job could write the feature, never a paid API.
 
 **Evaluation.** Train on earlier weeks and test on later ones, never shuffled. Measure, for alerts, *precision* (how often a flagged topic does break out) and *lead time* (how many hours before it reached 3 platforms); for lifespan, the error in hours; and *calibration* (70% forecasts come true about 70% of the time). A public `/forecasts` page lists every forecast next to its outcome, so the accuracy is visible rather than claimed.
 
-**Limits.** A month holds a few thousand topics and a few hundred breakouts: enough to learn from, not enough for precision. Sudden news gives no warning, so forecasts can only catch topics early in their rise. Platforms change and events are seasonal, so models are retrained regularly. Wrong topic merges become wrong labels, which is why phase 2's matching threshold is tuned first.
+**Limits.** A month holds a few thousand topics and a few hundred breakouts: enough to learn from, not enough for precision. Sudden news gives no warning, so forecasts can only catch topics early in their rise. Platforms change and events are seasonal, so findings are re-checked and models retrained regularly. Wrong topic merges become wrong labels, which is why phase 2's matching threshold is tuned first.
+
+**A second reader.** The owner's separate, private project Trend Forecaster (2026-10-01) reads this database through the same read-only role, `research_reader`, to ask and score forecast questions about the day's stories. It never writes here. Changes to the tables it reads (`trend_items`, `topic_snapshots`, `topics`, `tiktok_curves`), to the role's grants or to retention affect it too.
+
+**Who does what.** One Claude session owns the dataset, research, models, outside-data collectors and the `forecasts` table, working on the `predictions` branch in its own worktree. The other owns the web app: every page, including those that show forecasts (task 5.9), built on `lib/forecast-queries.ts`. Phase 2's threshold tuning (2.9) and the production rebuild stay with the web-app session, which finishes phase 2.
 
 ## Build phases
 
@@ -195,7 +322,7 @@ About 8 weeks at 6–10 hours a week gets the full site live; the per-platform l
 | 2 · Combined top 10 | 4–5 | Normalization, filters, embeddings, topic matching, scoring, home and topic pages | In 5 random hours, at least 8 of 10 topics make sense, with no duplicates |
 | 3 · Paid and approved sources | 6 | X with its spend cap, the Global / US toggle, Reddit from its public feed, optional TikTok, Instagram, Pinterest and Claude topic names | Projected monthly spend within your chosen tier |
 | 4 · Polish and launch | 7–8 | Archive pages, share images, page titles, failure alerts, analytics | Launch and share the link |
-| 5 · Predictions | After 6–8 weeks of snapshots | Rising or fading and lifespan forecasts for creators and marketers, a public forecast record, later a weeks-ahead calendar | On 4 held-out weeks, breakout alerts are right at least 60% of the time and come at least 2 hours early |
+| 5 · Predictions and research | After 6–8 weeks of snapshots | Research findings on attention (lifecycle first); rising-or-fading and lifespan forecasts for creators and marketers; a public forecast record; later a weeks-ahead calendar | On 4 held-out weeks, breakout alerts are right at least 60% of the time and come at least 2 hours early |
 
 The 28-day purge sits in phase 1, not phase 4, so stored YouTube data never passes the 30-day limit.
 

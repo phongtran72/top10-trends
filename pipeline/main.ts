@@ -7,6 +7,7 @@ import { cleanEnv, pipelineEnv, type RawEnv } from "@/lib/env";
 import { describeError } from "@/lib/errors";
 import { createHttp } from "@/lib/http";
 import { collect, formatResults, writeResults, type ListResult } from "./collect";
+import { keepCurves } from "./curves";
 import type { Db } from "./db";
 import { loadBlocklist } from "./filter";
 import { purge } from "./purge";
@@ -69,10 +70,11 @@ export function summarize(
 }
 
 // One pipeline run: check paid-source limits, collect every enabled source,
-// then upsert sources, write the lists, rank them (filter, embed, match to
-// topics, score), purge old rows, write the heartbeat, ask the site to refresh
-// its cached pages and print a summary. A failing source, rank step or
-// refresh is recorded and never fails the run. With --dry-run nothing touches
+// then upsert sources, write the lists, keep TikTok's curves, rank the lists
+// (filter, embed, match to topics, score), purge old rows, write the
+// heartbeat, ask the site to refresh its cached pages and print a summary. A
+// failing source, curves step, rank step or refresh is recorded and never
+// fails the run. With --dry-run nothing touches
 // the database and paid sources are skipped unless --include-paid is given:
 // each list and a combined top 10 from this run alone are printed instead.
 export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps: RunDeps): Promise<void> {
@@ -118,6 +120,8 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
       const { db } = connection;
       await upsertSources(db, plans);
       const itemIds = await writeResults(db, results);
+      const curves = await keepCurves(db, results); // never throws
+      if (curves) deps.log(curves);
       await rank(results, db, itemIds);
       const purged = await purge(db, startedAt);
       if (purged.items > 0 || purged.runs > 0) deps.log(`purged: ${purged.items} items, ${purged.runs} runs`);

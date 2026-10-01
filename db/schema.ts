@@ -2,6 +2,7 @@ import {
   bigint,
   bigserial,
   boolean,
+  date,
   index,
   integer,
   jsonb,
@@ -12,7 +13,7 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
-// The six tables from PLAN.md › Data model. Store only these columns: never
+// The tables from PLAN.md › Data model. Store only these columns: never
 // full API responses or item embeddings (CLAUDE.md invariant 4).
 //
 // Row-level security is on with no policies, so Supabase's public Data API
@@ -60,6 +61,7 @@ export const trendItems = pgTable(
     url: text("url").notNull(),
     metricValue: bigint("metric_value", { mode: "number" }),
     metricLabel: text("metric_label"),
+    status: text("status"), // Bluesky's lifecycle label (trending, saturating, cooling, stale); null for other sources
     fetchedAt: timestamptz("fetched_at").notNull(),
   },
   (t) => [index("trend_items_source_region_fetched_idx").on(t.sourceId, t.region, t.fetchedAt.desc())],
@@ -129,4 +131,22 @@ export const topicSnapshots = pgTable(
     metrics: jsonb("metrics").$type<Record<string, number>>().notNull(), // source id → metric of that item
   },
   (t) => [primaryKey({ columns: [t.topicId, t.takenAt, t.region] }), index("topic_snapshots_taken_idx").on(t.takenAt)],
+).enableRLS();
+
+// Permanent, for research. TikTok's daily popularity curve (0–100) for each
+// listed hashtag, one row per day of each curve. A curve is named by its
+// hashtag and its last day: each daily Apify run brings a new 7-day curve, and
+// a day's value can differ between curves, so every curve is kept whole. The
+// hourly runs in between read the same curves again and add nothing.
+export const tiktokCurves = pgTable(
+  "tiktok_curves",
+  {
+    title: text("title").notNull(), // the hashtag as listed, '#name'
+    windowEnd: date("window_end", { mode: "string" }).notNull(), // the curve's last day (UTC)
+    day: date("day", { mode: "string" }).notNull(), // UTC
+    value: real("value").notNull(), // 0–100
+    direction: text("direction"), // up | down | stable, as TikTok labels the hashtag; null when it doesn't
+    fetchedAt: timestamptz("fetched_at").notNull(), // the first run that saw this curve
+  },
+  (t) => [primaryKey({ columns: [t.title, t.windowEnd, t.day] })],
 ).enableRLS();

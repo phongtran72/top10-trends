@@ -161,21 +161,47 @@ Waived for phase 2 by the owner on 2026-10-01, after a day of soak: every phase 
 
 **Gate 4.** Launch.
 
-## Phase 5 · Predictions (after 6–8 weeks of topic snapshots)
+## Phase 5 · Predictions and research (after 6–8 weeks of topic snapshots)
 
-Forecasts for creators and marketers planning content; design in PLAN.md › Predictions. The same dataset serves research on attention.
+Research on attention and forecasts for creators and marketers, built on one dataset. The design is in PLAN.md › Predictions and research. The predictions session owns every task here except 5.9, the pages, which the web-app session builds on `lib/forecast-queries.ts`.
 
-- [ ] **[You]** Confirm which horizons to build first (recommended: hours and days), and whether training may use Python in `research/` (PLAN.md › Predictions › Models).
-- [ ] **5.1 Dataset.** `npm run dataset` builds one training table from `topic_snapshots`, `topics` and the combined rankings: one row per topic per hour, with features and labels.
-    - Features: platform ranks, platform count, position and score, plus their 1-, 3- and 6-hour changes; hours since first seen; the first platform; hour of day and weekday; `news_count`.
-    - Labels: breakout within 6 hours; hours left in the combined top 10.
-    - Rows from other `algo_version` families are left out. Splits are by time. It prints row counts and label balance and writes CSV to a gitignored `data/` folder.
-- [ ] **5.2 Exploration.** `npm run explore` prints how long topics stay in the top 10, how often they break out, which platform tends to have a topic first (lead and lag), and how `news_count` relates to lifespan. Record the findings in PLAN.md › Predictions.
-- [ ] **5.3 Baselines.** Rule-based breakout and lifespan forecasts, scored on the latest 2 weeks held out: precision, lead time, and lifespan error in hours.
-- [ ] **5.4 Models.** Logistic regression for breakouts, and gradient-boosted trees or a survival model for lifespan, trained offline. Each must beat its baseline on the held-out weeks. The model is committed under `config/models/` with its training window and scores.
-- [ ] **5.5 Forecasts in the pipeline.** A permanent `forecasts` table: `made_at`, `topic_id`, `horizon`, `value`, `model_version`, `outcome`, `resolved_at`; no YouTube inputs. Each run scores current topics after the rank step, in its own try/catch, and fills in the outcomes of past forecasts whose horizon has passed.
-- [ ] **5.6 Pages.** "Rising" and "expected lifespan" on the home and topic pages. `/forecasts` lists recent forecasts with their outcomes and the running precision, lead time and calibration.
-- [ ] **5.7 Weeks horizon.** Free collectors for Wikipedia pageviews and event calendars (Nager.Date, TMDB, IGDB through the Twitch app, TheSportsDB), each with fixtures and tests and a SETUP.md step for any key. Adds a "coming up" list of scheduled moments with how big similar ones were before.
-- [ ] **5.8 Retraining.** A manual `train` workflow rebuilds the dataset, retrains, compares the new model with the current one on the newest weeks, and swaps it in only if it is better.
+- [x] **[You]** Confirm three things (decided on 2026-09-30):
+    - which horizons to build first: hours and days;
+    - Python notebooks in `research/` for analysis and training (PLAN.md › Predictions and research › Methods): yes;
+    - a read-only Postgres role for them: yes. The SETUP.md step comes with 5.1.
+- [x] **5.1 Research setup.** A `research/` folder with Python notebooks, pinned requirements and a shared data loader, kept out of the TypeScript tooling. A SETUP.md step for the read-only role, with its connection string only in `.env.local`.
+- [x] **5.2 Dataset.** `python -m topnews.dataset` (in `research/`) builds one training table from `topic_snapshots` and `topics`: one row per topic per hour, with features and labels.
+    - Features: platform ranks, platform count, position and score, plus their 1-, 3- and 6-hour changes; hours since first seen; the first platform; hour of day and weekday; `news_count`; whether the hour was replayed.
+    - Labels: breakout within 6 hours (3 or more platforms or the top 3), spread to a second platform within 6 hours, and hours left in the top 10 (with gaps of up to 2 hours allowed, censored where it could still go on). Each is left unknown where the data can't answer yet.
+    - The top 10 is the snapshot position, which leaves YouTube out, not the combined rankings table, whose order includes it.
+    - Rows from other `algo_version` families are left out. Splits are by time, with a 6-hour embargo before the test set. It prints row counts and label balance and writes CSV to the gitignored `research/data/`.
+    - Before production has snapshots, `npx tsx scripts/replay-snapshots.ts` rebuilds them from the stored lists in memory (read-only), and `--source replay` uses those.
+- [ ] **5.3 RQ1 · Lifecycle.** Lifecycle curves (rise, peak, decay) and half-life by topic category, where categories come from clustering the topic centroids. A short write-up in `research/findings/rq1-lifecycle.md`; the key numbers go into PLAN.md › Predictions and research.
+- [ ] **5.4 RQ2–RQ6.** One notebook and a short write-up each:
+    - RQ2 lead and lag between platforms;
+    - RQ3 what separates breakouts;
+    - RQ4 news-driven topics versus memes;
+    - RQ5 hourly and weekday rhythms (seasons wait for Wikipedia pageviews);
+    - RQ6 each platform's share of trends seen nowhere else.
+- [ ] **5.5 Baselines.** Rule-based breakout and lifespan forecasts, scored on the latest 2 weeks held out: precision, lead time, and lifespan error in hours.
+- [ ] **5.6 Models.** Logistic regression for breakouts, and gradient-boosted trees or a survival model for lifespan, trained offline. Each must beat its baseline on the held-out weeks. The model is committed under `config/models/` with its training window and scores.
+- [ ] **5.7 Forecasts in the pipeline.** A permanent `forecasts` table: `made_at`, `topic_id`, `horizon`, `value`, `model_version`, `outcome`, `resolved_at`; no YouTube inputs.
+    - Each run scores current topics after the rank step, in its own try/catch, and fills in the outcomes of past forecasts whose horizon has passed.
+    - `lib/forecast-queries.ts` gives the pages what they need.
+- [ ] **5.8 Outside data.** Free collectors, each with fixtures, tests and a SETUP.md step for any key, in order:
+    1. Wikipedia pageviews (the research module `topnews.wiki` and notebook 08 are done; the pipeline collector comes when a model needs live figures);
+    2. GDELT;
+    3. event calendars (TheSportsDB, Nager.Date, TMDB, IGDB through the Twitch app).
 
-**Gate 5.** On the last 4 weeks, which the models never saw in training, breakout alerts are right at least 60% of the time and arrive on average at least 2 hours before the topic reaches 3 platforms, and lifespan forecasts beat the baseline. These are starting targets; revise them with 5.2's findings.
+    Adds the weeks horizon: a "coming up" list of scheduled moments, with how big similar ones were before.
+- [ ] **5.9 Pages** (web-app session). "Rising" and "expected lifespan" on the home and topic pages. `/forecasts` lists recent forecasts with their outcomes and the running precision, lead time and calibration. An optional `/research` page summarizes the findings.
+- [ ] **5.10 Retraining.** A manual `train` workflow rebuilds the dataset, retrains, compares the new model with the current one on the newest weeks, and swaps it in only if it is better.
+- [ ] **5.13 Experiment: a language-model forecaster as a feature.** With 5.6: on the owner's GPU, ask OpenForecaster-8B (and plain Qwen3.5-9B, as a control) whether each news topic will have major new developments in the next 3 days, given its headlines; add the probability to the lifespan model and keep it only if the held-out weeks improve. Research only (PLAN.md › Predictions and research).
+- [x] **5.11 TikTok curves table.** Migration 0003 adds the permanent `tiktok_curves` table with its `research_read` policy. The pipeline stores each TikTok hashtag's 7-day curve (from task 3.9) right after the lists are written, in its own try/catch; hourly re-reads of the same Apify run add nothing. `topnews.db.tiktok_curves` reads it.
+- [x] **5.12 Bluesky status.** Migration 0004 adds a nullable `status` column to `trend_items`, and the pipeline stores Bluesky's lifecycle label (`trending`, `saturating`, `cooling`, `stale`) for every Bluesky item, before the filters. It gives research Bluesky's own stage of each topic, and lets the cooling filter's effect be measured from stored lists.
+
+**Gate 5.** Two conditions:
+- **Research:** the RQ1 write-up is published.
+- **Forecasts:** on the last 4 weeks, which the models never saw in training, breakout alerts are right at least 60% of the time and arrive on average at least 2 hours before the topic reaches 3 platforms, and lifespan forecasts beat the baseline.
+
+These are starting targets; revise them with the findings of 5.3 and 5.4.

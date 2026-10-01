@@ -1,0 +1,17 @@
+# Research notebooks (phase 5). Python 3.12. Install from research/:
+#   python -m venv .venv  →  activate it  →  pip install -r requirements.txt
+# pandas 2.x: lifelines 0.30 requires pandas < 3.
+pandas==2.3.3
+numpy==2.5.3
+SQLAlchemy==2.1.1
+psycopg[binary]==3.3.6
+python-dotenv==1.2.3
+lifelines==0.30.3
+statsmodels==0.15.0
+scikit-learn==1.9.1
+lightgbm==4.7.0
+matplotlib==3.11.2
+jupyterlab==4.6.4
+pytest==9.1.1
+# This folder's own helpers (the topnews package), editable.
+-e .

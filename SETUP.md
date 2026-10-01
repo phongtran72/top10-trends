@@ -114,6 +114,21 @@ TikTok's, Instagram's and Pinterest's terms ban scraping, so these sources are y
 - Anthropic Console API key → `ANTHROPIC_API_KEY`, for Claude Haiku 4.5 topic names (about $3.24 a month).
 - OpenAI API key → `OPENAI_API_KEY`, only if you chose OpenAI embeddings in phase 2 (about $0.06 a month).
 
+## 14. Read-only role for research (phase 5)
+
+The research notebooks read the database as `research_reader`, a role that can only read. Migration `0002_research_reader` creates it without a login, so no password is ever in the public repository.
+
+1. Wait until migration 0002 has been applied: it runs with the `migrate` workflow when its branch reaches `main`, or run `migrate` from the Actions tab.
+2. In Supabase, open **SQL Editor › New query** and run the line below, putting in a new password of letters and digits (not the main database password):
+
+    ```sql
+    alter role research_reader with login password 'NEW-PASSWORD';
+    ```
+
+    Then clear that query from the editor so the password isn't kept in your query history.
+3. On your computer, from the repo root, run `powershell -ExecutionPolicy Bypass -File scripts/set-research-url.ps1`. It asks for that password once, hidden, and writes `RESEARCH_DATABASE_URL` to `.env.local`.
+4. Don't add it to GitHub or Vercel; only the notebooks use it. To revoke access at any time, run `alter role research_reader nologin;`.
+
 ## Environment variables
 
 | Variable | What it is | Used by | Where it goes | Phase |
@@ -137,5 +152,6 @@ TikTok's, Instagram's and Pinterest's terms ban scraping, so these sources are y
 | `INSTAGRAM_ENABLED` | `true` to turn Instagram on | Instagram collector | GitHub variable | 3 |
 | `PINTEREST_ENABLED` | `true` to turn Pinterest on | Pinterest collector | GitHub variable | 3 |
 | `ANTHROPIC_API_KEY` | Anthropic API key | Topic names | GitHub secret | 3 |
+| `RESEARCH_DATABASE_URL` | Session pooler string for the read-only `research_reader` role (§14) | Research notebooks | `.env.local` only, never GitHub or Vercel | 5 |
 
 `GH_OWNER` and `GH_REPO` are not secrets; they live in `worker/wrangler.toml`, filled in by task 0.7.

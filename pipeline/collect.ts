@@ -121,6 +121,9 @@ export async function writeResults(db: Db, results: readonly ListResult[]): Prom
             url: item.url,
             metricValue: item.metricValue ?? null,
             metricLabel: item.metricLabel ?? null,
+            // Only Bluesky sets flags.status. Lists are saved before the filters, so the label is kept for
+            // every item, including the cooling and stale ones the rank step drops.
+            status: item.flags?.status?.trim().toLowerCase().slice(0, 32) || null,
             fetchedAt: result.finishedAt,
           })),
         )
