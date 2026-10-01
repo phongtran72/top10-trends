@@ -128,6 +128,7 @@ Share of each platform's trends with no match on any other list:
 
 - One day, and only two runs with every list.
 - TikTok (7 days) and Pinterest (30 days) cover windows much longer than the data they're matched against, so they can look lonelier than they are.
+- TikTok's list also lags. On 2026-10-01 its 7-day window was 2026-09-21 to 2026-09-27, so its hashtags describe the week before. A match between TikTok and a fast list is the same story a week apart, not at the same time; TikTok with Pinterest (the first day of fall) matches because Pinterest's window is 30 days.
 - Only titles: stored lists keep no headlines, which the pipeline uses for Google and for deciding which runs to keep whole.
 - YouTube and Reddit are missing, so "nowhere else" means none of these nine lists.
 - The hand check is small, and near 0.60 it runs about half right. From 0.60 up, every list except X, Google and Instagram stays at 84% or more alone in both cuts.
