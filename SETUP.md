@@ -91,15 +91,15 @@ Pinterest is read through Apify: see §12, step 5. Pinterest's own trends API is
     { "trendType": "hashtags", "maxItems": 30, "countryCode": "US", "hashtagPeriod": "7", "industryId": "", "saveMedia": false }
     ```
 
-    A run costs $0.025 plus $0.001 per hashtag: 30 hashtags cost $0.055 in a test, so about $1.70 a month, inside the free $5. Each hashtag also carries a 7-day daily popularity curve and an up/down direction, which the collector passes on for phase 5. The pipeline only reads the latest run's results. If no run has succeeded for 48 hours, TikTok shows as failing on /status. (Since July 2026 TikTok's Creative Center shows logged-out visitors only its top 3; automation-lab/tiktok-trends-scraper returned just those 3, while this actor returned all 30.)
-4. Open the actor [s-r/instagram-trending-scraper](https://apify.com/s-r/instagram-trending-scraper) and create a schedule that runs it every 6 hours at 50 minutes past the hour, just before the pipeline's run at :07 (cron `50 */6 * * *`, UTC), with this input and a maximum cost per run of $0.10:
+    A run costs $0.025 plus $0.001 per hashtag: 30 hashtags are $0.055 in events and about $0.07 on the bill with platform usage, so about $2.10 a month, inside the free $5. Each hashtag also carries a 7-day daily popularity curve and an up/down direction, which the collector passes on for phase 5. The pipeline only reads the latest run's results. If no run has succeeded for 48 hours, TikTok shows as failing on /status. (Since July 2026 TikTok's Creative Center shows logged-out visitors only its top 3; automation-lab/tiktok-trends-scraper returned just those 3, while this actor returned all 30.)
+4. Open the actor [s-r/instagram-trending-scraper](https://apify.com/s-r/instagram-trending-scraper) and create a schedule that runs it three times a day, at 01:50, 13:50 and 19:50 (cron `50 1,13,19 * * *`, UTC), with this input and a maximum cost per run of $0.10:
 
     ```json
     { "maxKeywords": 10, "expandRelatedTopics": false }
     ```
 
-    It costs $0.002 per topic with no start fee, and the free plan caps a run at 10 topics: $0.02 a run, about $2.40 a month. Together with TikTok and Pinterest that is about $4.40 of the free $5. If no run has succeeded for 18 hours, Instagram shows as failing on /status.
-5. Open the actor [automation-lab/pinterest-trends-scraper](https://apify.com/automation-lab/pinterest-trends-scraper) and create a schedule that runs it on Mondays and Thursdays at 07:00 (cron `0 7 * * 1,4`, UTC) with this input and a maximum cost per run of $0.10:
+    It costs $0.002 per topic with no start fee, and the free plan caps a run at 10 topics: $0.02 a run, about $1.80 a month. Instagram refreshes its list every 3 hours, at about 01, 04, 07, 10, 13, 16, 19 and 22 UTC, so each run at :50 reads a list that has just changed; three runs a day cover the US day and fit the budget (every refresh would cost $4.80 a month). Together with TikTok and Pinterest that is about $4.20 of the free $5, which Apify counts per billing period (from the day you signed up), not per calendar month. If no run has succeeded for 24 hours, Instagram shows as failing on /status.
+5. Open the actor [automation-lab/pinterest-trends-scraper](https://apify.com/automation-lab/pinterest-trends-scraper) and create a schedule that runs it on Mondays and Thursdays at 07:23 (cron `23 7 * * 1,4`, UTC; off the hour, because Pinterest rate-limited the first run at exactly 07:00) with this input and a maximum cost per run of $0.10:
 
     ```json
     { "countries": ["US"], "trendTypes": ["growing"], "maxResultsPerCountry": 25 }

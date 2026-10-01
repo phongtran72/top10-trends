@@ -4,12 +4,15 @@ import type { Collector, TrendItem } from "./types";
 import { requireRegion } from "./util";
 
 // Instagram's public trending topics (instagram.com/popular/...), scraped
-// every 6 hours by the Apify actor s-r/instagram-trending-scraper (SETUP.md
-// §12). Instagram has no trends API; the list is one worldwide surface, not
-// per country, and Apify's free plan caps a run at 10 topics.
+// three times a day by the Apify actor s-r/instagram-trending-scraper
+// (SETUP.md §12). Instagram has no trends API; the list is one worldwide
+// surface, not per country, and Apify's free plan caps a run at 10 topics.
+// Instagram refreshes the list every 3 hours (a one-day hourly test on
+// 2026-10-01 saw it change at 22, 01, 04, 07 and 10 UTC and never between).
 export const INSTAGRAM_ACTOR = "s-r~instagram-trending-scraper";
-// Runs every 6 hours; older results mean the schedule stopped (two missed runs are fine).
-export const INSTAGRAM_MAX_AGE_HOURS = 18;
+// Runs at 01:50, 13:50 and 19:50 UTC, so results are up to 12 hours old;
+// older than this means the schedule stopped (one missed run is fine).
+export const INSTAGRAM_MAX_AGE_HOURS = 24;
 
 const Items = z.array(
   z.object({
