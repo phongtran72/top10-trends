@@ -283,6 +283,12 @@ Outside items are linked to topics with the same embedding model. Each source is
 - **Rules learned in the daytime miss the evening,** so lifespan models need hour of day as a feature.
 - **The breakout rule can't be scored until 6 hours of every list follow a forecast hour.**
 
+**Experiment: a language-model forecaster as a feature** (noted 2026-10-01, to run with task 5.6).
+- **The model:** [OpenForecaster-8B](https://huggingface.co/nikhilchandak/OpenForecaster-8B) is Qwen3-8B fine-tuned on about 52,000 news-derived questions to give a short answer and a calibrated probability for open-ended questions about world events. Its knowledge ends in April 2025, so it needs current headlines as context.
+- **Why it's only a feature:** it can't make the hours and days forecasts itself. Those depend on how each list behaves, which only our data shows, and the pipeline runs on GitHub's CPUs.
+- **The test:** for news topics, ask it "given these headlines, will this story have major new developments in the next 3 days?" on the owner's GPU, and add its probability to the lifespan model. Keep it only if it improves the held-out weeks over the tabular model alone. Compare it with plain Qwen3.5-9B on the same prompt, to see whether the forecasting fine-tune matters.
+- **Scope:** research only. If it helps, a nightly local job could write the feature, never a paid API.
+
 **Evaluation.** Train on earlier weeks and test on later ones, never shuffled. Measure, for alerts, *precision* (how often a flagged topic does break out) and *lead time* (how many hours before it reached 3 platforms); for lifespan, the error in hours; and *calibration* (70% forecasts come true about 70% of the time). A public `/forecasts` page lists every forecast next to its outcome, so the accuracy is visible rather than claimed.
 
 **Limits.** A month holds a few thousand topics and a few hundred breakouts: enough to learn from, not enough for precision. Sudden news gives no warning, so forecasts can only catch topics early in their rise. Platforms change and events are seasonal, so findings are re-checked and models retrained regularly. Wrong topic merges become wrong labels, which is why phase 2's matching threshold is tuned first.
