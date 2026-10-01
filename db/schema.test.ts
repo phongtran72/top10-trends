@@ -13,13 +13,13 @@ afterAll(async () => {
 });
 
 describe("migrations", () => {
-  it("create the six tables with row-level security on", async () => {
+  it("create every table with row-level security on", async () => {
     const { rows } = await t.client.query<{ relname: string; relrowsecurity: boolean }>(
       `select relname, relrowsecurity from pg_class
        where relnamespace = 'public'::regnamespace and relkind = 'r' order by relname`,
     );
     expect(rows).toEqual(
-      ["fetch_runs", "rankings", "sources", "topic_items", "topics", "trend_items"].map((relname) => ({
+      ["fetch_runs", "rankings", "sources", "topic_items", "topic_snapshots", "topics", "trend_items"].map((relname) => ({
         relname,
         relrowsecurity: true,
       })),

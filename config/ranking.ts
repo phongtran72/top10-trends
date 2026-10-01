@@ -18,12 +18,25 @@ export const WEIGHTS = {
 } as const;
 
 // Topic matching: join the nearest topic centroid from the last 48 hours at
-// cosine similarity >= 0.80 (tune 0.75–0.85).
-export const MATCH_THRESHOLD = 0.8;
+// cosine similarity >= this. 0.86 is where nomic-embed-text-v1.5 (384 numbers)
+// made 90–95% right merges on hand-checked pairs; task 2.9 confirms it on a
+// week of data with `npm run replay -- tune`.
+export const MATCH_THRESHOLD = 0.86;
 export const TOPIC_WINDOW_HOURS = 48;
 
 // Only lists fetched within the last 3 hours count toward the combined score.
 export const FRESH_LIST_HOURS = 3;
+// Sources left out of topic matching and the combined score; their own pages
+// still show their lists. TikTok's Creative Center ranking covers a 7-day
+// window that runs several days behind (its curves on 2026-10-01 ended on
+// 2026-09-27), so it would lend last week's weight to today's topics.
+export const UNSCORED_SOURCES: ReadonlySet<string> = new Set(["tiktok"]);
+
+// Bluesky re-cuts its trending list every hour, and a topic near the edge
+// often drops out for an hour and comes back (research RQ1: 47% of its top-10
+// stays are returns). A Bluesky topic missing from its latest list keeps its
+// last rank in the combined score for this long after it was last seen.
+export const BLUESKY_GRACE_HOURS = 2;
 export const TOP_N = 10;
 
 // X is billed per request: at most 60 trend requests per UTC day.
@@ -33,3 +46,7 @@ export const X_DAILY_REQUEST_CAP = 60;
 // inside YouTube's 30-day limit; fetch_runs 90 days.
 export const ITEM_RETENTION_DAYS = 28;
 export const FETCH_RUN_RETENTION_DAYS = 90;
+
+// Bump when weights, filters or scoring change, so analyses of stored
+// snapshots can tell methods apart (topic_snapshots.algo_version).
+export const RANKING_VERSION = "r1";

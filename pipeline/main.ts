@@ -1,15 +1,19 @@
 import { COLLECTORS } from "@/collectors/index";
 import { planSources, unknownSourceIds, type SourceId, type SourcePlan } from "@/collectors/registry";
-import type { Collector, Env } from "@/collectors/types";
+import type { Collector, Env, TrendItem } from "@/collectors/types";
 import { fetchRuns } from "@/db/schema";
+import { createEmbedder, type Embedder } from "@/lib/embed";
 import { cleanEnv, pipelineEnv, type RawEnv } from "@/lib/env";
+import { describeError } from "@/lib/errors";
 import { createHttp } from "@/lib/http";
 import { collect, formatResults, writeResults, type ListResult } from "./collect";
 import type { Db } from "./db";
+import { loadBlocklist } from "./filter";
 import { purge } from "./purge";
-import { applyPaidLimits, xRequestsToday } from "./spend";
+import { formatRankOutcome, rankRun } from "./rank";
 import { revalidateSite } from "./revalidate";
 import { upsertSources } from "./sources";
+import { applyPaidLimits, xRequestsToday } from "./spend";
 
 export interface RunDeps {
   openDb: (url: string) => { db: Db; close: () => Promise<void> };
@@ -17,6 +21,8 @@ export interface RunDeps {
   now?: () => Date;
   collectors?: ReadonlyMap<SourceId, Collector>;
   fetch?: typeof fetch;
+  createEmbedder?: () => Promise<Embedder>;
+  blocklist?: ReadonlySet<string>;
 }
 
 export function parseArgs(argv: readonly string[]): { dryRun: boolean; includePaid: boolean } {
@@ -63,11 +69,12 @@ export function summarize(
 }
 
 // One pipeline run: check paid-source limits, collect every enabled source,
-// then upsert sources, write the lists, purge old rows, write the heartbeat,
-// ask the site to refresh its cached pages and print a summary. A failing
-// source or refresh is recorded and never fails the run. With --dry-run
-// nothing touches the database and paid sources are skipped unless
-// --include-paid is given: each list is printed instead.
+// then upsert sources, write the lists, rank them (filter, embed, match to
+// topics, score), purge old rows, write the heartbeat, ask the site to refresh
+// its cached pages and print a summary. A failing source, rank step or
+// refresh is recorded and never fails the run. With --dry-run nothing touches
+// the database and paid sources are skipped unless --include-paid is given:
+// each list and a combined top 10 from this run alone are printed instead.
 export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps: RunDeps): Promise<void> {
   const now = deps.now ?? (() => new Date());
   const startedAt = now();
@@ -83,6 +90,17 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
   const unknown = unknownSourceIds(env.DISABLED_SOURCES);
   if (unknown.length > 0) deps.log(`warning: DISABLED_SOURCES has unknown ids: ${unknown.join(", ")}`);
 
+  // The rank step runs after the lists are saved, in its own try/catch.
+  const rank = async (results: ListResult[], db: Db | null, itemIds: Map<TrendItem, number> | null) => {
+    try {
+      const embedder = await (deps.createEmbedder ?? createEmbedder)();
+      const outcome = await rankRun({ db, results, itemIds, now: startedAt, embedder, blocklist: deps.blocklist ?? loadBlocklist() });
+      for (const line of formatRankOutcome(outcome)) deps.log(line);
+    } catch (error) {
+      deps.log(`rank: failed: ${describeError(error)}`);
+    }
+  };
+
   // A full run opens the database first, to check X's daily cap before collecting.
   const connection = env.dryRun ? null : deps.openDb(env.SESSION_DATABASE_URL);
   let plans: SourcePlan[] = planned;
@@ -96,7 +114,15 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
     const collectorEnv: Env = { ...cleanEnv(rawEnv), MASTODON_INSTANCE: env.MASTODON_INSTANCE };
     const http = createHttp({ userAgent: env.COLLECTOR_USER_AGENT, fetch: deps.fetch });
     results = await collect(plans, collectors, { http, env: collectorEnv, now: startedAt }, { now });
-    if (connection) await writeRun(connection.db, plans, results, startedAt, now, deps.log);
+    if (connection) {
+      const { db } = connection;
+      await upsertSources(db, plans);
+      const itemIds = await writeResults(db, results);
+      await rank(results, db, itemIds);
+      const purged = await purge(db, startedAt);
+      if (purged.items > 0 || purged.runs > 0) deps.log(`purged: ${purged.items} items, ${purged.runs} runs`);
+      await writeHeartbeat(db, startedAt, now());
+    }
   } finally {
     await connection?.close();
   }
@@ -105,6 +131,7 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
     deps.log("sources:");
     for (const line of formatPlan(plans)) deps.log(line);
     for (const line of formatResults(results)) deps.log(line);
+    await rank(results, null, null);
   } else {
     for (const result of results) {
       if (result.status === "error") deps.log(`error: ${result.source.id} (${result.region}): ${result.error}`);
@@ -113,20 +140,4 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
   }
 
   deps.log(summarize(plans, results, { dryRun, ms: now().getTime() - startedAt.getTime() }));
-}
-
-// Saves one full run: sources, lists, purge and the heartbeat.
-async function writeRun(
-  db: Db,
-  plans: readonly SourcePlan[],
-  results: readonly ListResult[],
-  startedAt: Date,
-  now: () => Date,
-  log: (line: string) => void,
-): Promise<void> {
-  await upsertSources(db, plans);
-  await writeResults(db, results);
-  const purged = await purge(db, startedAt);
-  if (purged.items > 0 || purged.runs > 0) log(`purged: ${purged.items} items, ${purged.runs} runs`);
-  await writeHeartbeat(db, startedAt, now());
 }

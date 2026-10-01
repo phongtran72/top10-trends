@@ -4,6 +4,7 @@ import {
   boolean,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   real,
@@ -103,4 +104,29 @@ export const rankings = pgTable(
     score: real("score"),
   },
   (t) => [index("rankings_list_region_computed_idx").on(t.list, t.region, t.computedAt.desc())],
+).enableRLS();
+
+// Permanent. One row per topic per run: where the topic stood on each platform
+// that hour, as history for a future prediction model (for example, will this
+// topic break out to more platforms?). Items are deleted after 28 days, so this
+// is the only lasting record of a topic's hour-by-hour path. YouTube is left
+// out: its policy caps stored API data at 30 days and forbids deriving new
+// metrics from it (PLAN.md › Data model).
+export const topicSnapshots = pgTable(
+  "topic_snapshots",
+  {
+    takenAt: timestamptz("taken_at").notNull(), // the run's start, like rankings.computed_at
+    region: text("region").notNull(), // the view: global | us
+    topicId: bigint("topic_id", { mode: "number" })
+      .notNull()
+      .references(() => topics.id),
+    position: integer("position"), // place among all scored topics that hour; null without a lead platform
+    score: real("score"), // combined score without YouTube; null without a lead platform
+    platformCount: integer("platform_count").notNull(),
+    newsCount: integer("news_count").notNull().default(0), // distinct Google Trends headlines attached this run
+    algoVersion: text("algo_version").notNull(), // how the row was made: model, threshold, ranking version, +replay
+    ranks: jsonb("ranks").$type<Record<string, number>>().notNull(), // source id → best rank
+    metrics: jsonb("metrics").$type<Record<string, number>>().notNull(), // source id → metric of that item
+  },
+  (t) => [primaryKey({ columns: [t.topicId, t.takenAt, t.region] }), index("topic_snapshots_taken_idx").on(t.takenAt)],
 ).enableRLS();

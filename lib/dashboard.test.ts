@@ -74,6 +74,35 @@ describe("buildDashboard", () => {
   });
 });
 
+describe("Google Trends in the dashboard", () => {
+  const google = getSource("google_trends");
+  // The feed lists the newest trends first; its 3-hour window is ranked by search volume.
+  const rows = [
+    ...run("google_trends", "us", hoursAgo(4), ["too old"], [900000]),
+    ...run("google_trends", "us", hoursAgo(2), ["astros", "berkeley fire"], [50000, 1000]),
+    ...run("google_trends", "us", hoursAgo(1), ["alex eala", "rihanna"], [5000, 2000]),
+  ];
+  const dashboard = buildDashboard(rows, now, [google]);
+
+  it("shows the window's biggest searches, not the newest", () => {
+    expect(dashboard.platforms[0].top.map((i) => [i.rank, i.title])).toEqual([
+      [1, "astros"],
+      [2, "alex eala"],
+      [3, "rihanna"],
+    ]);
+    expect(dashboard.highlights[0]).toMatchObject({ label: "Top search", title: "astros", metricValue: 50000 });
+  });
+
+  it("compares windows, so an older big search is not a new entry", () => {
+    expect(dashboard.newEntries.map((e) => [e.rank, e.title])).toEqual([
+      [2, "alex eala"],
+      [3, "rihanna"],
+    ]);
+    // An hour earlier the window still held the 4-hour-old list, so "astros" was #2.
+    expect(dashboard.movers.map((m) => [m.title, m.previousRank, m.rank])).toEqual([["astros", 2, 1]]);
+  });
+});
+
 describe("new entries", () => {
   it("doesn't call a topic new when it was in a list of the previous two hours", () => {
     const rows = [

@@ -3,6 +3,7 @@ import { buildDashboard, DASHBOARD_WINDOW_HOURS } from "@/lib/dashboard";
 import { getDb } from "@/lib/db";
 import { recentTopItems, sourceStatuses, spendThisMonth } from "@/lib/queries";
 import { TRENDS_TAG } from "@/lib/revalidate";
+import { combinedTop } from "@/lib/topic-queries";
 
 // Database reads cached in Next's data cache under the `trends` tag, which
 // POST /api/revalidate expires after each pipeline run. Pages that are not
@@ -25,6 +26,11 @@ export const getDashboard = unstable_cache(
   ["dashboard-v1"],
   { tags: [TRENDS_TAG], revalidate: 3600 },
 );
+
+export const getCombinedTop = unstable_cache(async () => combinedTop(getDb()), ["combined-top-v1"], {
+  tags: [TRENDS_TAG],
+  revalidate: 3600,
+});
 
 export const getSpend = unstable_cache(async () => spendThisMonth(getDb(), new Date()), ["spend-v1"], {
   tags: [TRENDS_TAG],
