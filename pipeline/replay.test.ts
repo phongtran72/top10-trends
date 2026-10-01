@@ -69,7 +69,7 @@ describe("tuning in a scratch copy", () => {
     expect(strict.top10Entries).toBe(8);
     const snaps = await scratch.db.select().from(topicSnapshots);
     expect(snaps).not.toHaveLength(0);
-    expect(new Set(snaps.map((s) => s.algoVersion))).toEqual(new Set(["nomic-embed-text-v1.5.q8.384/t0.80/r1+replay"]));
+    expect(new Set(snaps.map((s) => s.algoVersion))).toEqual(new Set(["nomic-embed-text-v1.5.q8.384/t0.80/r2+replay"]));
 
     await resetDerived(scratch.db);
     expect(await scratch.db.select().from(topics)).toHaveLength(0);
@@ -83,17 +83,17 @@ describe("tuning in a scratch copy", () => {
 });
 
 describe("stored Bluesky status", () => {
-  it("is restored on replayed items, so cooling trends are dropped as in a live run", async () => {
+  it("is restored on replayed items, so stale trends are dropped as in a live run", async () => {
     const db = await createTestDb();
     try {
       await upsertSources(db.db, planSources({ collectors: new Set(), disabled: [], env: {} }));
       const at = hour(15);
       const bluesky = list("bluesky", "global", at, ["Fresh story", "Fading story"]);
       bluesky.items[0].flags = { status: "trending" };
-      bluesky.items[1].flags = { status: "cooling" };
+      bluesky.items[1].flags = { status: "stale" };
       await writeResults(db.db, [bluesky, list("mastodon", "global", at, ["#sometag"])]);
       const slots = await loadSlots(db.db);
-      expect(slots[0].results.map((r) => r.items.map((i) => i.flags?.status))).toEqual([["trending", "cooling"], [undefined]]);
+      expect(slots[0].results.map((r) => r.items.map((i) => i.flags?.status))).toEqual([["trending", "stale"], [undefined]]);
       await replaySlots(db.db, slots, { threshold: 0.8, embedder: wordEmbedder, blocklist: new Set() });
       expect((await db.db.select().from(topics)).map((t) => t.label).sort()).toEqual(["Fresh story", "some tag"]);
     } finally {
