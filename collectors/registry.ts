@@ -17,6 +17,10 @@ export interface SourceDef {
   optIn?: string;
   phase: 0 | 1 | 2 | 3;
   homepage?: string;
+  // Shown on the platform's page when its list is older than the page's
+  // "updated" time suggests: the pipeline rereads a scraped list every hour,
+  // but the source itself changes less often.
+  note?: string;
 }
 
 // Every source, in the order the site lists them. `heartbeat` is the
@@ -28,11 +32,11 @@ export const SOURCES: readonly SourceDef[] = [
   { id: "mastodon", name: "Mastodon", role: "lead", weight: WEIGHTS.mastodon, regions: ["global"], env: [], phase: 1, homepage: "https://mastodon.social/explore/tags" },
   { id: "youtube", name: "YouTube", role: "corroborating", weight: WEIGHTS.youtube, regions: ["us"], env: ["YOUTUBE_API_KEY"], phase: 1, homepage: "https://www.youtube.com" },
   { id: "reddit", name: "Reddit", role: "corroborating", weight: WEIGHTS.reddit, regions: ["global"], env: [], phase: 3, homepage: "https://www.reddit.com/r/popular/" },
-  { id: "tiktok", name: "TikTok", role: "corroborating", weight: WEIGHTS.tiktok, regions: ["us"], env: ["APIFY_TOKEN"], optIn: "TIKTOK_ENABLED", phase: 3, homepage: "https://www.tiktok.com" },
-  { id: "instagram", name: "Instagram", role: "corroborating", weight: WEIGHTS.instagram, regions: ["global"], env: ["APIFY_TOKEN"], optIn: "INSTAGRAM_ENABLED", phase: 3, homepage: "https://www.instagram.com/explore/" },
+  { id: "tiktok", name: "TikTok", role: "corroborating", weight: WEIGHTS.tiktok, regions: ["us"], env: ["APIFY_TOKEN"], optIn: "TIKTOK_ENABLED", phase: 3, homepage: "https://www.tiktok.com", note: "TikTok publishes this list for a 7-day window that runs several days behind, so these are last week's hashtags." },
+  { id: "instagram", name: "Instagram", role: "corroborating", weight: WEIGHTS.instagram, regions: ["global"], env: ["APIFY_TOKEN"], optIn: "INSTAGRAM_ENABLED", phase: 3, homepage: "https://www.instagram.com/explore/", note: "Instagram refreshes this list every 3 hours; it is read three times a day, so it can be up to 12 hours old." },
   { id: "twitch", name: "Twitch", role: "corroborating", weight: WEIGHTS.twitch, regions: ["global"], env: ["TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET"], phase: 1, homepage: "https://www.twitch.tv/directory" },
   { id: "hacker_news", name: "Hacker News", role: "corroborating", weight: WEIGHTS.hacker_news, regions: ["global"], env: [], phase: 1, homepage: "https://news.ycombinator.com" },
-  { id: "pinterest", name: "Pinterest", role: "corroborating", weight: WEIGHTS.pinterest, regions: ["us"], env: ["APIFY_TOKEN"], optIn: "PINTEREST_ENABLED", phase: 3, homepage: "https://www.pinterest.com/today/" },
+  { id: "pinterest", name: "Pinterest", role: "corroborating", weight: WEIGHTS.pinterest, regions: ["us"], env: ["APIFY_TOKEN"], optIn: "PINTEREST_ENABLED", phase: 3, homepage: "https://www.pinterest.com/today/", note: "Pinterest refreshes these searches about once a week; they are read on Mondays and Thursdays." },
   { id: "heartbeat", name: "Heartbeat", role: "system", weight: 0, regions: ["global"], env: [], phase: 0 },
 ];
 
