@@ -16,6 +16,7 @@ bound on how often the pipeline would merge them.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -28,10 +29,21 @@ from .db import REPO_ROOT
 
 DATA_DIR = REPO_ROOT / "research" / "data"
 DIMENSIONS = 384
-THRESHOLDS = (0.50, 0.55, 0.60, 0.65, 0.70, 0.80)
-# The threshold phase 2's replay found merging only correct pairs (PLAN.md ›
-# Ranking › Matching threshold); task 2.9 settles the pipeline's value.
-HEADLINE_THRESHOLD = 0.60
+
+
+def pipeline_threshold(config: Path = REPO_ROOT / "config" / "ranking.ts") -> float:
+    """The pipeline's MATCH_THRESHOLD, read from config/ranking.ts so research never drifts from the site.
+    It belongs to the pipeline's embedding model (lib/embed.ts): 0.86 for nomic-embed-text-v1.5 at 384
+    numbers (task 2.15), where 0.60 was all-minilm-l6-v2's."""
+    match = re.search(r"export const MATCH_THRESHOLD\s*=\s*([0-9.]+)", config.read_text(encoding="utf-8"))
+    if not match:
+        raise ValueError(f"no MATCH_THRESHOLD in {config}")
+    return float(match.group(1))
+
+
+# The headline threshold is the pipeline's; the sweep brackets it, on the same model's scale.
+HEADLINE_THRESHOLD = pipeline_threshold()
+THRESHOLDS = tuple(round(HEADLINE_THRESHOLD + step, 2) for step in (-0.08, -0.04, 0, 0.03, 0.06))
 SLACK_HOURS = 24.0
 RUN_MARGIN = pd.to_timedelta(15, unit="min")  # like the pipeline's RUN_LIST_MARGIN_MS
 

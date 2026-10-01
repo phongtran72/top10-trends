@@ -62,4 +62,4 @@ By category, on the lists that refresh hourly: time in the top 10 allows one mis
 
 - One day, heavy on the MLB playoffs, and one person's check.
 - The categories are a fixed list. "Other" holds X's bare names that even context couldn't place.
-- Matching for spread used the research default at the time (all-minilm-l6-v2 at 0.70). The pipeline has since moved to nomic-embed-text-v1.5 (task 2.15), and the next re-run will use it.
+- Matching for the spread column used all-minilm-l6-v2 at 0.70. Re-run on the pipeline's new matcher (nomic-embed-text-v1.5 at 0.86, data to 2026-10-01 03:08 UTC), spread is higher for every kind and the order holds: calendar 30%, sports 29%, gaming 10%, politics 6%, tech 5%, entertainment 2%. The 23 trends added since the first check have the model's drafts, not yet checked.

@@ -220,6 +220,13 @@ Between refreshes the same list repeats in every hourly fetch, so those sources'
   - **Switching is task 2.9's call:** a threshold near 0.85 to confirm on a week, a new `algo_version` family and a rebuild.
   - **Every topic's centroid is needed for good:** the days horizon's "how similar past topics fared" and RQ1's categories read them long after the 48-hour matching window. They can't be rebuilt from member items after 28 days.
 
+**On the new matcher** (2026-10-01): research reads its threshold from `config/ranking.ts`, so it follows the pipeline's model (nomic-embed-text-v1.5 at 384 numbers, 0.86). Re-run on data to 03:08 UTC on 2026-10-01:
+- **Echo chambers:** the picture holds. In 6 hours with every list, X, Pinterest and Instagram were 72–73% alone and Google 75%; the others 90–100%. Four stories reached 3 or more platforms (two playoff games, Jack Smith's testimony, Ronaldo).
+- **Lead and lag:** 13 usable story pairs. Across 8 Google-and-X stories, Google had it first in 5 and tied in 3, by a median of 1 hour.
+- **Breakout:** 7 of 146 phase-1 trends spread (4.8%), all right matches.
+- **News and memes:** news-linked and calendar trends both spread 40% of the time, against 6% for the rest.
+- **Censoring rule:** a lead now counts only when the earlier sighting came after both sources were being collected.
+
 **Lifecycle** (RQ1 first look, 2026-09-30, `research/findings/rq1-lifecycle.md`; per list, before snapshots):
 - **Half-life in the top 10:** 1 hour on Bluesky and Google (79% and 72% of entries were gone at the next fetch), and 3 hours on Hacker News. Mastodon and Twitch run over 12 hours (57% of entries still listed after 12 hours).
 - **Almost nothing lasts 6 hours on one list,** so combined-top-10 lifespans will come from breadth across platforms.

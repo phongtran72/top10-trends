@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { MATCH_THRESHOLD } from "@/config/ranking";
 import { createTestDb as createScratchDb } from "@/db/test-db";
 import { topicSnapshots, topics } from "@/db/schema";
 import { createEmbedder } from "@/lib/embed";
@@ -9,7 +10,7 @@ import { createPipelineDb } from "@/pipeline/db";
 import { loadBlocklist } from "@/pipeline/filter";
 import { copyLists, loadSlots, memoEmbedder, replaySlots } from "@/pipeline/replay";
 
-// npx tsx scripts/replay-snapshots.ts [--threshold 0.6] [--days 28] [--out research/data/replay]
+// npx tsx scripts/replay-snapshots.ts [--threshold 0.86] [--days 28] [--out research/data/replay]
 //
 // For the research notebooks, before production has topic snapshots. Reads
 // the stored lists through RESEARCH_DATABASE_URL (the read-only research
@@ -26,7 +27,7 @@ function option(argv: readonly string[], name: string): string | undefined {
 async function main() {
   loadLocalEnv();
   const argv = process.argv.slice(2);
-  const threshold = Number(option(argv, "threshold") ?? 0.6);
+  const threshold = Number(option(argv, "threshold") ?? MATCH_THRESHOLD); // the pipeline's, unless given
   if (!(threshold > 0 && threshold < 1)) throw new Error("--threshold must be between 0 and 1");
   const days = Number(option(argv, "days") ?? 28);
   const out = option(argv, "out") ?? path.join("research", "data", "replay");

@@ -1,7 +1,7 @@
 """A checked set of matching pairs, and how well an embedding model separates them.
 
 Topic matching decides every cross-platform label, and RQ6 found it about half
-right between 0.60 and 0.70. This builds a set of trend pairs from different
+right between 0.60 and 0.70 on the model of the time. This builds a set of trend pairs from different
 platforms (each trend's best match on each other platform, from RQ6's
 cross_platform), has the local model (topnews.llm) draft "same story?" for
 each, and keeps a person's corrections. Any embedding model can then be scored
@@ -17,7 +17,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-LOW = 0.45
+LOW = 0.75  # on the scale of nomic-embed-text-v1.5, the pipeline's model; the first set used 0.45 on all-minilm-l6-v2's
 
 
 def candidate_pairs(cp: pd.DataFrame, low: float = LOW) -> pd.DataFrame:

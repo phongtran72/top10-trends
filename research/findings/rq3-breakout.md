@@ -31,9 +31,18 @@ What separates trends that spread to other platforms from those that stay on one
 - **Cut B: nothing to count yet.** Its first trends need 6 hours of data after them, and entries seen after the first run.
 - **Where the day's cross-platform stories were:** the MLB wild card games, the Astros and Jack Smith (RQ6). They all ran on X, Google and Instagram in the evening, after the 17:08 UTC cutoff that cut A's 6-hour rule sets.
 
+## Re-run on the pipeline's new matcher (2026-10-01)
+
+With nomic-embed-text-v1.5 at the pipeline's 0.86 and data to 2026-10-01 03:08 UTC:
+
+- **Cut A: 146 trends counted, 7 spread (4.8%), all right matches.** They are three stories that Google and Bluesky shared: the US–Iran proposals, the Phillies–Braves game (four Google variants) and Ronaldo leaving Portugal's camp. None reached 3 lists.
+- **Cut B: still nothing to count.** Every list has only 6 hours of data.
+
+With the old model, none of 96 spread at 0.70, and the two that did at 0.60 were wrong matches. The better matcher finds the real ones. Seven is still too few to compare features.
+
 ## What it means for the forecasts
 
-- **On the phase-1 lists alone, spreading is rare,** under 4% of trends. A model of spread for those lists would have to beat a "never spreads" rule that's right more than 96% of the time. Precision and lead time, not accuracy, are the right scores (PLAN.md › Evaluation).
+- **On the phase-1 lists alone, spreading is rare,** about 5% of trends with the new matcher. A model of spread for those lists would have to beat a "never spreads" rule that's right about 95% of the time. Precision and lead time, not accuracy, are the right scores (PLAN.md › Evaluation).
 - **The features that matter will come from X, Google and Instagram,** where the stories cross over. Cut B is where RQ3 can start. At RQ6's rates (a fifth to a third of those lists' trends matched elsewhere), it should reach 30 spread trends within a few days (a rough estimate).
 - **This can't answer the real breakout question yet** (3 or more platforms within 6 hours). That needs topic snapshots and weeks of data.
 

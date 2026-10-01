@@ -48,6 +48,19 @@ Do news-driven trends last longer, or spread further, than memes? It decides how
 
 - **Lifespans can't be compared yet.** Outside "other", no category has more than 5 spells on a list that refreshes hourly. That's partly because X, where most news-linked trends are, has only 3 runs.
 
+## Re-run on the pipeline's new matcher (2026-10-01)
+
+With nomic-embed-text-v1.5 at the pipeline's 0.86 and data to 2026-10-01 03:08 UTC (513 trends), "news-linked" now finds 25 trends, where it found 11.
+
+| Category | Trends | Also on another list besides Google |
+| --- | --- | --- |
+| calendar | 20 | 40% |
+| news-linked | 25 | 40% |
+| google | 121 | 20% |
+| other | 347 | 6% |
+
+News-linked trends now spread as often as calendar moments. With the hand-checked categories (`findings/categories.md`), the split is sharper: calendar 30%, sports 29%, gaming 10%, politics 6%, entertainment 2%.
+
 ## What it means for the forecasts
 
 - **"News" needs subtypes.** On a playoff day, news-driven means sports. RQ4 should split news by kind (sports, politics, entertainment), for example by clustering topic centroids as RQ1 plans, before asking whether news lasts longer than memes.

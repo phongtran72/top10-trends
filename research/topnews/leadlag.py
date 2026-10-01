@@ -5,11 +5,13 @@ matched trends on two platforms, the lead is the gap between their first
 sightings. Three things keep a lead honest:
 
 - censoring: a trend already on its list at that source's first fetch
-  started at some unknown earlier time, so its pairs are left out;
+  started at some unknown earlier time, and a sighting from before the other
+  source was collected at all can't be compared (that source may have had the
+  story too, unseen). Both kinds of pairs are left out;
 - slow sources: TikTok, Instagram and Pinterest show up on their refresh
   schedule, not when the story broke, so their pairs are left out by default;
-- a stricter threshold than RQ6's headline (PAIR_THRESHOLD), because a wrong
-  match gives a meaningless lead.
+- a threshold that makes matches precise (PAIR_THRESHOLD, the pipeline's),
+  because a wrong match gives a meaningless lead.
 
 Fetches are hourly, so leads are good to about an hour, and sightings less
 than TIE_HOURS apart are a tie.
@@ -20,11 +22,15 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from .echo import RUN_MARGIN
+from .echo import HEADLINE_THRESHOLD, RUN_MARGIN
 from .rhythms import SLOW_SOURCES
 
-PAIR_THRESHOLD = 0.70
+# The pipeline's threshold: with nomic-embed-text-v1.5 it's already about 95%
+# precise on the checked pairs (findings/matching.md), where all-minilm-l6-v2
+# needed a stricter 0.70 than its 0.60.
+PAIR_THRESHOLD = HEADLINE_THRESHOLD
 TIE_HOURS = 0.5
+SIDE = ["id", "platform", "title", "first", "censored", "start"]
 
 
 def source_starts(items: pd.DataFrame) -> pd.Series:
@@ -42,11 +48,13 @@ def lead_pairs(cp: pd.DataFrame, starts: pd.Series, threshold: float = PAIR_THRE
 
     lead_hours is platform_b's first sighting minus platform_a's: positive
     when platform_a had it first. `first` names the platform that led, or
-    "tie". `censored` and `slow` mark pairs to leave out of the summaries.
+    "tie". `censored` and `slow` mark pairs to leave out of the summaries: a
+    pair is censored when either trend was at its source's first fetch, or
+    when the earlier sighting came before both sources were being collected.
     """
     columns = [
         "id_a", "platform_a", "title_a", "id_b", "platform_b", "title_b", "sim", "first_a", "first_b",
-        "lead_hours", "first", "censored_a", "censored_b", "censored", "slow",
+        "lead_hours", "first", "censored_a", "censored_b", "start_a", "start_b", "censored", "slow",
     ]
     by_id = cp.set_index("trend_id")
     is_censored = pd.Series(censored(cp, starts).to_numpy(), index=cp["trend_id"])
@@ -65,15 +73,22 @@ def lead_pairs(cp: pd.DataFrame, starts: pd.Series, threshold: float = PAIR_THRE
             lead = (b["first_seen"] - a["first_seen"]).total_seconds() / 3600
             first = a["source_id"] if lead >= TIE_HOURS else b["source_id"] if lead <= -TIE_HOURS else "tie"
             censored_a, censored_b = bool(is_censored[a_id]), bool(is_censored[b_id])
+            start_a, start_b = starts[a["source_id"]], starts[b["source_id"]]
             rows.append(
                 [
                     a_id, a["source_id"], a["title"], b_id, b["source_id"], b["title"], float(sim),
                     a["first_seen"], b["first_seen"], lead, _first(a["source_id"], b["source_id"], lead),
-                    censored_a, censored_b, censored_a or censored_b,
+                    censored_a, censored_b, start_a, start_b,
+                    censored_a or censored_b or _before_both(a["first_seen"], b["first_seen"], start_a, start_b),
                     a["source_id"] in SLOW_SOURCES or b["source_id"] in SLOW_SOURCES,
                 ]
             )
     return pd.DataFrame(rows, columns=columns)
+
+
+def _before_both(first_a, first_b, start_a, start_b) -> bool:
+    """True when the earlier sighting came before both sources were being collected."""
+    return bool(min(first_a, first_b) <= max(start_a, start_b) + RUN_MARGIN)
 
 
 def _first(platform_a: str, platform_b: str, lead_hours: float) -> str:
@@ -87,7 +102,8 @@ def story_pairs(pairs: pd.DataFrame) -> pd.DataFrame:
     "phillies", "phillies - braves" and "braves vs phillies" with X's
     "Phillies"), so a story with many variants counts once per pair of
     platforms. A platform whose earliest trend in the story is censored is
-    censored for that story. Same columns as lead_pairs, plus story and label.
+    censored for that story, and so is a pair whose earlier sighting came before
+    both platforms were collected. Same columns as lead_pairs, plus story and label.
     """
     parent: dict[str, str] = {}
 
@@ -103,8 +119,8 @@ def story_pairs(pairs: pd.DataFrame) -> pd.DataFrame:
 
     sides = pd.concat(
         [
-            pairs[["id_a", "platform_a", "title_a", "first_a", "censored_a"]].set_axis(["id", "platform", "title", "first", "censored"], axis=1),
-            pairs[["id_b", "platform_b", "title_b", "first_b", "censored_b"]].set_axis(["id", "platform", "title", "first", "censored"], axis=1),
+            pairs[["id_a", "platform_a", "title_a", "first_a", "censored_a", "start_a"]].set_axis(SIDE, axis=1),
+            pairs[["id_b", "platform_b", "title_b", "first_b", "censored_b", "start_b"]].set_axis(SIDE, axis=1),
         ]
     ).drop_duplicates("id")
     sides["story"] = sides["id"].map(root)
@@ -129,7 +145,9 @@ def story_pairs(pairs: pd.DataFrame) -> pd.DataFrame:
                         "first_b": b["first"],
                         "lead_hours": lead,
                         "first": _first(a["platform"], b["platform"], lead),
-                        "censored": bool(a["censored"] or b["censored"]),
+                        "censored": bool(
+                            a["censored"] or b["censored"] or _before_both(a["first"], b["first"], a["start"], b["start"])
+                        ),
                         "slow": a["platform"] in SLOW_SOURCES or b["platform"] in SLOW_SOURCES,
                     }
                 )

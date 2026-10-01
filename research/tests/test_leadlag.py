@@ -65,6 +65,21 @@ def test_trends_from_a_sources_first_fetch_are_censored():
     assert leadlag.usable(pairs).empty
 
 
+def test_a_sighting_from_before_the_other_source_was_collected_cant_be_compared():
+    starts = STARTS.copy()
+    starts["x"] = T0 + pd.to_timedelta(10, unit="h")  # X joined the data 10 hours in
+    # Google had "flyers" at hour 0. X shows it at hour 13, not in X's first fetch, but X may have had it
+    # at hour 0 too, before anyone was looking.
+    cp = matches([("google_trends", "flyers", 0), ("x", "Flyers", 13)], [unit(1), unit(1)])
+    pairs = leadlag.lead_pairs(cp, starts)
+    assert not pairs["censored_a"].iloc[0] and not pairs["censored_b"].iloc[0]
+    assert pairs["censored"].tolist() == [True]
+    assert leadlag.story_pairs(pairs)["censored"].tolist() == [True]
+    # Once both are collected, a later pair counts.
+    late = matches([("google_trends", "mahle", 12), ("x", "Mahle", 13)], [unit(1), unit(1)])
+    assert leadlag.lead_pairs(late, starts)["censored"].tolist() == [False]
+
+
 def test_slow_sources_are_left_out_unless_asked():
     cp = matches([("google_trends", "fall", 0), ("tiktok", "#fall", 3)], [unit(1), unit(1)])
     pairs = leadlag.lead_pairs(cp, STARTS)

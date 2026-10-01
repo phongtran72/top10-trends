@@ -32,6 +32,17 @@ def table(rows):
     )
 
 
+def test_the_threshold_comes_from_the_pipelines_config(tmp_path):
+    config = tmp_path / "ranking.ts"
+    config.write_text("export const TOP_N = 10;\nexport const MATCH_THRESHOLD = 0.86;\n")
+    assert echo.pipeline_threshold(config) == 0.86
+    config.write_text("export const TOP_N = 10;\n")
+    with pytest.raises(ValueError):
+        echo.pipeline_threshold(config)
+    assert echo.HEADLINE_THRESHOLD == echo.pipeline_threshold()  # the real config
+    assert echo.HEADLINE_THRESHOLD in echo.THRESHOLDS
+
+
 def test_trends_collapse_fetches_and_regions_per_platform():
     items = pd.DataFrame(
         [

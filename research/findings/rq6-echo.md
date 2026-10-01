@@ -92,6 +92,32 @@ Until phase-2 377374f, the pipeline embedded titles in batches of 64, and the 8-
 - **The fix:** the pipeline now embeds one title at a time. The same check now gives identical vectors and no flips, at about 0.2 s more per run.
 - **Earlier numbers:** some from before the fix were noise. "#flydubai" matched at 0.61 only by chance; it's 0.59 one at a time.
 
+## Re-run on the pipeline's new matcher (2026-10-01)
+
+The pipeline moved to nomic-embed-text-v1.5 at a threshold of 0.86 (task 2.15, `findings/matching.md`). Research now reads its threshold from the pipeline's config, and the data runs to 2026-10-01 03:08 UTC: 17 hours of the phase-1 lists (376 trends) and 6 hours with every list (342 trends). The numbers above were made with all-minilm-l6-v2 at 0.60.
+
+Share of each platform's trends with no match on any other list:
+
+| Platform | Cut A: phase-1 lists, 17 hours | Cut B: every list, 6 hours |
+| --- | --- | --- |
+| Hacker News | 100% | 94% |
+| Mastodon | 97% | 100% |
+| Twitch | 96% | 94% |
+| Bluesky | 93% | 90% |
+| Google Trends (US) | 93% | 75% |
+| TikTok | not collected | 90% |
+| Instagram | not collected | 73% |
+| X | not collected | 72% |
+| Pinterest | not collected | 72% |
+
+- **The picture holds:** most trends stay on their own platform, and sharing runs through Google and X (25% of Google's trends were also on X), Instagram, and Pinterest with TikTok (28% of Pinterest's trends, the fall and yellow-flower searches).
+- **Four stories reached 3 or more platforms:**
+  - the Phillies–Braves game (Google, X, Bluesky, Instagram);
+  - the Yankees–Red Sox game (the same four);
+  - Jack Smith's testimony (Instagram, Bluesky, Mastodon);
+  - Ronaldo leaving Portugal's camp (Google, X, Bluesky).
+- **Matches just above 0.86 are nearly all right.** Of the 23 trends between 0.86 and 0.90, the wrong ones are "Luis Rojas" with "luis garcia" and X's "Flores" with TikTok's "#floresamarillas".
+
 ## What it means for the forecasts
 
 - **Breakouts are rare, so the labels will be very unbalanced.** Perhaps two stories a day reach 3 or more platforms. A 60% precision target has to be judged against that low base rate. "2 or more platforms" may be worth adding as an easier, more common label.

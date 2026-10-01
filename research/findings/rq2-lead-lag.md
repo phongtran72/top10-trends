@@ -30,6 +30,17 @@ Which platform tends to have a story first, and by how long? A platform that lea
 - **The one lead:** Google Trends had the Phillies–Braves game ("phillies game today", 19:08 UTC) 3 hours before Bluesky ("Phillies force Game 3 in Atlanta", 22:08).
 - **What the censored pairs show:** they show why censoring matters. For example, Google had "braves" at 18:10 and X had "Braves" at 22:08. Read naively, that's a 4-hour lead for Google. But X wasn't being collected before 22:08, so that lead is unknown, not 4 hours.
 
+## Re-run on the pipeline's new matcher (2026-10-01)
+
+This uses nomic-embed-text-v1.5 at the pipeline's 0.86, with data to 2026-10-01 03:08 UTC, and a stricter censoring rule: a sighting from before the other source was collected can't be compared, because that source may have had the story too, unseen. Google's "flyers" at noon against X's "Flyers" after midnight is no 13-hour lead: X joined at 22:08.
+
+- **Counts:** 26 stories and 42 story pairs, of which 29 are censored and 13 usable.
+- **Google against X, 8 stories:** Google had it first in 5, 3 were ties, and X was never first. The median lead is 1 hour: "max fried" and the MLB wild card 2 hours, "sonny gray", "willson contreras" and the Dream–Mystics game 1 hour.
+- **Bluesky against Google, 3 stories:** Google first twice (the Phillies game by 4 hours, Ronaldo by 2), Bluesky once (the US–Iran proposals by 1 hour).
+- **One each:** Bluesky before X by 3 hours (the Christa Pike case), and Twitch before Bluesky by 1 hour (Silent Hill: Townfall).
+
+That's a first sign, on one evening of playoff baseball, that Google's feed shows a story about an hour before X's list does. It fits how the lists work: Google lists a trend as it starts, and X's list ranks by size.
+
 ## What it means for the forecasts
 
 Nothing yet. Some expectations to test as the data grows:

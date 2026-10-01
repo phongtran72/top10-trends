@@ -3,7 +3,7 @@
 Works on RQ6's cross-platform matches (topnews.echo) before topic snapshots
 exist. Breakouts to 3 or more platforms are too rare to study yet (RQ6), so
 the outcome here is *spread*: matched on at least one other list at
-`threshold` (0.70 by default, since a wrong match makes a wrong label).
+`threshold` (the pipeline's by default, since a wrong match makes a wrong label).
 
 Features are what's known when a trend is first seen: its platform, entry
 rank, metric against its list's median, hour of day and the shape of its
