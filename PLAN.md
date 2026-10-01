@@ -247,6 +247,12 @@ Outside items are linked to topics with the same embedding model. Each source is
 - **Tooling:** analysis and training run offline in Python notebooks (pandas, lifelines, statsmodels, LightGBM) in a separate `research/` folder, reading Supabase through a read-only Postgres role. The owner approved both on 2026-09-30, and chose to build the hours and days horizons first. Python stays in `research/`: the site, the pipeline and the Worker remain TypeScript, and nothing in production depends on Python.
 - **Shipping:** a trained model ships as a small file in the repo (JSON coefficients, or ONNX run by the onnxruntime-node that Transformers.js already installs). The hourly pipeline, still TypeScript, scores current topics in milliseconds. No paid API is involved.
 
+**Baselines** (task 5.5 first look, 2026-10-01, `research/findings/baselines.md`):
+- **Scoring:** lifespan rules are scored by "still listed k hours later?", because error in hours can only be scored on stays that ended, which on a short test stretch are the short ones.
+- **No rule beats the majority answer.** The Kaplan–Meier median of the time left matches it on each list: Google and Bluesky trends are gone within the hour, and the others stay. That majority answer is the bar.
+- **Rules learned in the daytime miss the evening,** so lifespan models need hour of day as a feature.
+- **The breakout rule can't be scored until 6 hours of every list follow a forecast hour.**
+
 **Evaluation.** Train on earlier weeks and test on later ones, never shuffled. Measure, for alerts, *precision* (how often a flagged topic does break out) and *lead time* (how many hours before it reached 3 platforms); for lifespan, the error in hours; and *calibration* (70% forecasts come true about 70% of the time). A public `/forecasts` page lists every forecast next to its outcome, so the accuracy is visible rather than claimed.
 
 **Limits.** A month holds a few thousand topics and a few hundred breakouts: enough to learn from, not enough for precision. Sudden news gives no warning, so forecasts can only catch topics early in their rise. Platforms change and events are seasonal, so findings are re-checked and models retrained regularly. Wrong topic merges become wrong labels, which is why phase 2's matching threshold is tuned first.
