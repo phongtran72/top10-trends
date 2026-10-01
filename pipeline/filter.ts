@@ -6,7 +6,7 @@ import type { TrendItem } from "@/collectors/types";
 import { normalize } from "@/lib/text";
 
 // Filters (CLAUDE.md invariant 10): keep English items and drop NSFW posts,
-// Bluesky trends that are cooling or stale, profanity and evergreen tags.
+// Bluesky trends that are stale, profanity and evergreen tags.
 // Filters run on the in-memory lists, because the flags and match text they
 // read are never stored.
 
@@ -23,7 +23,11 @@ export interface FilterResult {
   dropped: Dropped[];
 }
 
-const DROPPED_STATUSES = new Set(["cooling", "stale"]);
+// Bluesky's list is mostly topics past their peak: over 14 hours on 2026-10-01
+// its 25 trends were 4% trending, 1% saturating, 41% cooling and 55% stale.
+// Dropping cooling too left a median of 1 Bluesky trend an hour, so only
+// stale ones are dropped (ranking version r2).
+const DROPPED_STATUSES = new Set(["stale"]);
 // Short text makes language detection unreliable, so only a confident
 // non-English guess drops an item; unsure items pass (TASKS.md 2.2).
 export const LANGUAGE_CONFIDENCE = 0.5;

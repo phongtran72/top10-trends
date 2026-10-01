@@ -44,7 +44,7 @@ describe("rankRun", () => {
     const outcome = await runOnce(run1, [
       list("google_trends", "us", run1, [{ title: "world series", matchText: ["dodgers win world series game"] }]),
       list("bluesky", "global", run1, [
-        { title: "Test Launch", flags: { status: "cooling" } },
+        { title: "Test Launch", flags: { status: "stale" } },
         { title: "#WorldSeries", flags: { status: "trending" } },
         { title: "Election night", flags: { status: "trending" } },
       ]),
@@ -90,8 +90,8 @@ describe("rankRun", () => {
     // Permanent snapshots leave YouTube out.
     const snaps = await t.db.select().from(topicSnapshots);
     expect(snaps.map((s) => [s.position, s.platformCount, s.ranks, s.newsCount, s.algoVersion])).toEqual([
-      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.q8.384/t0.80/r1"],
-      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.q8.384/t0.80/r1"],
+      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.q8.384/t0.80/r2"],
+      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.q8.384/t0.80/r2"],
     ]);
     expect(formatRankOutcome(outcome)[2]).toBe("   1. world series · 2.12 · google_trends #1, youtube #1, bluesky #2 · new");
   });
@@ -184,11 +184,11 @@ describe("Bluesky grace", () => {
 });
 
 describe("Bluesky grace and filters", () => {
-  it("gives no grace to a topic Bluesky still lists but now marks cooling", async () => {
+  it("gives no grace to a topic Bluesky still lists but now marks stale", async () => {
     const at = (h: number) => new Date(Date.UTC(2026, 9, 11, h, 7));
     const google = (h: number) => list("google_trends", "us", at(h), [{ title: "foxtrot rally" }]);
     await runOnce(at(18), [google(18), list("bluesky", "global", at(18), [{ title: "Foxtrot rally", flags: { status: "trending" } }])]);
-    const later = await runOnce(at(19), [google(19), list("bluesky", "global", at(19), [{ title: "Foxtrot rally", flags: { status: "cooling" } }])]);
+    const later = await runOnce(at(19), [google(19), list("bluesky", "global", at(19), [{ title: "Foxtrot rally", flags: { status: "stale" } }])]);
     expect(later.combined.find((c) => c.label === "foxtrot rally")?.platforms).toEqual([{ sourceId: "google_trends", rank: 1 }]);
   });
 });

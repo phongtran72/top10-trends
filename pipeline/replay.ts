@@ -12,7 +12,7 @@ import { rankRun } from "./rank";
 // and rebuilds topics, rankings and snapshots from the raw lists (a backfill).
 // Stored items lack the headlines collectors provide, so replay matches on
 // titles only. Bluesky's status is stored from 2026-10-01 15:07 UTC, so replay
-// drops cooling and stale trends from then on, as a live run does; earlier
+// drops stale trends from then on, as a live run does; earlier
 // hours have no status and keep every Bluesky trend.
 
 const HOUR = 60 * 60 * 1000;

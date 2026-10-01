@@ -25,9 +25,10 @@ describe("filters", () => {
     expect(reason("Some post", { flags: { nsfw: true } })).toBe("nsfw");
   });
 
-  it("drops Bluesky trends that are cooling or stale, and keeps the rest", () => {
-    expect(checkItem(item("Topic", { flags: { status: "cooling" } }), blocklist)).toEqual({ reason: "status", detail: "cooling" });
+  it("drops Bluesky trends that are stale, and keeps the rest, cooling ones included", () => {
+    expect(checkItem(item("Topic", { flags: { status: "stale" } }), blocklist)).toEqual({ reason: "status", detail: "stale" });
     expect(reason("Topic", { flags: { status: "Stale" } })).toBe("status");
+    expect(reason("Topic", { flags: { status: "cooling" } })).toBeNull();
     expect(reason("Topic", { flags: { status: "trending" } })).toBeNull();
     expect(reason("Topic", { flags: { status: "saturating" } })).toBeNull();
   });
@@ -62,7 +63,7 @@ describe("filters", () => {
   });
 
   it("splits a list into kept and dropped items", () => {
-    const result = filterItems([item("Flood watch"), item("#caturday"), item("Topic", { flags: { status: "cooling" } })], blocklist);
+    const result = filterItems([item("Flood watch"), item("#caturday"), item("Topic", { flags: { status: "stale" } })], blocklist);
     expect(result.kept.map((i) => i.title)).toEqual(["Flood watch"]);
     expect(result.dropped.map((d) => [d.item.title, d.reason])).toEqual([
       ["#caturday", "blocklist"],

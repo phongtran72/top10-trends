@@ -15,7 +15,7 @@ import { scoreTopics, type ScoreEntry } from "./score";
 // a permanent table, and it doesn't count toward the snapshot score.
 export const EXCLUDED_FROM_HISTORY: ReadonlySet<SourceId> = new Set<SourceId>(["youtube"]);
 
-// How a snapshot was made, e.g. "nomic-embed-text-v1.5.q8.384/t0.86/r1": the
+// How a snapshot was made, e.g. "nomic-embed-text-v1.5.q8.384/t0.86/r2": the
 // embedding model, weights and dimensions, the matching threshold and the
 // ranking version, plus
 // "+replay" for hours rebuilt from stored lists (titles only: no headlines, and no
