@@ -1,6 +1,6 @@
 # RQ1 · Lifecycle
 
-**Status: preliminary (2026-09-30).** This covers each platform's own lists over one day: 12 hours of the phase-1 lists and 2 runs of X.
+**Status: preliminary (2026-09-30; numbers corrected 2026-10-01).** An item still listed at the end of the data and seen only once had been counted as having lasted an hour, which raised the "after N hours" shares; it now counts as 0, the only thing known. This covers each platform's own lists over one day: 12 hours of the phase-1 lists and 2 runs of X.
 - **The full answer comes later.** Lifecycles across platforms and in the combined top 10, by topic category, need topic snapshots (after phase 2). Gate 5's RQ1 write-up is that version.
 - **What's known already:** three facts about how each list behaves, and the shape of Hacker News's rise and fall.
 - **Next:** re-run `notebooks/01_rq1_lifecycle.ipynb` weekly.
@@ -30,10 +30,10 @@ Median time in the top 10 (the half-life), and the share still listed after 1, 2
 
 | List | Spells (ended) | Median | 1 h | 2 h | 3 h | 6 h |
 | --- | --- | --- | --- | --- | --- | --- |
-| Bluesky | 66 (57) | 1 h | 30% | 22% | 8% | 0% |
-| Bluesky, one missed fetch allowed | 50 (33) | 2 h | 54% | 48% | 26% | 7% |
-| Google Trends (US) | 81 (71) | 1 h | 37% | 20% | 4% | 0% |
-| Hacker News | 29 (20) | 3 h | 76% | 52% | 40% | 11% |
+| Bluesky | 66 (57) | 1 h | 21% | 15% | 6% | 0% |
+| Bluesky, one missed fetch allowed | 50 (33) | 1 h | 44% | 39% | 21% | 6% |
+| Google Trends (US) | 81 (71) | 1 h | 28% | 15% | 3% | 0% |
+| Hacker News | 29 (20) | 3 h | 74% | 51% | 39% | 10% |
 | Mastodon | 7 (3) | over 12 h | 71% | 57% | 57% | 57% |
 | Twitch | 7 (3) | over 12 h | 71% | 57% | 57% | 57% |
 | X, Worldwide and US | 9 (0) | not yet | | | | |
@@ -43,13 +43,13 @@ Median time in the top 10 (the half-life), and the share still listed after 1, 2
    - *Hacker News has a real rise and fall.* 38% of its stories climb after entering (median entry rank 7), and the median rank goes 6, 5, 5, 4.5, then falls to 8 by hour 5.
    - *Bluesky flickers.* 47% of its spells are returns, and 55% even in its full 25-item list. Most come back after missing one hourly fetch (38 of 65 returns), and 78% within two. Bluesky's trending list is re-cut every hour, and a topic near the edge drops in and out.
 2. **Mastodon and Twitch barely move.** Most of their top 10 stays all day (more than half of the entries were still listed after 12 hours). Their trends are long-running tags and games, not moments.
-3. **On the fast lists, most trends are brief.** Two-thirds of Bluesky and Google entries were gone at the next hourly fetch. The longest finished stays were 6 to 7 hours: Hacker News stories, and Bluesky's "Canada marks Truth and Reconciliation Day".
+3. **On the fast lists, most trends are brief.** 79% of Bluesky's entries and 72% of Google's were gone at the next hourly fetch. The longest finished stays were 6 to 7 hours: Hacker News stories, and Bluesky's "Canada marks Truth and Reconciliation Day".
 
 ## What it means for the forecasts
 
 - **A day of one list's attention is rare.** On Bluesky, Google and Hacker News almost nothing stayed in the top 10 for 6 hours. So "hours left in the combined top 10" will come mostly from breadth, a topic kept alive by several platforms, and from Google's 3-hour window (task 2.12), not from long stays on one list.
 - **Google's time in the list isn't lifespan.** It's the time until 10 newer trends start, and the 3-hour window keeps a Google-only topic in the snapshots for up to 3 hours after it leaves the feed. Google-led lifespans need that tail taken off (RQ5).
-- **Bluesky's lifespans need tolerance for gaps.** Counting a one-hour absence as the end halves Bluesky's half-life, 1 hour instead of 2.
+- **Bluesky's lifespans need tolerance for gaps.** Counting a one-hour absence as the end cuts the share of Bluesky trends still going after 1 hour from 44% to 21%, and after 3 hours from 21% to 6%. The median is 1 hour either way.
   - **Done in the pipeline:** since task 2.14 (the same day), the combined score and topic snapshots keep a Bluesky topic at its newest rank for 2 hours after it drops out.
   - **For snapshots:** a snapshot's Bluesky rank can be up to 2 hours old, and Bluesky-led lifespans carry a tail of up to 2 hours, like Google's 3-hour window. Measure Bluesky's own stays from `trend_items`, as here. Snapshot labels should treat a return within an hour or two as the same life, or they'll teach the model that Bluesky topics die and are reborn.
 - **Hacker News is the one list with a catchable rise.** It's the natural first test for the hours horizon's "rising" forecast within a single list.

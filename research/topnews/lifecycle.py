@@ -11,12 +11,13 @@ Two kinds of censoring keep the durations honest:
   in the list's fetches, started at an unknown time: it's `left_censored`
   and left out of durations;
 - a spell still running at the list's last fetch, or right before a gap,
-  hasn't ended: it's `right_censored`, and its duration so far is a lower
-  bound. Survival curves (Kaplan–Meier) use those correctly.
+  hasn't ended: it's `right_censored`. Its `hours` run from its first to its
+  last sighting, and Kaplan–Meier reads that as "lasted longer than this",
+  which is exactly what's known (an item seen once, at the last fetch, is 0).
 
-Fetches are hourly, so durations are whole hours: an item seen in one fetch
-counts as 1 hour, and "listed after 1 h" means it was still there at the next
-hourly fetch.
+Fetches are hourly, so durations are whole hours: an ended item seen in one
+fetch counts as 1 hour, and "listed after 1 h" means it was still there at
+the next hourly fetch.
 """
 
 from __future__ import annotations
@@ -31,10 +32,12 @@ MAX_GAP_HOURS = rhythms.MAX_GAP_HOURS
 SURVIVAL_HOURS = (1, 2, 3, 6, 12)
 
 
-def _whole_hours(span: np.timedelta64) -> float:
-    """Durations in whole hours, at least 1: fetches are hourly, and their minutes wobble (12:07, 13:08,
-    18:10…), so 0.98 and 1.04 hours are both one fetch interval."""
-    return float(max(1, round(span / np.timedelta64(1, "h"))))
+def _whole_hours(span: np.timedelta64, ended: bool) -> float:
+    """Durations in whole hours: fetches are hourly, and their minutes wobble (12:07, 13:08, 18:10…), so
+    0.98 and 1.04 hours are both one fetch interval. An ended stay lasted at least 1; a running one is
+    measured first to last sighting and can be 0."""
+    hours = round(span / np.timedelta64(1, "h"))
+    return float(max(1, hours) if ended else hours)
 
 
 def spells(
@@ -82,7 +85,7 @@ def spells(
                         "start": pd.Timestamp(times[first]),
                         "end": pd.Timestamp(end),
                         "fetches": len(spell),
-                        "hours": _whole_hours(end - times[first]),
+                        "hours": _whole_hours(end - times[first], ended),
                         "entry_rank": int(ranks[0]),
                         "best_rank": int(ranks.min()),
                         "exit_rank": int(ranks[-1]),

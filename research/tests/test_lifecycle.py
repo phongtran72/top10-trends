@@ -58,7 +58,15 @@ def test_max_missed_carries_a_stay_through_short_absences():
 def test_max_missed_leaves_a_stay_open_near_the_end_of_the_data():
     items = lists([["x"], ["a", "x"], ["x"]])
     assert not by_title(lifecycle.spells(items))[("a", 1)].right_censored
-    assert by_title(lifecycle.spells(items, max_missed=1))[("a", 1)].right_censored  # it might be back next hour
+    open_stay = by_title(lifecycle.spells(items, max_missed=1))[("a", 1)]
+    assert open_stay.right_censored  # it might be back next hour
+    assert open_stay.hours == 0.0  # seen once: lasted longer than 0, which is all that's known
+
+
+def test_an_item_seen_only_at_the_last_fetch_has_lasted_0_hours_so_far():
+    items = lists([["x"], ["x"], ["x", "new"]])
+    new = by_title(lifecycle.spells(items))[("new", 1)]
+    assert new.right_censored and new.hours == 0.0
 
 
 def test_a_gap_in_the_lists_fetches_censors_both_sides():

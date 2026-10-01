@@ -208,12 +208,12 @@ Between refreshes the same list repeats in every hourly fetch, so those sources'
 - **Batch noise (fixed):** until phase-2 377374f, the pipeline embedded in batches of 64. The 8-bit model's output depended slightly on a title's batch-mates: pair similarities moved by up to 0.06, and about 1 in 10 pairs near 0.60 fell on either side of it. The pipeline now embeds one title at a time, which is exact and costs about 0.2 s a run.
 
 **Lifecycle** (RQ1 first look, 2026-09-30, `research/findings/rq1-lifecycle.md`; per list, before snapshots):
-- **Half-life in the top 10:** 1 hour on Bluesky and Google, 3 hours on Hacker News. Mastodon and Twitch run over 12 hours (57% of entries still listed after 12 hours).
+- **Half-life in the top 10:** 1 hour on Bluesky and Google (79% and 72% of entries were gone at the next fetch), and 3 hours on Hacker News. Mastodon and Twitch run over 12 hours (57% of entries still listed after 12 hours).
 - **Almost nothing lasts 6 hours on one list,** so combined-top-10 lifespans will come from breadth across platforms.
 - **Three list behaviors:**
   - Google is a queue: trends never climb and never return;
   - Hacker News has a real rise and fall: 38% of stories climb after entering;
-  - Bluesky flickers: 47% of its spells are returns, most after missing one fetch, so a Bluesky life should allow an hour's gap (which gives a 2-hour half-life).
+  - Bluesky flickers: 47% of its spells are returns, most after missing one fetch, so a Bluesky life should allow an hour's gap. That doubles the share still going after 1 hour (21% to 44%); the median stays 1 hour.
 
 **News and memes** (RQ4 first look, 2026-10-01, `research/findings/rq4-news-memes.md`):
 - **Categories,** by rule:
