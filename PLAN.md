@@ -45,6 +45,7 @@ TikTok's actor also returns each hashtag's 7-day daily popularity curve (0–100
 | Date (UTC) | Source | Change | Cadence | Depth | Window |
 | --- | --- | --- | --- | --- | --- |
 | 2026-09-30 22:07 | X | First pipeline run (Worldwide and US) | Hourly at :07 | 20 trends per region | Live |
+| 2026-10-01 12:07 | Reddit | First pipeline run (r/popular's public feed) | Hourly at :07 | 25 posts | Live |
 | 2026-10-01 06:00 | TikTok | First scheduled run of data_xplorer/tiktok-trends (test runs on 2026-09-30 21:22 with 15 hashtags and 21:47 with 30) | Daily at 06:00 | 30 US hashtags | 7 days |
 | 2026-10-01 07:00 | Pinterest | First scheduled run of automation-lab/pinterest-trends-scraper (test run on 2026-09-30 21:55) | Mondays and Thursdays at 07:00 | 25 growing US keywords | 30 days |
 | 2026-09-30 21:50 | Instagram | One-day turnover test of s-r/instagram-trending-scraper, ending 2026-10-01 21:50; the lasting cadence is set from its results | Hourly at :50 | 10 topics (free-plan cap) | Current list |

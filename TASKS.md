@@ -50,6 +50,8 @@ where source_id = 'heartbeat' and status = 'ok'
 -- pass: 23 or more
 ```
 
+Passed on 2026-10-01 and confirmed by the owner: 33 heartbeats over 31 hours in a row (2026-09-30 04:00 to 2026-10-01 10:00 UTC) with no hour missing, and 26 in the last 24 hours.
+
 ## Phase 1 · Per-platform lists (weeks 2–3)
 
 - [x] **[You]** Add the phase 1 keys and variables: `YOUTUBE_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `REVALIDATE_SECRET`, `SITE_URL`, `COLLECTOR_USER_AGENT` (SETUP.md §3, §4, §7, §8), and redeploy on Vercel after adding `REVALIDATE_SECRET` there.
@@ -126,7 +128,7 @@ order by success_pct;
 
 ## Phase 3 · Paid and approved sources (week 6)
 
-- [ ] **[You]** Buy X pay-per-use credits and add `X_BEARER_TOKEN` (SETUP.md §10). Add Apify and Anthropic keys only for the sources you want (SETUP.md §12, §13), and allow their API hosts in the cloud environment if a session needs to test them.
+- [x] **[You]** Buy X pay-per-use credits and add `X_BEARER_TOKEN` (SETUP.md §10). Add Apify and Anthropic keys only for the sources you want (SETUP.md §12, §13), and allow their API hosts in the cloud environment if a session needs to test them. Done on 2026-09-30: $25 of X credits with a $20 spending cap, and the Apify token; Claude topic names are not set up.
 - [x] **3.1 X collector.** `GET https://api.x.com/2/trends/by/woeid/{woeid}?max_trends=20` for WOEID 1 (`global`) and 23424977 (`us`) with the app's Bearer token. Title is `trend_name`; metric is `tweet_count` when present (`posts`); URL is an X search link for the trend. Before each call, count today's X rows in `fetch_runs` (UTC); at 60, skip with status `skipped` and reason `daily cap`.
 - [ ] **3.2 Regions.** Add `gb`, `ca` and `au` feeds for Google Trends and YouTube. Compute rankings for two views as described in PLAN.md › Ranking › Regions (`rankings.region` is the view). Add a Global / US toggle (`?region=`) to the home, platform and topic pages, defaulting to Global.
 - [x] **3.3 Reddit collector.** Reddit refused API access on 2026-10-01, so read r/popular's public Atom feed, `https://www.reddit.com/r/popular/hot.rss?limit=25`, with no key. Title is the entry's `title`; URL is `https://www.reddit.com/comments/<post id>/` from the entry's `id`; there is no metric and no NSFW flag.
