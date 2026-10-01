@@ -129,6 +129,7 @@ order by success_pct;
 - [x] **2.13 Hashtag word splitting.** Split a hashtag written as one lowercase run (`#nationalcoffeeday`) into English words with a word-frequency list (`config/words-en.txt`, `lib/segment.ts`), so it can match the same topic written as words; names, unlisted runs and runs the same hour's news writes as one word (a brand like Flydubai) stay whole. Embed one text at a time, so a title's vector doesn't depend on its batch. `npm run replay -- tune --no-segment` compares matching without it for 2.9.
 - [x] **2.14 Bluesky grace.** A Bluesky topic missing from Bluesky's latest list keeps its last rank in the combined score for 2 hours after it was last seen, because Bluesky's list flickers hour to hour. The dashboard's "new" list skips anything seen in the previous 2 hours.
 - [x] **2.15 Matching model.** Switch embeddings to `nomic-ai/nomic-embed-text-v1.5` (8-bit, "clustering: " prefix, cut to 384 numbers) after the predictions work found it catches about twice MiniLM's same-story matches at the same accuracy; start `MATCH_THRESHOLD` at 0.86 for 2.9 to confirm.
+- [x] **2.16 TikTok out of the combined score.** TikTok's ranking covers a 7-day window that runs several days behind, so leave it out of topic matching and the combined score (`UNSCORED_SOURCES`) while its page and curves stay.
 
 **Gate 2.** Run the eval for 5 hours. In each hour, at least 8 of the 10 topics make sense and none is a duplicate.
 

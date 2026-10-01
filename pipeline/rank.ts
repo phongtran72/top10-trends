@@ -1,5 +1,5 @@
 import { getSource, type SourceId } from "@/collectors/registry";
-import { MATCH_THRESHOLD } from "@/config/ranking";
+import { MATCH_THRESHOLD, UNSCORED_SOURCES } from "@/config/ranking";
 import type { TrendItem } from "@/collectors/types";
 import { embeddingText, type Embedder } from "@/lib/embed";
 import { plainWords, prettyLabel } from "@/lib/text";
@@ -97,10 +97,12 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
   // Keys are trend_items ids in a full run, positions in a dry run.
   const kept = keptByList.flatMap((k) => k.kept);
   const keyOf = new Map<TrendItem, number>(kept.map((item, index) => [item, input.itemIds?.get(item) ?? index]));
+  // Unscored sources (TikTok) keep their own page list but aren't matched to topics.
+  const matchable = keptByList.filter(({ list }) => !UNSCORED_SOURCES.has(list.source.id)).flatMap((k) => k.kept);
   // A run written as one word in this run's news (a brand like "Flydubai") stays whole in hashtags.
-  const keep = plainWords(kept.flatMap((item) => [item.title, ...(item.matchText ?? [])]));
-  const vectors = await input.embedder(kept.map((item) => embeddingText(item, { keep })));
-  const items: MatchItem[] = kept.map((item, index) => {
+  const keep = plainWords(matchable.flatMap((item) => [item.title, ...(item.matchText ?? [])]));
+  const vectors = await input.embedder(matchable.map((item) => embeddingText(item, { keep })));
+  const items: MatchItem[] = matchable.map((item, index) => {
     const source = getSource(item.source);
     return {
       key: keyOf.get(item)!,

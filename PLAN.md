@@ -116,6 +116,8 @@ Each platform's top 10 keeps that platform's own order; the combined top 10 rewa
 
 **Bluesky grace.** Bluesky re-cuts its trending list every hour, and a topic near the edge often drops out for an hour and comes back: 47% of its top-10 stays are such returns, 78% of them within two hours (research RQ1). So in the combined score and topic snapshots, a Bluesky topic missing from Bluesky's latest list keeps its last rank for 2 hours after it was last seen (`BLUESKY_GRACE_HOURS`). Bluesky's own page still shows Bluesky's current list, and the dashboard calls an entry new only when it was in no list of the previous 2 hours. Decided by the owner on 2026-09-30.
 
+**TikTok.** TikTok's Creative Center ranking covers a 7-day window that runs several days behind: on 2026-10-01 every hashtag's popularity curve ran from Monday 2026-09-21 to Sunday 2026-09-27, so the list held last week's hashtags (#firstdayoffall, #21stnightofseptember). Counting it would lend last week's weight to a topic trending today for another reason, against the rule that only fresh lists count. So the owner took TikTok out of topic matching and the combined score on 2026-10-01 (`UNSCORED_SOURCES`); its own page still shows the list, with a note that it runs behind, and its curves are still collected for research. It returns to the score if a fresher TikTok source turns up.
+
 **Combined top 10**, recomputed every run:
 
 1. Take each source's latest list only if it was fetched in the last 3 hours, so a dead collector stops counting.
@@ -134,7 +136,7 @@ P(T) is the set of platforms where topic T appears, r is its best rank there, an
 | Role | Platforms and starting weights |
 | --- | --- |
 | Lead sources | X 1.0, Google Trends 1.0, Bluesky 0.5, Mastodon 0.3 |
-| Corroborating only | YouTube 0.8, Reddit 0.8, TikTok 0.5, Instagram 0.5, Twitch 0.3, Hacker News 0.3, Pinterest 0.3 |
+| Corroborating only | YouTube 0.8, Reddit 0.8, Instagram 0.5, Twitch 0.3, Hacker News 0.3, Pinterest 0.3; TikTok 0.5 but not counted, see *TikTok* below |
 
 Corroborating sources count only when a lead source also has the topic, which keeps music videos and evergreen games out of the combined list. Reddit was planned as a lead source, but r/popular is mostly memes and personal posts with the odd news story, and a post title is not a topic name, so the owner made it corroborating on 2026-10-01: a news story on Reddit still lifts its topic, and a meme never enters the combined list alone. Instagram's trending topics read like search terms ("mlb playoffs", "national coffee day"), so it could become a lead source, but it starts as corroborating because its scraper is new and its list is read only three times a day; revisit this with the phase 2 eval output. On the Free tier the combined list leans on Google Trends and Bluesky, and it gets much stronger once X and Reddit join; tune the weights by eye in phase 2.
 
