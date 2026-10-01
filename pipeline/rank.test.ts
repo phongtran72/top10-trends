@@ -183,6 +183,16 @@ describe("Bluesky grace", () => {
   });
 });
 
+describe("Bluesky grace and filters", () => {
+  it("gives no grace to a topic Bluesky still lists but now marks cooling", async () => {
+    const at = (h: number) => new Date(Date.UTC(2026, 9, 11, h, 7));
+    const google = (h: number) => list("google_trends", "us", at(h), [{ title: "foxtrot rally" }]);
+    await runOnce(at(18), [google(18), list("bluesky", "global", at(18), [{ title: "Foxtrot rally", flags: { status: "trending" } }])]);
+    const later = await runOnce(at(19), [google(19), list("bluesky", "global", at(19), [{ title: "Foxtrot rally", flags: { status: "cooling" } }])]);
+    expect(later.combined.find((c) => c.label === "foxtrot rally")?.platforms).toEqual([{ sourceId: "google_trends", rank: 1 }]);
+  });
+});
+
 describe("labels and context", () => {
   it("names a topic from its item's display form", () => {
     expect(labelFor({ title: "#WorldSeries2026" })).toBe("World Series 2026");
