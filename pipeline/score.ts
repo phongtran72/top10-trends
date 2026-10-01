@@ -126,7 +126,7 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
   const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
   const until = new Date(now.getTime() + RUN_LIST_MARGIN_MS);
   const latest = await db
-    .selectDistinctOn([fetchRuns.sourceId, fetchRuns.region], { id: fetchRuns.id })
+    .selectDistinctOn([fetchRuns.sourceId, fetchRuns.region], { id: fetchRuns.id, sourceId: fetchRuns.sourceId })
     .from(fetchRuns)
     .where(
       and(
@@ -162,6 +162,14 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
   const graced: ScoreEntry[] = [];
   for (const [sourceId, graceHours] of GRACE_SOURCES) {
     const present = new Set(entries.filter((e) => e.sourceId === sourceId).map((e) => e.topicId));
+    // Grace is for a topic that dropped out of the source's list. One that is
+    // still listed but was filtered (Bluesky now calls it cooling) gets none.
+    const latestIds = latest.filter((run) => run.sourceId === sourceId).map((run) => run.id);
+    const listed = new Set(
+      latestIds.length === 0
+        ? []
+        : (await db.select({ url: trendItems.url }).from(trendItems).where(inArray(trendItems.runId, latestIds))).map((row) => row.url),
+    );
     const earlier = await db
       .select({
         topicId: topicItems.topicId,
@@ -169,6 +177,7 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
         metricValue: trendItems.metricValue,
         title: trendItems.title,
         region: trendItems.region,
+        url: trendItems.url,
       })
       .from(trendItems)
       .innerJoin(topicItems, eq(topicItems.itemId, trendItems.id))
@@ -183,9 +192,10 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
       )
       .orderBy(desc(fetchRuns.startedAt), trendItems.rank);
     // Newest sighting first, so each missing topic keeps the rank it was last seen with.
-    for (const row of earlier) {
+    for (const { url, ...row } of earlier) {
       if (present.has(row.topicId)) continue;
       present.add(row.topicId);
+      if (listed.has(url)) continue;
       graced.push({ ...row, sourceId, via: "grace" });
     }
   }

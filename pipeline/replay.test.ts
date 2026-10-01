@@ -17,7 +17,7 @@ function list(sourceId: SourceId, region: Region, at: Date, titles: string[]): L
     source: getSource(sourceId),
     region,
     status: "ok",
-    items: titles.map((title, i) => ({ source: sourceId, region, rank: i + 1, title, url: `https://example.com/${sourceId}/${i}` })),
+    items: titles.map((title, i) => ({ source: sourceId, region, rank: i + 1, title, url: `https://example.com/${sourceId}/${encodeURIComponent(title)}` })),
     startedAt: at,
     finishedAt: at,
   };
