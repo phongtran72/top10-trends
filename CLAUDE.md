@@ -48,7 +48,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 3. **Collectors only fetch and map.** Each returns `TrendItem[]` in the source's own order (rank 1 is first). Filtering, matching and scoring happen in `pipeline/`.
 4. **Store only the columns listed in PLAN.md › Data model.** Never store full API responses or item embeddings.
 5. **28-day retention.** Every run deletes `trend_items`, `topic_items` and per-platform `rankings` older than 28 days, because YouTube's policy caps stored API data at 30 days. Topics and combined rankings are kept.
-6. **Source roles.** Lead sources: X, Google Trends, Reddit, Bluesky, Mastodon. Corroborating-only sources: YouTube, TikTok, Instagram, Twitch, Hacker News, Pinterest. Weights live in `config/ranking.ts`; their starting values are in PLAN.md › Ranking.
+6. **Source roles.** Lead sources: X, Google Trends, Bluesky, Mastodon. Corroborating-only sources: YouTube, Reddit, TikTok, Instagram, Twitch, Hacker News, Pinterest. Weights live in `config/ranking.ts`; their starting values are in PLAN.md › Ranking.
 7. **Combined score** = sum over platforms of `weight / log2(rank + 1)`. A corroborating source counts only when a lead source also has the topic. Only lists fetched in the last 3 hours count.
 8. **Topic matching** assigns each item to the nearest topic centroid from the last 48 hours when cosine similarity is at least 0.80 (configurable); otherwise a lead item starts a new topic. Never cluster item to item.
 9. **Topic names** come only from lead-source items (an X trend, Google query, Bluesky topic or Mastodon tag), never from video or post titles.

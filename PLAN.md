@@ -126,10 +126,10 @@ P(T) is the set of platforms where topic T appears, r is its best rank there, an
 
 | Role | Platforms and starting weights |
 | --- | --- |
-| Lead sources | X 1.0, Google Trends 1.0, Reddit 0.8, Bluesky 0.5, Mastodon 0.3 |
-| Corroborating only | YouTube 0.8, TikTok 0.5, Instagram 0.5, Twitch 0.3, Hacker News 0.3, Pinterest 0.3 |
+| Lead sources | X 1.0, Google Trends 1.0, Bluesky 0.5, Mastodon 0.3 |
+| Corroborating only | YouTube 0.8, Reddit 0.8, TikTok 0.5, Instagram 0.5, Twitch 0.3, Hacker News 0.3, Pinterest 0.3 |
 
-Corroborating sources count only when a lead source also has the topic, which keeps music videos and evergreen games out of the combined list. Instagram's trending topics read like search terms ("mlb playoffs", "national coffee day"), so it could become a lead source, but it starts as corroborating because its scraper is new and its list is refreshed only every 6 hours; revisit this with the phase 2 eval output. On the Free tier the combined list leans on Google Trends and Bluesky, and it gets much stronger once X and Reddit join; tune the weights by eye in phase 2.
+Corroborating sources count only when a lead source also has the topic, which keeps music videos and evergreen games out of the combined list. Reddit was planned as a lead source, but r/popular is mostly memes and personal posts with the odd news story, and a post title is not a topic name, so the owner made it corroborating on 2026-10-01: a news story on Reddit still lifts its topic, and a meme never enters the combined list alone. Instagram's trending topics read like search terms ("mlb playoffs", "national coffee day"), so it could become a lead source, but it starts as corroborating because its scraper is new and its list is refreshed only every 6 hours; revisit this with the phase 2 eval output. On the Free tier the combined list leans on Google Trends and Bluesky, and it gets much stronger once X and Reddit join; tune the weights by eye in phase 2.
 
 **Regions.** Each stored list keeps its feed's real region: `us` for Google Trends and YouTube (plus `gb`, `ca` and `au` from phase 3) and `global` for Bluesky, Mastodon, Hacker News, Twitch and Instagram. Until phase 3 the site has one view, stored as `global` and built from every list. From phase 3 there are two views. US uses X's US list, the US feeds and the global lists. Global uses X's Worldwide list, the global lists, and Google Trends and YouTube for the US, UK, Canada and Australia. Per-platform pages show a source's global feed, or its US feed when it has no global one.
 

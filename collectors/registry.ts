@@ -24,10 +24,10 @@ export interface SourceDef {
 export const SOURCES: readonly SourceDef[] = [
   { id: "x", name: "X", role: "lead", weight: WEIGHTS.x, regions: ["global", "us"], env: ["X_BEARER_TOKEN"], phase: 3, homepage: "https://x.com/explore" },
   { id: "google_trends", name: "Google Trends", role: "lead", weight: WEIGHTS.google_trends, regions: ["us"], env: [], phase: 1, homepage: "https://trends.google.com/trending" },
-  { id: "reddit", name: "Reddit", role: "lead", weight: WEIGHTS.reddit, regions: ["global"], env: [], phase: 3, homepage: "https://www.reddit.com/r/popular/" },
   { id: "bluesky", name: "Bluesky", role: "lead", weight: WEIGHTS.bluesky, regions: ["global"], env: [], phase: 1, homepage: "https://bsky.app" },
   { id: "mastodon", name: "Mastodon", role: "lead", weight: WEIGHTS.mastodon, regions: ["global"], env: [], phase: 1, homepage: "https://mastodon.social/explore/tags" },
   { id: "youtube", name: "YouTube", role: "corroborating", weight: WEIGHTS.youtube, regions: ["us"], env: ["YOUTUBE_API_KEY"], phase: 1, homepage: "https://www.youtube.com" },
+  { id: "reddit", name: "Reddit", role: "corroborating", weight: WEIGHTS.reddit, regions: ["global"], env: [], phase: 3, homepage: "https://www.reddit.com/r/popular/" },
   { id: "tiktok", name: "TikTok", role: "corroborating", weight: WEIGHTS.tiktok, regions: ["us"], env: ["APIFY_TOKEN"], optIn: "TIKTOK_ENABLED", phase: 3, homepage: "https://www.tiktok.com" },
   { id: "instagram", name: "Instagram", role: "corroborating", weight: WEIGHTS.instagram, regions: ["global"], env: ["APIFY_TOKEN"], optIn: "INSTAGRAM_ENABLED", phase: 3, homepage: "https://www.instagram.com/explore/" },
   { id: "twitch", name: "Twitch", role: "corroborating", weight: WEIGHTS.twitch, regions: ["global"], env: ["TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET"], phase: 1, homepage: "https://www.twitch.tv/directory" },

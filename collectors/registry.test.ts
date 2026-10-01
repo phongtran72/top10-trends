@@ -21,7 +21,7 @@ describe("registry", () => {
     expect(summary).toEqual({
       x: ["lead", 1.0],
       google_trends: ["lead", 1.0],
-      reddit: ["lead", 0.8],
+      reddit: ["corroborating", 0.8],
       bluesky: ["lead", 0.5],
       mastodon: ["lead", 0.3],
       youtube: ["corroborating", 0.8],
