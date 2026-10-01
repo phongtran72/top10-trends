@@ -34,6 +34,13 @@ describe("registry", () => {
   });
 });
 
+describe("page notes", () => {
+  it("labels the scraped sources whose lists are older than the hourly fetch suggests", () => {
+    expect(PLATFORMS.filter((s) => s.note).map((s) => s.id)).toEqual(["tiktok", "instagram", "pinterest"]);
+    expect(PLATFORMS.find((s) => s.id === "tiktok")?.note).toContain("last week's hashtags");
+  });
+});
+
 describe("planSources", () => {
   it("always runs the heartbeat and marks unbuilt collectors absent", () => {
     const p = plan({ ids: [] });

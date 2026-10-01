@@ -41,6 +41,7 @@ export default async function PlatformPage({ params }: PageProps<"/p/[platform]"
         {region} · in {source.name}&apos;s own order ·{" "}
         {list ? <RelativeTime iso={list.fetchedAt} prefix="updated" /> : "no list yet"}
       </p>
+      {source.note && <p className={styles.note}>{source.note}</p>}
 
       {list ? (
         <ol className={styles.list}>
