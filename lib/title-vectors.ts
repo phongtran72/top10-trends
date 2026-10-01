@@ -29,6 +29,7 @@ export interface TitleResult {
   reason?: DropReason;
   detail?: string;
   index?: number; // row in the vector file, for kept titles
+  text?: string; // what was embedded, for kept titles (so other models can be compared on the same text)
 }
 
 export interface TitleVectors {
@@ -78,6 +79,7 @@ export async function embedTitles(
     return keepByGroup.get(group!)!;
   };
   const texts = kept.map((row) => embeddingText({ title: row.title }, { keep: keepFor(row.group) }));
+  for (const result of results) if (result.index !== undefined) result.text = texts[result.index];
   const embedded = texts.length > 0 ? await embed(texts) : [];
   const vectors = new Float32Array(embedded.length * EMBEDDING_DIMENSIONS);
   embedded.forEach((vector, i) => vectors.set(vector, i * EMBEDDING_DIMENSIONS));

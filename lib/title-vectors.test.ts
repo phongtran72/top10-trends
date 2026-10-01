@@ -23,10 +23,10 @@ describe("embedTitles", () => {
       lengthEmbedder,
     );
     expect(result.rows).toEqual([
-      { id: "a", kept: true, index: 0 },
+      { id: "a", kept: true, index: 0, text: "world series" },
       { id: "b", kept: false, reason: "non-latin" },
       { id: "c", kept: false, reason: "blocklist" },
-      { id: "d", kept: true, index: 1 },
+      { id: "d", kept: true, index: 1, text: "fat bear week" },
     ]);
     expect(result.dimensions).toBe(384);
     expect(result.vectors).toHaveLength(2 * 384);
