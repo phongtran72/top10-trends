@@ -12,7 +12,7 @@ Sections 1–8 cover phases 0–1. Sections 9–13 are for later phases or optio
 4. Let cloud sessions reach the data sources. The default network access blocks most of them. In your cloud environment's settings ([Configure cloud environments](https://code.claude.com/docs/en/cloud-environments)), choose custom network access, keep the default domains, and add:
     - Phase 1: `public.api.bsky.app`, `trends.google.com`, `mastodon.social`, `hacker-news.firebaseio.com`, `id.twitch.tv`, `api.twitch.tv`
     - Phase 2 (local embedding model): `huggingface.co`, plus any download host a blocked request names
-    - Phase 3, only for the sources you add: `api.x.com`, `www.reddit.com`, `oauth.reddit.com`, `api.apify.com`, `api.anthropic.com`, `api.openai.com`
+    - Phase 3, only for the sources you add: `api.x.com`, `www.reddit.com`, `api.apify.com`, `api.anthropic.com`, `api.openai.com`
 
     The hourly job itself runs in GitHub Actions, which has no such limit; this list only lets Claude test sources inside its sessions.
 5. Start a session from the **Code** tab in the Claude app (or claude.ai/code) with the phase 0 prompt in `TASKS.md`.
@@ -67,12 +67,9 @@ Hobby is for personal, non-commercial use. Adding ads or sponsors means moving t
 
 In the repo: **Settings › Secrets and variables › Actions**. Add each value from the table below under **Secrets** or **Variables** as listed. For `REVALIDATE_SECRET`, generate a random string of 32 or more characters and use the same value in Vercel. To pause a source without a code change, list its id in the `DISABLED_SOURCES` variable.
 
-## 9. Reddit (apply in week 1; add in phase 3)
+## 9. Reddit (nothing to set up)
 
-1. Read Reddit's [Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy), then request non-commercial access as described in [Accessing Reddit data](https://support.reddithelp.com/hc/en-us/articles/14945211791892-Developer-Platform-Accessing-Reddit-Data).
-2. Once approved, create the app as instructed → `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`. Set `REDDIT_USERNAME`, which goes into Reddit's required User-Agent.
-
-If Reddit refuses, the site runs without it.
+Reddit refused the Data API request on 2026-10-01, so the collector reads r/popular's public Atom feed, which needs no account, key or variable. To turn Reddit off, add `reddit` to `DISABLED_SOURCES`. If Reddit's [Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy) approval ever comes through, the API would add scores and NSFW flags.
 
 ## 10. X (open the account in week 1; add in phase 3)
 
@@ -135,8 +132,6 @@ TikTok's, Instagram's and Pinterest's terms ban scraping, so these sources are y
 | `MASTODON_INSTANCE` | Optional; defaults to `mastodon.social` | Mastodon collector | GitHub variable | 1 |
 | `OPENAI_API_KEY` | Only if you chose OpenAI embeddings | Embeddings | GitHub secret | 2 |
 | `X_BEARER_TOKEN` | X app Bearer token | X collector | GitHub secret | 3 |
-| `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | Reddit app credentials | Reddit collector | GitHub secrets | 3 |
-| `REDDIT_USERNAME` | Your Reddit username, for the User-Agent | Reddit collector | GitHub variable | 3 |
 | `APIFY_TOKEN` | Apify API token | TikTok, Instagram and Pinterest collectors | GitHub secret | 3 |
 | `TIKTOK_ENABLED` | `true` to turn TikTok on | TikTok collector | GitHub variable | 3 |
 | `INSTAGRAM_ENABLED` | `true` to turn Instagram on | Instagram collector | GitHub variable | 3 |

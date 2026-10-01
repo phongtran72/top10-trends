@@ -192,7 +192,7 @@ export default async function Home() {
       </section>
 
       <p className={styles.later}>
-        Coming later: {later.join(", ")}, and one combined top 10 across every platform.
+        Coming later: {later.length > 0 ? `${later.join(", ")}, and one` : "one"} combined top 10 across every platform.
       </p>
     </>
   );
