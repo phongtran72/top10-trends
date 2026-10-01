@@ -201,6 +201,17 @@ Phase 5 turns the stored history into two things of equal weight, built on one d
 - **Each label is left unknown where the data can't answer yet.** Lifespans still running at the end are censored with their lower bound.
 - **Splits are by time,** with a 6-hour embargo before the test set, so no training label looks into it.
 
+**First table from production** (2026-10-01, snapshots to 17:08 UTC): 2,858 rows, 496 topics and 31 hours, 28 of them rebuilt and 3 live.
+- **Positives are rare:** breakout within 6 hours in 2.1% of rows (16 topics), spread to a second platform in 3.3% (24 topics). 93–95% of rows are on one platform.
+- **Time left in the top 10:** median 2 hours, and at most 11.
+- **Rebuilt and live hours aren't alike, so models train on live hours only.** Rebuilt hours couldn't apply Bluesky's status filter, because the status wasn't stored then:
+  - Bluesky is in 40% of rebuilt rows (about 38 topics an hour) and, from the first clean live hour (16:07 UTC), in about 5% (4 topics an hour);
+  - rebuilt hours also have no headlines, so `news_count` is 0 and Google's titles match on their words alone.
+
+  The table marks them with `is_replay`. Rebuilt hours stay useful for describing the lists, not for training.
+- **A filter change is a new regime too.** If Bluesky's cooling filter changes, the `algo_version` should change with it, so the table can keep the two apart.
+- **The in-memory replay matches production's rebuild:** the same top 10, in the same order, in all 28 rebuilt hours (`scripts/replay-snapshots.ts`); the row count differs by 1 or 2 Bluesky topics in 6 of them.
+
 Each snapshot records its `algo_version` (embedding model and weights, matching threshold and `RANKING_VERSION`, plus "+replay" for rebuilt hours), so analyses and training can keep to one version or compare versions. Replayed hours have a `news_count` of 0, because past lists' headlines weren't stored. Some sources move in steps, not hourly:
 - **TikTok:** the 7-day hashtag list is fetched once a day, at 06:00 UTC, and it lags: on 2026-10-01 every hashtag's curve covered 2026-09-21 to 2026-09-27, a Monday-to-Sunday week that ended four days earlier.
   - **Its ranks describe last week, not today** (#firstdayoffall, #21stnightofseptember). Research never reads TikTok as same-time with other platforms: a match with a fast list is a story a week apart, and any lead or lag would only show that delay.
