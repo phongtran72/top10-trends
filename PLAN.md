@@ -215,6 +215,17 @@ Between refreshes the same list repeats in every hourly fetch, so those sources'
   - Hacker News has a real rise and fall: 38% of stories climb after entering;
   - Bluesky flickers: 47% of its spells are returns, most after missing one fetch, so a Bluesky life should allow an hour's gap (which gives a 2-hour half-life).
 
+**News and memes** (RQ4 first look, 2026-10-01, `research/findings/rq4-news-memes.md`):
+- **Categories,** by rule:
+  - Google's trends are news by construction (all come with a story);
+  - "news-linked" means matched to a Google trend at 0.70;
+  - "calendar" covers weekday hashtags, "national … day" and a season's first day;
+  - "other" is the rest.
+- **On the first day, news-linked meant sports:** 9 of 11 were X names during the MLB wild card.
+- **Calendar moments crossed platforms most often.** 35% were also on another list besides Google, against 4% for "other", but that's 2 stories: the first day of fall and national coffee day.
+- **For the weeks horizon:** calendar moments are its predictable case. The planned event calendars don't cover observances.
+- **Lifespans can't be compared by category yet.**
+
 **Breakout** (RQ3, 2026-09-30, `research/findings/rq3-breakout.md`): the method is ready, with no result yet.
 - **Outcome and features:** "spread" means matched on another list at 0.70. The features are those known at first sighting: platform, entry rank, metric against the list's median, hour and title length. Only trends with a seen entry and 6 hours of data after it count.
 - **On the five all-day lists, none of 96 trends spread.** The 95% upper bound is 3.8%, so a spread model there must beat a 96% "never" baseline.
