@@ -163,7 +163,7 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
   for (const [sourceId, graceHours] of GRACE_SOURCES) {
     const present = new Set(entries.filter((e) => e.sourceId === sourceId).map((e) => e.topicId));
     // Grace is for a topic that dropped out of the source's list. One that is
-    // still listed but was filtered (Bluesky now calls it cooling) gets none.
+    // still listed but was filtered (Bluesky now calls it stale) gets none.
     const latestIds = latest.filter((run) => run.sourceId === sourceId).map((run) => run.id);
     const listed = new Set(
       latestIds.length === 0

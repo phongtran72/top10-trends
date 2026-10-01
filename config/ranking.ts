@@ -47,6 +47,8 @@ export const X_DAILY_REQUEST_CAP = 60;
 export const ITEM_RETENTION_DAYS = 28;
 export const FETCH_RUN_RETENTION_DAYS = 90;
 
-// Bump when weights, filters or scoring change, so analyses of stored
-// snapshots can tell methods apart (topic_snapshots.algo_version).
-export const RANKING_VERSION = "r1";
+// Bump when weights, filters, windows, grace or scoring change, so analyses
+// of stored snapshots can tell methods apart (topic_snapshots.algo_version).
+// r1: phase 2 as launched on 2026-10-01. r2: Bluesky trends marked cooling
+// are kept; only stale ones are dropped.
+export const RANKING_VERSION = "r2";

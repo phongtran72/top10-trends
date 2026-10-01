@@ -88,7 +88,7 @@ describe("writeResults", () => {
     const rows = await t.db.select().from(trendItems).orderBy(asc(trendItems.sourceId), asc(trendItems.rank));
     expect(rows.map((r) => [r.sourceId, r.rank, r.status])).toEqual([
       ["bluesky", 1, "trending"],
-      ["bluesky", 2, "cooling"], // kept though the rank step will drop it
+      ["bluesky", 2, "cooling"], // stored whatever the rank step does with it
       ["bluesky", 3, null],
       ["mastodon", 1, null],
     ]);
