@@ -10,6 +10,9 @@ a guess without them.
 Labels are kept per trend (source and key, as in rhythms) in the gitignored
 research/data/categories.csv, so a later run only asks about new trends. A
 person's corrections go in `reviewed_category` and `reviewed_news`, and win.
+`checked` says whether a draft has been checked at all: a checked label with
+no correction is one the check agreed with, and only checked labels may score
+a model (topnews.category_model).
 """
 
 from __future__ import annotations
@@ -37,7 +40,7 @@ PLATFORM = {
     "pinterest": "Pinterest trending search (US)",
 }
 LINKED = frozenset({"google_trends", "hacker_news"})  # their url is the article itself
-COLUMNS = ["source_id", "key", "title", "context", "llm_category", "llm_news", "reviewed_category", "reviewed_news"]
+COLUMNS = ["source_id", "key", "title", "context", "llm_category", "llm_news", "reviewed_category", "reviewed_news", "checked"]
 
 
 def link_words(url: str, limit: int = 12) -> str:
@@ -68,8 +71,42 @@ def trend_table(items: pd.DataFrame) -> pd.DataFrame:
 
 def _read(store: Path) -> pd.DataFrame:
     if store.exists():
-        return pd.read_csv(store, dtype={"reviewed_category": "object"})
+        known = pd.read_csv(store, dtype={"reviewed_category": "object", "reviewed_news": "object"})
+        if "checked" not in known:
+            known["checked"] = False
+        return known.assign(checked=known["checked"].fillna(False).astype(bool))
     return pd.DataFrame(columns=COLUMNS)
+
+
+def read(store: Path = STORE) -> pd.DataFrame:
+    """The label store as it is: one row per labeled trend."""
+    return _read(store)
+
+
+def mark_checked(
+    rows, corrections: dict[int, str] | None = None, news: dict[int, bool] | None = None, store: Path = STORE
+) -> pd.DataFrame:
+    """Records a check of the store's `rows` (their positions): each becomes checked, `corrections` gives
+    the category for those the check disagreed with, and `news` any corrected news flags. A calendar
+    correction also sets news to False."""
+    table = _read(store)
+    corrections, news = corrections or {}, news or {}
+    rows = list(rows)
+    outside = (set(corrections) | set(news)) - set(rows)
+    if outside:
+        raise ValueError(f"corrections outside the checked rows: {sorted(outside)}")
+    unknown = set(corrections.values()) - set(llm.CATEGORIES)
+    if unknown:
+        raise ValueError(f"not a category: {sorted(unknown)}")
+    table.loc[rows, "checked"] = True
+    for row, category in corrections.items():
+        table.loc[row, "reviewed_category"] = category
+        if category == "calendar":
+            table.loc[row, "reviewed_news"] = "False"
+    for row, flag in news.items():
+        table.loc[row, "reviewed_news"] = str(flag)
+    table.to_csv(store, index=False)
+    return table
 
 
 def label(trends: pd.DataFrame, store: Path = STORE, post: llm.Post = llm.post_json, cache_dir: Path | None = llm.CACHE_DIR) -> pd.DataFrame:
@@ -84,7 +121,7 @@ def label(trends: pd.DataFrame, store: Path = STORE, post: llm.Post = llm.post_j
         )
         new = todo[["source_id", "key", "title", "context"]].assign(
             llm_category=[a["category"] for a in answers], llm_news=[a["news"] for a in answers],
-            reviewed_category=pd.NA, reviewed_news=pd.NA,
+            reviewed_category=pd.NA, reviewed_news=pd.NA, checked=False,
         )
         known = pd.concat([known, new], ignore_index=True)
         store.parent.mkdir(parents=True, exist_ok=True)

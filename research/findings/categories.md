@@ -1,7 +1,7 @@
 # Topic categories
 
-**Status: two sets labeled and checked (2026-10-01).**
-- **What's labeled:** all 876 trends from the stored lists of 2026-09-30 11:32 to 2026-10-01 13:07 UTC (no YouTube). The first set was the 528 trends up to 02:08 UTC; the second set, 348 more, is in *Second set* below.
+**Status: three sets labeled and checked (2026-10-01).**
+- **What's labeled:** all 1,121 trends from the stored lists of 2026-09-30 11:32 to 2026-10-01 20:08 UTC (no YouTube). The first set was the 528 trends up to 02:08 UTC; the second set, 348 more, is in *Second set* below; the third, 245 more, in *Third set*.
 - **How:** the local model drafted a category and a news flag for each, and every draft was then checked. New trends get drafts on later runs; their checks come with each re-run.
 - **Who checked:** the research assistant (Claude, which also writes these notes), not the owner. Where this page says "checked", that's what it means.
 - **Where they feed in:** RQ1's lifecycles by category and RQ4's news by kind.
@@ -118,6 +118,18 @@ The signatures held on the second day's data: each platform's top category is th
 - **Sports is the only category that clearly spreads on the hourly lists:** 43 of 169 trends, 25%. Every other category is at 8% or less.
 - **Politics is at 8%** (3% on the old matcher, 6% on this one a day earlier). Seven politics trends crossed: Jack Smith's testimony, the Pentagon naming Musk and Gingrich (Bluesky and Reddit), Kaliningrad, and US–Iran. It's still far below sports, though 89% news-driven.
 - **Calendar trends stay longest** (median 7 hours, 76% still listed after 3 hours), though from only 14 stays. Sports stays shortest (6% after 3 hours), still mostly Google's newest-first queue.
+
+## Third set (2026-10-01, data to 20:08 UTC)
+
+245 more trends, drafted and checked for the category classifier (task 5.14, `findings/category-model.md`). The tables above aren't re-run on them.
+
+- **The check corrected 50 of 245** (the model agreed on 80%). Over all 1,121 trends, 176 are corrected (84% agreed).
+- **The store now says which labels were checked** (`checked` in `research/data/categories.csv`), so a model is scored only on checked labels. All 1,121 are.
+- **The same kinds of error as before:**
+  - bare names on X: "Ray Kerr" (a Braves pitcher) drafted as entertainment, "Denmark" and "#grened" (football matches) as politics and a meme;
+  - a word read as its everyday meaning: "korn ferry tour" (golf) drafted as an incident;
+  - hashtags on Mastodon: "#tbt" and "#musiquinta" (weekday tags) drafted as a meme and other, "#gersrb" (Germany–Serbia) as other.
+- **One rule made explicit:** a celebrity's arrest or court case takes the celebrity's category ("rick ross battery charge" is entertainment), and incident is kept for people known only for the event.
 
 ## What it means for the forecasts
 
