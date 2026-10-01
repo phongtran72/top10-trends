@@ -1,8 +1,8 @@
 // Ranking weights, thresholds and caps. Starting values and the reasons for
 // them are in PLAN.md › Ranking; record any tuning there too (task 2.9).
 
-// Lead sources: X, Google Trends, Reddit, Bluesky, Mastodon.
-// Corroborating only: YouTube, TikTok, Instagram, Twitch, Hacker News, Pinterest.
+// Lead sources: X, Google Trends, Bluesky, Mastodon.
+// Corroborating only: YouTube, Reddit, TikTok, Instagram, Twitch, Hacker News, Pinterest.
 export const WEIGHTS = {
   x: 1.0,
   google_trends: 1.0,
@@ -26,6 +26,12 @@ export const TOPIC_WINDOW_HOURS = 48;
 
 // Only lists fetched within the last 3 hours count toward the combined score.
 export const FRESH_LIST_HOURS = 3;
+// Sources left out of topic matching and the combined score; their own pages
+// still show their lists. TikTok's Creative Center ranking covers a 7-day
+// window that runs several days behind (its curves on 2026-10-01 ended on
+// 2026-09-27), so it would lend last week's weight to today's topics.
+export const UNSCORED_SOURCES: ReadonlySet<string> = new Set(["tiktok"]);
+
 // Bluesky re-cuts its trending list every hour, and a topic near the edge
 // often drops out for an hour and comes back (research RQ1: 47% of its top-10
 // stays are returns). A Bluesky topic missing from its latest list keeps its

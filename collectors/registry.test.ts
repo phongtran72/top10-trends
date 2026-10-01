@@ -21,7 +21,7 @@ describe("registry", () => {
     expect(summary).toEqual({
       x: ["lead", 1.0],
       google_trends: ["lead", 1.0],
-      reddit: ["lead", 0.8],
+      reddit: ["corroborating", 0.8],
       bluesky: ["lead", 0.5],
       mastodon: ["lead", 0.3],
       youtube: ["corroborating", 0.8],
@@ -31,6 +31,13 @@ describe("registry", () => {
       hacker_news: ["corroborating", 0.3],
       pinterest: ["corroborating", 0.3],
     });
+  });
+});
+
+describe("page notes", () => {
+  it("labels the scraped sources whose lists are older than the hourly fetch suggests", () => {
+    expect(PLATFORMS.filter((s) => s.note).map((s) => s.id)).toEqual(["tiktok", "instagram", "pinterest"]);
+    expect(PLATFORMS.find((s) => s.id === "tiktok")?.note).toContain("last week's hashtags");
   });
 });
 

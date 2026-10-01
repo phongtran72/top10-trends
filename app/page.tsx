@@ -220,9 +220,7 @@ export default async function Home() {
         )}
       </section>
 
-      <p className={styles.later}>
-        Coming later: {later.join(", ")}.
-      </p>
+      {later.length > 0 && <p className={styles.later}>Coming later: {later.join(", ")}.</p>}
     </>
   );
 }

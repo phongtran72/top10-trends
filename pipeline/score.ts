@@ -1,6 +1,6 @@
 import { and, desc, eq, gt, inArray, lte, notInArray } from "drizzle-orm";
 import { PLATFORMS, type SourceDef, type SourceId } from "@/collectors/registry";
-import { BLUESKY_GRACE_HOURS, FRESH_LIST_HOURS, TOP_N } from "@/config/ranking";
+import { BLUESKY_GRACE_HOURS, FRESH_LIST_HOURS, TOP_N, UNSCORED_SOURCES } from "@/config/ranking";
 import { fetchRuns, rankings, topicItems, trendItems } from "@/db/schema";
 import { rankWindow, WINDOWED_SOURCES } from "@/lib/window";
 import type { Db } from "./db";
@@ -125,7 +125,8 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
         gt(fetchRuns.itemCount, 0),
         gt(fetchRuns.startedAt, since),
         lte(fetchRuns.startedAt, until),
-        notInArray(fetchRuns.sourceId, [...WINDOWED_SOURCES.keys()]),
+        // Windowed sources are added above; unscored ones never count.
+        notInArray(fetchRuns.sourceId, [...WINDOWED_SOURCES.keys(), ...UNSCORED_SOURCES]),
       ),
     )
     .orderBy(fetchRuns.sourceId, fetchRuns.region, desc(fetchRuns.startedAt));

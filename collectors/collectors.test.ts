@@ -6,6 +6,7 @@ import { COLLECTORS } from "./index";
 import { instagram } from "./instagram";
 import { mastodon } from "./mastodon";
 import { pinterest } from "./pinterest";
+import { reddit } from "./reddit";
 import { PLATFORMS } from "./registry";
 import { fixture, jsonFixture, routedContext } from "./test-utils";
 import { tiktok } from "./tiktok";
@@ -250,9 +251,9 @@ describe("twitch", () => {
 });
 
 describe("collector registry", () => {
-  it("builds the phase 1 collectors plus X, TikTok, Instagram and Pinterest, each under its own id", () => {
+  it("builds the phase 1 collectors plus X, TikTok, Instagram, Pinterest and Reddit, each under its own id", () => {
     expect([...COLLECTORS.keys()].sort()).toEqual(
-      [...PLATFORMS.filter((p) => p.phase === 1).map((p) => p.id), "x", "tiktok", "instagram", "pinterest"].sort(),
+      [...PLATFORMS.filter((p) => p.phase === 1).map((p) => p.id), "x", "tiktok", "instagram", "pinterest", "reddit"].sort(),
     );
     for (const [id, collector] of COLLECTORS) expect(collector.id).toBe(id);
   });
@@ -430,8 +431,8 @@ describe("instagram", () => {
 
   it("fails when the latest successful run is too old", async () => {
     const { ctx } = routedContext(routes(), { APIFY_TOKEN: "t" });
-    ctx.now = new Date("2026-10-09T06:00:00Z");
-    await expect(instagram.fetch("global", ctx)).rejects.toThrow("latest Instagram run finished 24 h ago; check the Apify schedule");
+    ctx.now = new Date("2026-10-09T12:00:00Z");
+    await expect(instagram.fetch("global", ctx)).rejects.toThrow("latest Instagram run finished 30 h ago; check the Apify schedule");
   });
 });
 
@@ -485,6 +486,24 @@ describe("pinterest", () => {
     const { ctx } = routedContext(routes(), { APIFY_TOKEN: "t" });
     ctx.now = new Date("2026-10-13T07:00:00Z");
     await expect(pinterest.fetch("us", ctx)).rejects.toThrow("latest Pinterest run finished 192 h ago; check the Apify schedule");
+  });
+});
+
+describe("reddit", () => {
+  it("reads r/popular's Atom feed and links each post by its id", async () => {
+    const { ctx, calls } = routedContext([["https://www.reddit.com/r/popular/hot.rss", () => xml(fixture("reddit.xml"))]]);
+    const items = await reddit.fetch("global", ctx);
+    expect(calls[0].url).toBe("https://www.reddit.com/r/popular/hot.rss?limit=25");
+    // Rows without a post id or a title are skipped, and the rest keep the feed's order.
+    expect(items).toEqual([
+      { source: "reddit", region: "global", rank: 1, title: "Example storm heads east", url: "https://www.reddit.com/comments/1abc23d/" },
+      { source: "reddit", region: "global", rank: 2, title: "Sample team & rivals meet again", url: "https://www.reddit.com/comments/1xyz98k/" },
+    ]);
+  });
+
+  it("reports a block by its status and host", async () => {
+    const { ctx } = routedContext([["https://www.reddit.com/", () => new Response("blocked", { status: 403, statusText: "Blocked" })]]);
+    await expect(reddit.fetch("global", ctx)).rejects.toThrow("403 www.reddit.com");
   });
 });
 

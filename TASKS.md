@@ -50,6 +50,8 @@ where source_id = 'heartbeat' and status = 'ok'
 -- pass: 23 or more
 ```
 
+Passed on 2026-10-01 and confirmed by the owner: 33 heartbeats over 31 hours in a row (2026-09-30 04:00 to 2026-10-01 10:00 UTC) with no hour missing, and 26 in the last 24 hours.
+
 ## Phase 1 · Per-platform lists (weeks 2–3)
 
 - [x] **[You]** Add the phase 1 keys and variables: `YOUTUBE_API_KEY`, `TWITCH_CLIENT_ID`, `TWITCH_CLIENT_SECRET`, `REVALIDATE_SECRET`, `SITE_URL`, `COLLECTOR_USER_AGENT` (SETUP.md §3, §4, §7, §8), and redeploy on Vercel after adding `REVALIDATE_SECRET` there.
@@ -127,20 +129,21 @@ order by success_pct;
 - [x] **2.13 Hashtag word splitting.** Split a hashtag written as one lowercase run (`#nationalcoffeeday`) into English words with a word-frequency list (`config/words-en.txt`, `lib/segment.ts`), so it can match the same topic written as words; names, unlisted runs and runs the same hour's news writes as one word (a brand like Flydubai) stay whole. Embed one text at a time, so a title's vector doesn't depend on its batch. `npm run replay -- tune --no-segment` compares matching without it for 2.9.
 - [x] **2.14 Bluesky grace.** A Bluesky topic missing from Bluesky's latest list keeps its last rank in the combined score for 2 hours after it was last seen, because Bluesky's list flickers hour to hour. The dashboard's "new" list skips anything seen in the previous 2 hours.
 - [x] **2.15 Matching model.** Switch embeddings to `nomic-ai/nomic-embed-text-v1.5` (8-bit, "clustering: " prefix, cut to 384 numbers) after the predictions work found it catches about twice MiniLM's same-story matches at the same accuracy; start `MATCH_THRESHOLD` at 0.86 for 2.9 to confirm.
+- [x] **2.16 TikTok out of the combined score.** TikTok's ranking covers a 7-day window that runs several days behind, so leave it out of topic matching and the combined score (`UNSCORED_SOURCES`) while its page and curves stay.
 
 **Gate 2.** Run the eval for 5 hours. In each hour, at least 8 of the 10 topics make sense and none is a duplicate.
 
 ## Phase 3 · Paid and approved sources (week 6)
 
-- [ ] **[You]** Buy X pay-per-use credits and add `X_BEARER_TOKEN` (SETUP.md §10). Add Reddit, Apify and Anthropic keys only for the sources you want (SETUP.md §9, §12, §13), and allow their API hosts in the cloud environment if a session needs to test them.
+- [x] **[You]** Buy X pay-per-use credits and add `X_BEARER_TOKEN` (SETUP.md §10). Add Apify and Anthropic keys only for the sources you want (SETUP.md §12, §13), and allow their API hosts in the cloud environment if a session needs to test them. Done on 2026-09-30: $25 of X credits with a $20 spending cap, and the Apify token; Claude topic names are not set up.
 - [x] **3.1 X collector.** `GET https://api.x.com/2/trends/by/woeid/{woeid}?max_trends=20` for WOEID 1 (`global`) and 23424977 (`us`) with the app's Bearer token. Title is `trend_name`; metric is `tweet_count` when present (`posts`); URL is an X search link for the trend. Before each call, count today's X rows in `fetch_runs` (UTC); at 60, skip with status `skipped` and reason `daily cap`.
 - [ ] **3.2 Regions.** Add `gb`, `ca` and `au` feeds for Google Trends and YouTube. Compute rankings for two views as described in PLAN.md › Ranking › Regions (`rankings.region` is the view). Add a Global / US toggle (`?region=`) to the home, platform and topic pages, defaulting to Global.
-- [ ] **3.3 Reddit collector** (once approved). App-only OAuth with `POST https://www.reddit.com/api/v1/access_token` (`grant_type=client_credentials`), then `GET https://oauth.reddit.com/r/popular/hot?limit=25` with the required User-Agent. Title is `title`; URL is `https://www.reddit.com` plus `permalink`; metric is `score` (`upvotes`); `flags.nsfw` is `over_18`.
+- [x] **3.3 Reddit collector.** Reddit refused API access on 2026-10-01, so read r/popular's public Atom feed, `https://www.reddit.com/r/popular/hot.rss?limit=25`, with no key. Title is the entry's `title`; URL is `https://www.reddit.com/comments/<post id>/` from the entry's `id`; there is no metric and no NSFW flag.
 - [x] **3.4 Pinterest collector.** When `PINTEREST_ENABLED=true`, read the latest run of the Apify actor `automation-lab/pinterest-trends-scraper` (25 growing US keywords over 30 days, Mondays and Thursdays) through Apify's API (weight 0.3, corroborating). Title is the keyword; URL is its Pinterest Trends page; metric is the 0–100 search index. Pinterest's own API needs app review, so it's a later replacement, not a requirement.
 - [x] **3.5 TikTok** (optional). When `TIKTOK_ENABLED=true`, read the latest daily run of the Apify actor `data_xplorer/tiktok-trends` (30 US hashtags, 7-day window) through Apify's API (weight 0.5, corroborating). Disable it after 3 failed days in a row.
 - [ ] **3.6 Claude topic names** (optional). When `ANTHROPIC_API_KEY` is set, name each new topic with Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) from its member titles and headlines: a short name plus a one-line reason of at most 120 characters, stored in `topics.label` and `topics.summary`. Never rename existing topics.
 - [x] **3.7 Spend on /status.** Show a month-to-date estimate and a projection: X requests this month × $0.010, plus topics created this month × about $0.0009 when Claude naming is on (600 input and 60 output tokens at Haiku prices).
-- [x] **3.8 Instagram** (optional). When `INSTAGRAM_ENABLED=true`, read the latest run of the Apify actor `s-r/instagram-trending-scraper` (Instagram's 10 worldwide trending topics, every 6 hours) through Apify's API (weight 0.5, corroborating). Title is the topic; URL is its `instagram.com/popular/` page; metric is `media_count` (`posts`, all time).
+- [x] **3.8 Instagram** (optional). When `INSTAGRAM_ENABLED=true`, read the latest run of the Apify actor `s-r/instagram-trending-scraper` (Instagram's 10 worldwide trending topics, three times a day) through Apify's API (weight 0.5, corroborating). Title is the topic; URL is its `instagram.com/popular/` page; metric is `media_count` (`posts`, all time).
 - [x] **3.9 TikTok curves.** The TikTok collector passes each hashtag's 7-day daily popularity curve (`series`: `{ day, value }` with a YYYY-MM-DD UTC day and a 0–100 value) and `flags.direction` (`up`, `down` or `stable`) on to the pipeline, for phase 5 to store; `trend_items` keeps neither. Record every change to a scheduled source's cadence, depth or window in PLAN.md's source cadence log.
 
 **Gate 3.** `/status` projects the month's spend within your chosen tier (Starter about $18, Plus about $19–24).

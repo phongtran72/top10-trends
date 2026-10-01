@@ -145,6 +145,27 @@ describe("Google Trends window", () => {
   });
 });
 
+describe("unscored sources", () => {
+  it("shows TikTok's own list but never matches it to a topic or counts it", async () => {
+    const at = new Date(Date.UTC(2026, 9, 12, 9, 7));
+    const outcome = await runOnce(at, [
+      list("google_trends", "us", at, [{ title: "zeta cup" }]),
+      list("youtube", "us", at, [{ title: "Zeta cup" }]),
+      list("tiktok", "us", at, [{ title: "#zetacup" }, { title: "#othertag" }]),
+    ]);
+    // YouTube corroborates; TikTok's week-old hashtag doesn't.
+    expect(outcome.combined.find((c) => c.label === "zeta cup")?.platforms).toEqual([
+      { sourceId: "google_trends", rank: 1 },
+      { sourceId: "youtube", rank: 1 },
+    ]);
+    const rows = (await t.db.select().from(rankings)).filter((r) => r.list === "tiktok" && r.computedAt.getTime() === at.getTime());
+    expect(rows.map((r) => [r.rank, r.topicId])).toEqual([
+      [1, null],
+      [2, null],
+    ]);
+  });
+});
+
 describe("Bluesky grace", () => {
   it("keeps a Bluesky topic that skipped an hour at its last rank, for two hours", async () => {
     const at = (h: number) => new Date(Date.UTC(2026, 9, 11, h, 7));

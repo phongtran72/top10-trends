@@ -12,7 +12,7 @@ Sections 1–8 cover phases 0–1. Sections 9–13 are for later phases or optio
 4. Let cloud sessions reach the data sources. The default network access blocks most of them. In your cloud environment's settings ([Configure cloud environments](https://code.claude.com/docs/en/cloud-environments)), choose custom network access, keep the default domains, and add:
     - Phase 1: `public.api.bsky.app`, `trends.google.com`, `mastodon.social`, `hacker-news.firebaseio.com`, `id.twitch.tv`, `api.twitch.tv`
     - Phase 2 (local embedding model): `huggingface.co`, plus any download host a blocked request names
-    - Phase 3, only for the sources you add: `api.x.com`, `www.reddit.com`, `oauth.reddit.com`, `api.apify.com`, `api.anthropic.com`, `api.openai.com`
+    - Phase 3, only for the sources you add: `api.x.com`, `www.reddit.com`, `api.apify.com`, `api.anthropic.com`, `api.openai.com`
 
     The hourly job itself runs in GitHub Actions, which has no such limit; this list only lets Claude test sources inside its sessions.
 5. Start a session from the **Code** tab in the Claude app (or claude.ai/code) with the phase 0 prompt in `TASKS.md`.
@@ -67,12 +67,9 @@ Hobby is for personal, non-commercial use. Adding ads or sponsors means moving t
 
 In the repo: **Settings › Secrets and variables › Actions**. Add each value from the table below under **Secrets** or **Variables** as listed. For `REVALIDATE_SECRET`, generate a random string of 32 or more characters and use the same value in Vercel. To pause a source without a code change, list its id in the `DISABLED_SOURCES` variable.
 
-## 9. Reddit (apply in week 1; add in phase 3)
+## 9. Reddit (nothing to set up)
 
-1. Read Reddit's [Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy), then request non-commercial access as described in [Accessing Reddit data](https://support.reddithelp.com/hc/en-us/articles/14945211791892-Developer-Platform-Accessing-Reddit-Data).
-2. Once approved, create the app as instructed → `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`. Set `REDDIT_USERNAME`, which goes into Reddit's required User-Agent.
-
-If Reddit refuses, the site runs without it.
+Reddit refused the Data API request on 2026-10-01, so the collector reads r/popular's public Atom feed, which needs no account, key or variable. To turn Reddit off, add `reddit` to `DISABLED_SOURCES`. If Reddit's [Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy) approval ever comes through, the API would add scores and NSFW flags.
 
 ## 10. X (open the account in week 1; add in phase 3)
 
@@ -94,15 +91,15 @@ Pinterest is read through Apify: see §12, step 5. Pinterest's own trends API is
     { "trendType": "hashtags", "maxItems": 30, "countryCode": "US", "hashtagPeriod": "7", "industryId": "", "saveMedia": false }
     ```
 
-    A run costs $0.025 plus $0.001 per hashtag: 30 hashtags cost $0.055 in a test, so about $1.70 a month, inside the free $5. Each hashtag also carries a 7-day daily popularity curve and an up/down direction, which the collector passes on for phase 5. The pipeline only reads the latest run's results. If no run has succeeded for 48 hours, TikTok shows as failing on /status. (Since July 2026 TikTok's Creative Center shows logged-out visitors only its top 3; automation-lab/tiktok-trends-scraper returned just those 3, while this actor returned all 30.)
-4. Open the actor [s-r/instagram-trending-scraper](https://apify.com/s-r/instagram-trending-scraper) and create a schedule that runs it every 6 hours at 50 minutes past the hour, just before the pipeline's run at :07 (cron `50 */6 * * *`, UTC), with this input and a maximum cost per run of $0.10:
+    A run costs $0.025 plus $0.001 per hashtag: 30 hashtags are $0.055 in events and about $0.07 on the bill with platform usage, so about $2.10 a month, inside the free $5. Each hashtag also carries a 7-day daily popularity curve and an up/down direction, which the collector passes on for phase 5. The pipeline only reads the latest run's results. If no run has succeeded for 48 hours, TikTok shows as failing on /status. (Since July 2026 TikTok's Creative Center shows logged-out visitors only its top 3; automation-lab/tiktok-trends-scraper returned just those 3, while this actor returned all 30.)
+4. Open the actor [s-r/instagram-trending-scraper](https://apify.com/s-r/instagram-trending-scraper) and create a schedule that runs it three times a day, at 01:50, 13:50 and 19:50 (cron `50 1,13,19 * * *`, UTC), with this input and a maximum cost per run of $0.10:
 
     ```json
     { "maxKeywords": 10, "expandRelatedTopics": false }
     ```
 
-    It costs $0.002 per topic with no start fee, and the free plan caps a run at 10 topics: $0.02 a run, about $2.40 a month. Together with TikTok and Pinterest that is about $4.40 of the free $5. If no run has succeeded for 18 hours, Instagram shows as failing on /status.
-5. Open the actor [automation-lab/pinterest-trends-scraper](https://apify.com/automation-lab/pinterest-trends-scraper) and create a schedule that runs it on Mondays and Thursdays at 07:00 (cron `0 7 * * 1,4`, UTC) with this input and a maximum cost per run of $0.10:
+    It costs $0.002 per topic with no start fee, and the free plan caps a run at 10 topics: $0.02 a run, about $1.80 a month. Instagram refreshes its list every 3 hours, at about 01, 04, 07, 10, 13, 16, 19 and 22 UTC, so each run at :50 reads a list that has just changed; three runs a day cover the US day and fit the budget (every refresh would cost $4.80 a month). Together with TikTok and Pinterest that is about $4.20 of the free $5, which Apify counts per billing period (from the day you signed up), not per calendar month. If no run has succeeded for 24 hours, Instagram shows as failing on /status.
+5. Open the actor [automation-lab/pinterest-trends-scraper](https://apify.com/automation-lab/pinterest-trends-scraper) and create a schedule that runs it on Mondays and Thursdays at 07:23 (cron `23 7 * * 1,4`, UTC; off the hour, because Pinterest rate-limited the first run at exactly 07:00) with this input and a maximum cost per run of $0.10:
 
     ```json
     { "countries": ["US"], "trendTypes": ["growing"], "maxResultsPerCountry": 25 }
@@ -150,8 +147,6 @@ The research notebooks read the database as `research_reader`, a role that can o
 | `MASTODON_INSTANCE` | Optional; defaults to `mastodon.social` | Mastodon collector | GitHub variable | 1 |
 | `OPENAI_API_KEY` | Only if you chose OpenAI embeddings | Embeddings | GitHub secret | 2 |
 | `X_BEARER_TOKEN` | X app Bearer token | X collector | GitHub secret | 3 |
-| `REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET` | Reddit app credentials | Reddit collector | GitHub secrets | 3 |
-| `REDDIT_USERNAME` | Your Reddit username, for the User-Agent | Reddit collector | GitHub variable | 3 |
 | `APIFY_TOKEN` | Apify API token | TikTok, Instagram and Pinterest collectors | GitHub secret | 3 |
 | `TIKTOK_ENABLED` | `true` to turn TikTok on | TikTok collector | GitHub variable | 3 |
 | `INSTAGRAM_ENABLED` | `true` to turn Instagram on | Instagram collector | GitHub variable | 3 |
