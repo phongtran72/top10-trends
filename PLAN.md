@@ -293,6 +293,8 @@ Outside items are linked to topics with the same embedding model. Each source is
 
 **Limits.** A month holds a few thousand topics and a few hundred breakouts: enough to learn from, not enough for precision. Sudden news gives no warning, so forecasts can only catch topics early in their rise. Platforms change and events are seasonal, so findings are re-checked and models retrained regularly. Wrong topic merges become wrong labels, which is why phase 2's matching threshold is tuned first.
 
+**A second reader.** The owner's separate, private project Trend Forecaster (2026-10-01) reads this database through the same read-only role, `research_reader`, to ask and score forecast questions about the day's stories. It never writes here. Changes to the tables it reads (`trend_items`, `topic_snapshots`, `topics`, `tiktok_curves`), to the role's grants or to retention affect it too.
+
 **Who does what.** One Claude session owns the dataset, research, models, outside-data collectors and the `forecasts` table, working on the `predictions` branch in its own worktree. The other owns the web app: every page, including those that show forecasts (task 5.9), built on `lib/forecast-queries.ts`. Phase 2's threshold tuning (2.9) and the production rebuild stay with the web-app session, which finishes phase 2.
 
 ## Build phases
