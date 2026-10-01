@@ -431,8 +431,8 @@ describe("instagram", () => {
 
   it("fails when the latest successful run is too old", async () => {
     const { ctx } = routedContext(routes(), { APIFY_TOKEN: "t" });
-    ctx.now = new Date("2026-10-09T06:00:00Z");
-    await expect(instagram.fetch("global", ctx)).rejects.toThrow("latest Instagram run finished 24 h ago; check the Apify schedule");
+    ctx.now = new Date("2026-10-09T12:00:00Z");
+    await expect(instagram.fetch("global", ctx)).rejects.toThrow("latest Instagram run finished 30 h ago; check the Apify schedule");
   });
 });
 
