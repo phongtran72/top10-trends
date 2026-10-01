@@ -193,9 +193,11 @@ Phase 5 turns the stored history into two things of equal weight, built on one d
 - **Splits are by time,** with a 6-hour embargo before the test set, so no training label looks into it.
 
 Each snapshot records its `algo_version` (embedding model and weights, matching threshold and `RANKING_VERSION`, plus "+replay" for rebuilt hours), so analyses and training can keep to one version or compare versions. Replayed hours have a `news_count` of 0, because past lists' headlines weren't stored. Some sources move in steps, not hourly:
-- **TikTok:** the 7-day hashtag list refreshes once a day.
-- **Instagram:** its 10 worldwide topics refresh every 6 hours.
-- **Pinterest:** Pinterest Trends refreshes about weekly, and it's fetched twice a week.
+- **TikTok:** the 7-day hashtag list is fetched once a day, at 06:00 UTC. The first scheduled fetch (2026-10-01) returned the same list as the test of 2026-09-30 21:47, so the hour TikTok updates its data isn't known yet.
+- **Instagram:** its 10 worldwide topics refresh at the source about every 3 hours. An hourly test (2026-09-30 21:50 to 2026-10-01 about 13:00 UTC) saw 5 changes, each 3 hours apart, with a median of 5 hours in the list. From 2026-10-01 13:50 UTC it's fetched three times a day (01:50, 13:50 and 19:50 UTC), so its list repeats for 6, 6 and 12 hours, and refreshes in between are missed.
+- **Pinterest:** Pinterest Trends refreshes about weekly, and it's fetched on Mondays and Thursdays at 07:23 UTC. The first scheduled fetch (2026-10-01) failed, so its stored list is the 2026-09-30 21:55 test's until 2026-10-05.
+
+The source cadence log (Data sources) has every change with its time: cut analyses of these sources at those times.
 
 Between refreshes the same list repeats in every hourly fetch, so those sources' hour-to-hour changes aren't signal. Instagram's `posts` metric is an all-time media count, not trending volume, so it isn't momentum either. X can have `skipped` runs with the reason `daily cap`: those hours have no X ranks, not low ones.
 
