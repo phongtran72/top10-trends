@@ -1,8 +1,8 @@
 // Ranking weights, thresholds and caps. Starting values and the reasons for
 // them are in PLAN.md › Ranking; record any tuning there too (task 2.9).
 
-// Lead sources: X, Google Trends, Reddit, Bluesky, Mastodon.
-// Corroborating only: YouTube, TikTok, Instagram, Twitch, Hacker News, Pinterest.
+// Lead sources: X, Google Trends, Bluesky, Mastodon.
+// Corroborating only: YouTube, Reddit, TikTok, Instagram, Twitch, Hacker News, Pinterest.
 export const WEIGHTS = {
   x: 1.0,
   google_trends: 1.0,
