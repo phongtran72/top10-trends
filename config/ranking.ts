@@ -18,8 +18,10 @@ export const WEIGHTS = {
 } as const;
 
 // Topic matching: join the nearest topic centroid from the last 48 hours at
-// cosine similarity >= 0.80 (tune 0.75–0.85).
-export const MATCH_THRESHOLD = 0.8;
+// cosine similarity >= this. 0.86 is where nomic-embed-text-v1.5 (384 numbers)
+// made 90–95% right merges on hand-checked pairs; task 2.9 confirms it on a
+// week of data with `npm run replay -- tune`.
+export const MATCH_THRESHOLD = 0.86;
 export const TOPIC_WINDOW_HOURS = 48;
 
 // Only lists fetched within the last 3 hours count toward the combined score.

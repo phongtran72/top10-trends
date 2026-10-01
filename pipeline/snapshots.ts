@@ -1,7 +1,7 @@
 import { PLATFORMS, type SourceId } from "@/collectors/registry";
 import { RANKING_VERSION } from "@/config/ranking";
 import { topicSnapshots } from "@/db/schema";
-import { EMBEDDING_DTYPE, EMBEDDING_MODEL } from "@/lib/embed";
+import { EMBEDDING_DIMENSIONS, EMBEDDING_DTYPE, EMBEDDING_MODEL } from "@/lib/embed";
 import type { Db } from "./db";
 import { scoreTopics, type ScoreEntry } from "./score";
 
@@ -15,13 +15,14 @@ import { scoreTopics, type ScoreEntry } from "./score";
 // a permanent table, and it doesn't count toward the snapshot score.
 export const EXCLUDED_FROM_HISTORY: ReadonlySet<SourceId> = new Set<SourceId>(["youtube"]);
 
-// How a snapshot was made, e.g. "all-minilm-l6-v2.q8/t0.60/r1": the embedding
-// model and weights, the matching threshold and the ranking version, plus
+// How a snapshot was made, e.g. "nomic-embed-text-v1.5.q8.384/t0.86/r1": the
+// embedding model, weights and dimensions, the matching threshold and the
+// ranking version, plus
 // "+replay" for hours rebuilt from stored lists (titles only: no headlines, no
 // Bluesky status filter).
 export function algoVersion(threshold: number, replay = false): string {
   const model = EMBEDDING_MODEL.split("/").pop()!.toLowerCase();
-  return `${model}.${EMBEDDING_DTYPE}/t${threshold.toFixed(2)}/${RANKING_VERSION}${replay ? "+replay" : ""}`;
+  return `${model}.${EMBEDDING_DTYPE}.${EMBEDDING_DIMENSIONS}/t${threshold.toFixed(2)}/${RANKING_VERSION}${replay ? "+replay" : ""}`;
 }
 
 export interface SnapshotRow {

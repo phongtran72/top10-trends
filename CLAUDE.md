@@ -15,7 +15,7 @@ A personal, non-commercial website that shows the top 10 trending topics on each
 - Database: Postgres on Supabase Free, accessed with Drizzle ORM and the `postgres` (postgres-js) driver.
 - Pipeline: `pipeline/run.ts`, executed by GitHub Actions in `.github/workflows/collect.yml`, which has a `workflow_dispatch` trigger only (with a `dry_run` input).
 - Scheduler: a Cloudflare Workers Free cron in `worker/` calls GitHub's workflow-dispatch API once an hour. Never add a `schedule:` trigger to the workflow (GitHub delays or drops scheduled runs at busy times) and never use Vercel cron (Hobby runs crons at most once a day).
-- Embeddings: `@huggingface/transformers` running `Xenova/all-MiniLM-L6-v2` (384 dimensions, English) inside the pipeline.
+- Embeddings: `@huggingface/transformers` running `nomic-ai/nomic-embed-text-v1.5` (8-bit, "clustering: " prefix, cut to 384 dimensions, English) inside the pipeline, one text at a time.
 - Tests: Vitest. TypeScript scripts run with tsx.
 - Research (phase 5): Python notebooks in `research/` (pandas, lifelines, statsmodels, LightGBM) for analysis and training only. They read Supabase through a read-only Postgres role. Production never runs Python: a trained model ships as a small JSON or ONNX file that the TypeScript pipeline loads. Exclude `research/` from the root tsconfig, ESLint and Vitest.
 
@@ -53,7 +53,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 5. **28-day retention.** Every run deletes `trend_items`, `topic_items` and per-platform `rankings` older than 28 days, because YouTube's policy caps stored API data at 30 days. Topics, combined rankings, topic snapshots and TikTok curves (`tiktok_curves`) are kept; snapshots never include YouTube data.
 6. **Source roles.** Lead sources: X, Google Trends, Reddit, Bluesky, Mastodon. Corroborating-only sources: YouTube, TikTok, Instagram, Twitch, Hacker News, Pinterest. Weights live in `config/ranking.ts`; their starting values are in PLAN.md › Ranking.
 7. **Combined score** = sum over platforms of `weight / log2(rank + 1)`. A corroborating source counts only when a lead source also has the topic. Only lists fetched in the last 3 hours count.
-8. **Topic matching** assigns each item to the nearest topic centroid from the last 48 hours when cosine similarity is at least `MATCH_THRESHOLD` (starting value 0.80; real data suggests about 0.60, see PLAN.md › Ranking › Matching threshold); otherwise a lead item starts a new topic. Never cluster item to item.
+8. **Topic matching** assigns each item to the nearest topic centroid from the last 48 hours when cosine similarity is at least `MATCH_THRESHOLD` (0.86 for nomic at 384 dimensions, confirmed in task 2.9; see PLAN.md › Ranking › Matching model and threshold); otherwise a lead item starts a new topic. Never cluster item to item.
 9. **Topic names** come only from lead-source items (an X trend, Google query, Bluesky topic or Mastodon tag), never from video or post titles.
 10. **English only.** Drop NSFW items, Bluesky trends whose status is `cooling` or `stale`, profanity, and evergreen tags listed in `config/blocklist.txt`.
 11. **X spend cap.** At most 60 X trend requests per UTC day, counted from `fetch_runs`. The X collector turns itself off when the cap is reached.

@@ -1,7 +1,10 @@
 import { EMBEDDING_DIMENSIONS, type Embedder, unitVector } from "@/lib/embed";
 
 // A deterministic stand-in for the real model in tests: each word hashes to a
-// dimension, so texts that share words point the same way. No network.
+// dimension, so texts that share words point the same way. No network. Its
+// similarities aren't the real model's, so tests that match pass
+// WORD_EMBEDDER_THRESHOLD rather than relying on MATCH_THRESHOLD.
+export const WORD_EMBEDDER_THRESHOLD = 0.8;
 export const wordEmbedder: Embedder = async (texts) =>
   texts.map((text) => {
     const vector = new Array<number>(EMBEDDING_DIMENSIONS).fill(0);

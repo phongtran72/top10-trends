@@ -7,7 +7,7 @@ import { writeResults, type ListResult } from "./collect";
 import { platformList } from "@/lib/queries";
 import { contextFor, formatRankOutcome, labelFor, rankRun } from "./rank";
 import { upsertSources } from "./sources";
-import { wordEmbedder } from "./test-embedder";
+import { WORD_EMBEDDER_THRESHOLD, wordEmbedder } from "./test-embedder";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 const run1 = new Date("2026-10-08T12:07:00Z");
@@ -27,7 +27,7 @@ function list(sourceId: SourceId, region: Region, at: Date, items: Omit<TrendIte
 
 async function runOnce(at: Date, results: ListResult[]) {
   const itemIds = await writeResults(t.db, results);
-  return rankRun({ db: t.db, results, itemIds, now: at, embedder: wordEmbedder, blocklist });
+  return rankRun({ db: t.db, results, itemIds, now: at, embedder: wordEmbedder, blocklist, threshold: WORD_EMBEDDER_THRESHOLD });
 }
 
 beforeAll(async () => {
@@ -90,8 +90,8 @@ describe("rankRun", () => {
     // Permanent snapshots leave YouTube out.
     const snaps = await t.db.select().from(topicSnapshots);
     expect(snaps.map((s) => [s.position, s.platformCount, s.ranks, s.newsCount, s.algoVersion])).toEqual([
-      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "all-minilm-l6-v2.q8/t0.80/r1"],
-      [2, 1, { bluesky: 3 }, 0, "all-minilm-l6-v2.q8/t0.80/r1"],
+      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.q8.384/t0.80/r1"],
+      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.q8.384/t0.80/r1"],
     ]);
     expect(formatRankOutcome(outcome)[2]).toBe("   1. world series · 2.12 · google_trends #1, youtube #1, bluesky #2 · new");
   });
