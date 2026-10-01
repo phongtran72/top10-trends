@@ -111,6 +111,8 @@ order by success_pct;
 -- pass: every phase 1 source at 95 or more
 ```
 
+Waived for phase 2 by the owner on 2026-10-01, after a day of soak: every phase 1 source had succeeded in every run (25 of 25 in the last 24 hours), and phase 2 was ready. The 7-day check still runs, around 2026-10-07, before the lists are called stable.
+
 ## Phase 2 · Combined top 10 (weeks 4–5)
 
 - [x] **[You]** Choose the embedding model now (chose the local model on 2026-09-30): the local model (free; allow `huggingface.co` in the cloud environment, SETUP.md §1) or OpenAI `text-embedding-3-small` (about $0.06 a month, needs `OPENAI_API_KEY`). Switching later means re-embedding topic centroids and re-tuning the threshold.
@@ -122,7 +124,7 @@ order by success_pct;
 - [x] **2.6 Labels and context.** A new topic's label is `prettyLabel` of its best-ranked lead item; its summary is the first Google Trends headline attached to the topic, if any.
 - [x] **2.7 Pages.** Home: the combined top 10 with label, context line, platform badges and rank change against the ranking computed about 24 hours earlier ("new" when absent). `/t/[slug]`: platforms and ranks now, 7-day rank history from `rankings`, and the top links per platform from items still stored.
 - [x] **2.8 Eval script.** `npm run eval -- --hours 5` picks 5 random past runs and prints each combined top 10 with its member items and scores, for manual review. Add an `eval` workflow with the same output so it can run from a phone.
-- [ ] **2.9 Tuning.** Tune `MATCH_THRESHOLD` and the weights in `config/ranking.ts` from the eval output, and record the final values and reasons in PLAN.md.
+- [x] **2.9 Tuning.** Tune `MATCH_THRESHOLD` and the weights in `config/ranking.ts` from the eval output, and record the final values and reasons in PLAN.md. Set to 0.86 on 2026-10-01 from 238 hand-checked pairs and a replay of the first 27 hours (38 cross-platform merges, about 34 right); re-run `npm run replay -- tune` on a full week around 2026-10-07 and rebuild if the value moves. Weights are unchanged.
 - [x] **2.10 Topic snapshots.** Each run writes one permanent `topic_snapshots` row per current topic (position, score, platform count, news-headline count, method version, and best rank and metric per platform) as history for a future prediction model. YouTube is left out entirely (PLAN.md › Data model).
 - [x] **2.11 Replay.** `npm run replay -- tune` replays the stored hourly lists through the rank step in an in-memory copy, at several thresholds, and reports each cross-platform merge for review (input to 2.9). `npm run replay -- rebuild --threshold X --yes` rebuilds topics, rankings and snapshots from every stored list: the backfill of hours before phase 2 went live. It refuses if the stored lists no longer cover the derived data. Run the rebuild before 2026-10-28, when the first lists are purged.
 - [x] **2.12 Google Trends window.** Google's feed lists its newest trends first, not its biggest, so rank every Google trend from the last 3 hours by approximate traffic (one entry per query, at its latest sighting) for the combined score, topic snapshots, the Google Trends page and the dashboard. The collector keeps the feed's order.
@@ -131,7 +133,7 @@ order by success_pct;
 - [x] **2.15 Matching model.** Switch embeddings to `nomic-ai/nomic-embed-text-v1.5` (8-bit, "clustering: " prefix, cut to 384 numbers) after the predictions work found it catches about twice MiniLM's same-story matches at the same accuracy; start `MATCH_THRESHOLD` at 0.86 for 2.9 to confirm.
 - [x] **2.16 TikTok out of the combined score.** TikTok's ranking covers a 7-day window that runs several days behind, so leave it out of topic matching and the combined score (`UNSCORED_SOURCES`) while its page and curves stay.
 
-**Gate 2.** Run the eval for 5 hours. In each hour, at least 8 of the 10 topics make sense and none is a duplicate.
+**Gate 2.** Run the eval for 5 hours. In each hour, at least 8 of the 10 topics make sense and none is a duplicate. First look on 2026-10-01, from a replay of four sample hours: 8 or 9 of 10 made sense with no duplicates; the owner took phase 2 live on that basis. Confirm on live hours with `npm run eval -- --hours 5`.
 
 ## Phase 3 · Paid and approved sources (week 6)
 
