@@ -32,8 +32,8 @@ IDENTIFIER = "qwen-labeler"
 LMS = Path(os.environ.get("USERPROFILE", "~")).expanduser() / ".lmstudio" / "bin" / "lms.exe"
 CACHE_DIR = REPO_ROOT / "research" / "data" / "llm"
 NO_THINKING = "<think>\n\n</think>\n\n"
-CATEGORIES = ("sports", "politics", "entertainment", "tech", "gaming", "business", "science", "weather",
-              "calendar", "meme", "other")
+CATEGORIES = ("sports", "politics", "entertainment", "tech", "gaming", "business", "science", "health", "weather",
+              "incident", "lifestyle", "calendar", "meme", "other")
 
 Post = Callable[[str, dict], dict]
 
@@ -117,10 +117,16 @@ def judge_pairs(pairs: list[dict], post: Post = post_json, cache_dir: Path | Non
     return out
 
 
-CATEGORY_PROMPT = """Classify each trending topic from 2026-09-30. Categories: {categories} ("calendar" is a \
-recurring day, week or observance; "meme" is a joke, game or prompt people post along with). Also say whether it is \
-driven by a news event. Some lines add context after "|", such as the headline the trend linked to. Answer with JSON \
-only: a list of objects {{"id": <id>, "category": <category>, "news": true or false}}.
+CATEGORY_PROMPT = """Classify each trending topic from late September 2026. Categories: {categories}.
+- politics: government, elections, courts, policy, wars and international affairs;
+- incident: crime, accidents, disasters, fires, crashes, flight diversions;
+- lifestyle: food, fashion, beauty, home, travel, crafts;
+- calendar: a recurring day, week, season or observance (#WIPWednesday, national coffee day, first day of fall);
+- meme: a joke, challenge, game or prompt that people post along with;
+- gaming: video games and streaming categories; entertainment: film, TV, music, celebrities.
+Also say whether it is driven by a news event (something that just happened or was just announced). Each line gives \
+where it trended, and sometimes the site and words of the article it linked to, after "|". Answer with JSON only: a \
+list of objects {{"id": <id>, "category": <category>, "news": true or false}}.
 
 {lines}"""
 

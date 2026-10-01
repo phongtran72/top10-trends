@@ -228,6 +228,12 @@ Between refreshes the same list repeats in every hourly fetch, so those sources'
   - Hacker News has a real rise and fall: 38% of stories climb after entering;
   - Bluesky flickers: 47% of its spells are returns, most after missing one fetch, so a Bluesky life should allow an hour's gap. That doubles the share still going after 1 hour (21% to 44%); the median stays 1 hour.
 
+**Categories** (2026-10-01, `research/findings/categories.md`): all 528 trends of the first day got a category and a news flag. The local Qwen3.5-9B drafted them with each trend's platform and linked article as context, and a person checked them (88% agreed).
+- **Each platform has a signature:** Bluesky politics (53%), Google and X sports (about half, on a playoff day), Hacker News tech, Twitch gaming, Mastodon calendar tags, Pinterest lifestyle.
+- **The most news-driven category spreads least.** Politics is 95% news-driven, yet only 3% of its trends were on another list; sports (23%) and calendar moments (22%) crossed most.
+- **Sports trends are the shortest-lived** (2% still in a top 10 after 3 hours); tech (Hacker News) the longest (43%).
+- **Caveat:** category and platform are tangled until there are more days. Category is a forecast feature; topics will take their members' category.
+
 **News and memes** (RQ4 first look, 2026-10-01, `research/findings/rq4-news-memes.md`):
 - **Categories,** by rule:
   - Google's trends are news by construction (all come with a story);

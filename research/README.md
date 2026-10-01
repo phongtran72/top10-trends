@@ -61,6 +61,7 @@ research/
   topnews/llm.py     a local model (Qwen3.5-9B in LM Studio, this PC's GPU) that drafts labels for
                      a person to check: same story or not, topic categories. Research only
   topnews/matching.py the checked matching pairs, and scoring an embedding model on them
+  topnews/categories.py a category and news flag per trend (model drafts, a person's check; data/categories.csv)
   topnews/wiki.py    5.8: Wikipedia links and daily pageviews (no key; cached in data/wiki/)
   topnews/baselines.py 5.5: rule-based lifespan and breakout forecasts, scored by time split
   topnews/news.py    RQ4: google, calendar, news-linked or other, with lifespans and spread
