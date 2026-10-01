@@ -2,14 +2,21 @@ import path from "node:path";
 import type { TrendItem } from "@/collectors/types";
 import { normalize, type SplitOptions } from "@/lib/text";
 
-// Text embeddings for topic matching: all-MiniLM-L6-v2 run locally with
-// Transformers.js (ONNX Runtime on the CPU), 384 dimensions, English. The
-// model downloads from huggingface.co once and is cached in .cache/transformers,
-// which collect.yml keeps between runs. Vectors are never stored (invariant 4).
+// Text embeddings for topic matching: nomic-embed-text-v1.5 run locally with
+// Transformers.js (ONNX Runtime on the CPU), English. Chosen on 2026-10-01
+// over all-MiniLM-L6-v2: on 238 hand-checked cross-platform pairs it caught
+// 66% of same-story pairs at 90% right merges, against 37% (PLAN.md › Ranking
+// › Matching model). The model downloads from huggingface.co once and is
+// cached in .cache/transformers, which collect.yml keeps between runs. Vectors
+// are never stored (invariant 4); topic centroids are.
 
-export const EMBEDDING_MODEL = "Xenova/all-MiniLM-L6-v2";
-export const EMBEDDING_DTYPE = "q8"; // the 23 MB quantized weights
+export const EMBEDDING_MODEL = "nomic-ai/nomic-embed-text-v1.5";
+export const EMBEDDING_DTYPE = "q8"; // the 137 MB quantized weights
+// The model's 768 numbers cut to 384 (Matryoshka), which scored the same as
+// the full size and keeps topics.centroid at real[384].
 export const EMBEDDING_DIMENSIONS = 384;
+// nomic expects a task prefix; "clustering: " suits grouping titles into topics.
+export const EMBEDDING_PREFIX = "clustering: ";
 export const MODEL_CACHE_DIR = path.join(process.cwd(), ".cache", "transformers");
 
 // Normalized vectors, one per text, in order.
@@ -30,11 +37,21 @@ export async function createEmbedder(): Promise<Embedder> {
   return async (texts) => {
     const vectors: number[][] = [];
     for (let i = 0; i < texts.length; i += BATCH) {
-      const output = await extractor([...texts.slice(i, i + BATCH)], { pooling: "mean", normalize: true });
-      vectors.push(...(output.tolist() as number[][]));
+      const batch = texts.slice(i, i + BATCH).map((text) => EMBEDDING_PREFIX + text);
+      const output = await extractor(batch, { pooling: "mean" });
+      vectors.push(...(output.tolist() as number[][]).map((vector) => matryoshka(vector)));
     }
     return vectors;
   };
+}
+
+// Matryoshka truncation as nomic's model card does it: layer norm over all of
+// the model's dimensions, keep the first `dims`, then scale to unit length.
+export function matryoshka(vector: readonly number[], dims = EMBEDDING_DIMENSIONS): number[] {
+  const mean = vector.reduce((sum, x) => sum + x, 0) / vector.length;
+  const variance = vector.reduce((sum, x) => sum + (x - mean) ** 2, 0) / vector.length;
+  const std = Math.sqrt(variance + 1e-5);
+  return unitVector(vector.slice(0, dims).map((x) => (x - mean) / std));
 }
 
 // What gets embedded: the normalized title plus up to two headlines. `keep`

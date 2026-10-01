@@ -5,7 +5,7 @@ import { createTestDb } from "@/db/test-db";
 import { writeResults, type ListResult } from "@/pipeline/collect";
 import { rankRun } from "@/pipeline/rank";
 import { upsertSources } from "@/pipeline/sources";
-import { wordEmbedder } from "@/pipeline/test-embedder";
+import { WORD_EMBEDDER_THRESHOLD, wordEmbedder } from "@/pipeline/test-embedder";
 import { platformList } from "./queries";
 import { combinedTop, topicDetail } from "./topic-queries";
 
@@ -33,7 +33,7 @@ function list(sourceId: SourceId, region: Region, at: Date, titles: (string | Pa
 
 async function run(at: Date, results: ListResult[]) {
   const itemIds = await writeResults(t.db, results);
-  await rankRun({ db: t.db, results, itemIds, now: at, embedder: wordEmbedder, blocklist: new Set(["caturday"]) });
+  await rankRun({ db: t.db, results, itemIds, now: at, embedder: wordEmbedder, blocklist: new Set(["caturday"]), threshold: WORD_EMBEDDER_THRESHOLD });
 }
 
 beforeAll(async () => {

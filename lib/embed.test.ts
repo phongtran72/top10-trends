@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cosine, createEmbedder, embeddingText, unitVector } from "./embed";
+import { cosine, createEmbedder, embeddingText, matryoshka, unitVector } from "./embed";
 
 describe("embeddingText", () => {
   it("joins the normalized title and up to two headlines", () => {
@@ -21,8 +21,18 @@ describe("vector helpers", () => {
   });
 });
 
+describe("matryoshka", () => {
+  it("layer-norms the full vector, keeps the first dimensions and scales to unit length", () => {
+    // mean 2.5, std √1.25: the first two become −1.34 and −0.45, then unit length.
+    const [a, b] = matryoshka([1, 2, 3, 4], 2);
+    expect(a).toBeCloseTo(-0.9487, 4);
+    expect(b).toBeCloseTo(-0.3162, 4);
+    expect(matryoshka(Array.from({ length: 768 }, (_, i) => Math.sin(i)))).toHaveLength(384);
+  });
+});
+
 // Downloads the real model, so it only runs when asked: RUN_MODEL_TESTS=1 npm test.
-describe.runIf(process.env.RUN_MODEL_TESTS === "1")("all-MiniLM-L6-v2", () => {
+describe.runIf(process.env.RUN_MODEL_TESTS === "1")("nomic-embed-text-v1.5", () => {
   it("puts the same story close together and unrelated text far apart", async () => {
     const embed = await createEmbedder();
     const [series, headline, phone] = await embed([
