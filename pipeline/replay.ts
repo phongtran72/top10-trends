@@ -10,10 +10,12 @@ import { rankRun } from "./rank";
 // Replay: run the rank step over stored hourly lists, in time order, as if
 // each hour were live. It tunes the matching threshold (in a scratch copy)
 // and rebuilds topics, rankings and snapshots from the raw lists (a backfill).
-// Stored items lack the headlines collectors provide, so replay matches on
-// titles only. Bluesky's status is stored from 2026-10-01 15:07 UTC, so replay
-// drops stale trends from then on, as a live run does; earlier
-// hours have no status and keep every Bluesky trend.
+// Stored items carry what a live run read, from the run that first stored it:
+// Bluesky's status from 2026-10-01 15:07 UTC, so replay drops stale trends from
+// then on, and the match text (Google Trends' headlines, Bluesky's
+// descriptions) from 2026-10-02, so replay embeds, filters and counts news as
+// the live run did. Earlier hours match on titles only and keep every Bluesky
+// trend.
 
 const HOUR = 60 * 60 * 1000;
 const known = new Set<string>(SOURCES.map((s) => s.id));
@@ -79,6 +81,7 @@ export async function loadSlots(db: Db, since?: Date): Promise<Slot[]> {
               metricValue: row.metricValue ?? undefined,
               metricLabel: row.metricLabel ?? undefined,
               flags: row.status ? { status: row.status } : undefined,
+              matchText: row.matchText?.length ? row.matchText : undefined,
             };
             itemIds.set(item, row.id);
             return item;

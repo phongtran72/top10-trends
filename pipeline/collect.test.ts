@@ -6,7 +6,7 @@ import type { Collector, CollectorContext } from "@/collectors/types";
 import { trendItems } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
 import { createHttp } from "@/lib/http";
-import { collect, describeCollectorError, writeResults, type ListResult } from "./collect";
+import { collect, describeCollectorError, storedMatchText, writeResults, type ListResult } from "./collect";
 import { upsertSources } from "./sources";
 
 const ctx: CollectorContext = {
@@ -92,6 +92,32 @@ describe("writeResults", () => {
       ["bluesky", 3, null],
       ["mastodon", 1, null],
     ]);
+  });
+
+  it("stores the match text a source provides, and null where it provides none", async () => {
+    const at = new Date("2026-10-02T18:07:00Z");
+    await writeResults(t.db, [
+      {
+        source: getSource("bluesky"), region: "global", status: "ok", startedAt: at, finishedAt: at,
+        items: [
+          { source: "bluesky", region: "global", rank: 1, title: "D", url: "https://bsky.app/d", matchText: [" A short description. "] },
+          { source: "bluesky", region: "global", rank: 2, title: "E", url: "https://bsky.app/e", matchText: ["", "  "] },
+          { source: "bluesky", region: "global", rank: 3, title: "F", url: "https://bsky.app/f" },
+        ],
+      },
+    ]);
+    const rows = (await t.db.select().from(trendItems).orderBy(asc(trendItems.rank))).filter((r) => r.fetchedAt.getTime() === at.getTime());
+    expect(rows.map((r) => [r.title, r.matchText])).toEqual([["D", ["A short description."]], ["E", null], ["F", null]]);
+  });
+});
+
+describe("storedMatchText", () => {
+  it("keeps at most 5 texts of at most 1,000 characters, in order", () => {
+    const texts = ["one", "two", "three", "four", "five", "six"];
+    expect(storedMatchText(texts)).toEqual(["one", "two", "three", "four", "five"]);
+    expect(storedMatchText(["x".repeat(1200)])![0]).toHaveLength(1000);
+    expect(storedMatchText(undefined)).toBeNull();
+    expect(storedMatchText([])).toBeNull();
   });
 });
 
