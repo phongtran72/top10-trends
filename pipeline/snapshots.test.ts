@@ -67,8 +67,8 @@ describe("buildSnapshots", () => {
 
 describe("snapshot metadata", () => {
   it("names the method that made a row", () => {
-    expect(algoVersion(0.86)).toBe("nomic-embed-text-v1.5.q8.384/t0.86/r2");
-    expect(algoVersion(0.8, true)).toBe("nomic-embed-text-v1.5.q8.384/t0.80/r2+replay");
+    expect(algoVersion(0.86)).toBe("nomic-embed-text-v1.5.q8.384/t0.86/r3");
+    expect(algoVersion(0.8, true)).toBe("nomic-embed-text-v1.5.q8.384/t0.80/r3+replay");
   });
 
   it("records each topic's news count, defaulting to 0", () => {

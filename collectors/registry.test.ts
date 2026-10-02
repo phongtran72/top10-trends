@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PLATFORMS, SOURCES, planSources, unknownSourceIds, type SourceId } from "./registry";
+import { getSource, pageRegion, PLATFORMS, SOURCES, planSources, unknownSourceIds, type SourceId } from "./registry";
 
 const plan = (options: Partial<Parameters<typeof planSources>[0]> & { ids: SourceId[] }) =>
   Object.fromEntries(
@@ -35,9 +35,17 @@ describe("registry", () => {
 });
 
 describe("page notes", () => {
-  it("labels the scraped sources whose lists are older than the hourly fetch suggests", () => {
-    expect(PLATFORMS.filter((s) => s.note).map((s) => s.id)).toEqual(["tiktok", "instagram", "pinterest"]);
+  it("labels the sources whose lists need a word of explanation", () => {
+    expect(PLATFORMS.filter((s) => s.note).map((s) => s.id)).toEqual(["x", "tiktok", "instagram", "pinterest"]);
     expect(PLATFORMS.find((s) => s.id === "tiktok")?.note).toContain("last week's hashtags");
+  });
+});
+
+describe("pageRegion", () => {
+  it("shows a source's global feed, its US feed when it has no global one, and X's US list", () => {
+    expect(pageRegion(getSource("bluesky"))).toBe("global");
+    expect(pageRegion(getSource("google_trends"))).toBe("us");
+    expect(pageRegion(getSource("x"))).toBe("us");
   });
 });
 

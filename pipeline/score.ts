@@ -1,6 +1,6 @@
 import { and, desc, eq, gt, inArray, lte, notInArray } from "drizzle-orm";
 import { PLATFORMS, type SourceDef, type SourceId } from "@/collectors/registry";
-import { BLUESKY_GRACE_HOURS, FRESH_LIST_HOURS, TOP_N, UNSCORED_SOURCES } from "@/config/ranking";
+import { BLUESKY_GRACE_HOURS, confirmOnly, FRESH_LIST_HOURS, TOP_N, UNSCORED_SOURCES } from "@/config/ranking";
 import { fetchRuns, rankings, topicItems, trendItems } from "@/db/schema";
 import { rankWindow, WINDOWED_SOURCES } from "@/lib/window";
 import type { Db } from "./db";
@@ -8,16 +8,18 @@ import type { Db } from "./db";
 // Combined score (CLAUDE.md invariant 7): the sum over platforms of
 // weight / log2(best rank + 1). A corroborating platform counts only when a
 // lead platform also has the topic, and only lists fetched in the last three
-// hours count.
+// hours count. An entry from a confirm-only list (X's Worldwide list) counts
+// toward its platform's best rank but not as a lead.
 
 export interface ScoreEntry {
   topicId: number;
   sourceId: SourceId;
   rank: number;
   metricValue?: number | null;
+  // The list's region: tells a confirm-only list (X's Worldwide) from a lead one.
+  region?: string;
   // For the eval tool: what the entry is and where it came from.
   title?: string;
-  region?: string;
   via?: "window" | "grace"; // not from the source's latest list
   seenAt?: Date; // a graced entry: when the source last listed it
 }
@@ -31,8 +33,11 @@ export interface TopicScore {
 export function scoreTopics(entries: readonly ScoreEntry[], sources: readonly SourceDef[] = PLATFORMS): TopicScore[] {
   const byId = new Map(sources.map((s) => [s.id, s]));
   const best = new Map<number, Map<SourceId, number>>();
-  for (const { topicId, sourceId, rank } of entries) {
-    if (!byId.has(sourceId)) continue;
+  const led = new Set<number>(); // topics with an entry from a lead list
+  for (const { topicId, sourceId, rank, region } of entries) {
+    const source = byId.get(sourceId);
+    if (!source) continue;
+    if (source.role === "lead" && !confirmOnly(sourceId, region)) led.add(topicId);
     const ranks = best.get(topicId) ?? new Map<SourceId, number>();
     ranks.set(sourceId, Math.min(rank, ranks.get(sourceId) ?? Infinity));
     best.set(topicId, ranks);
@@ -40,8 +45,7 @@ export function scoreTopics(entries: readonly ScoreEntry[], sources: readonly So
 
   const scores: TopicScore[] = [];
   for (const [topicId, ranks] of best) {
-    const hasLead = [...ranks.keys()].some((id) => byId.get(id)!.role === "lead");
-    if (!hasLead) continue;
+    if (!led.has(topicId)) continue;
     let score = 0;
     for (const [sourceId, rank] of ranks) score += byId.get(sourceId)!.weight / Math.log2(rank + 1);
     // Best rank first; ties by weight, then id, so the order is stable.
