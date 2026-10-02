@@ -212,6 +212,9 @@ Phase 5 turns the stored history into two things of equal weight, built on one d
 
   The table marks them with `is_replay`. Rebuilt hours stay useful for describing the lists, not for training.
 - **A filter change is a new regime too.** If Bluesky's cooling filter changes, the `algo_version` should change with it, so the table can keep the two apart.
+- **Each ranking version restarts the live history** (noted 2026-10-02). The table builds from one version, because rows made under different rules aren't alike: r1 ran 7 live hours and r2 a few more before r3 (X's Worldwide list as confirm-only, task 2.19). That costs nothing while the history is hours long. Once it's weeks long it would set back the 6 to 8 weeks the models need. Two protections, both waiting for the owner:
+  - settle rule changes at the week-long review where possible, then batch them, each batch with a rebuild over the stored lists;
+  - store each Google trend's headlines with its stored item, so a rebuilt hour matches as a live one does and can be trained on. Without them, a rebuild can't stand in for live hours. Lists older than 28 days are gone either way, so a late rule change still splits the history.
 - **The in-memory replay matches production's rebuild:** the same top 10, in the same order, in all 28 rebuilt hours (`scripts/replay-snapshots.ts`); the row count differs by 1 or 2 Bluesky topics in 6 of them.
 
 Each snapshot records its `algo_version` (embedding model and weights, matching threshold and `RANKING_VERSION`, plus "+replay" for rebuilt hours), so analyses and training can keep to one version or compare versions. Replayed hours have a `news_count` of 0, because past lists' headlines weren't stored. Some sources move in steps, not hourly:
