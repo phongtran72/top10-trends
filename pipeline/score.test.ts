@@ -32,6 +32,21 @@ describe("scoreTopics", () => {
     expect(scores[0].score).toBeCloseTo(0.8 + 0.3 / 2);
   });
 
+  it("lets X's Worldwide list add to a topic another lead list has, but never lead one", () => {
+    const scores = scoreTopics([
+      { topicId: 1, sourceId: "x", rank: 1, region: "global" }, // Worldwide only: not ranked
+      { topicId: 2, sourceId: "x", rank: 2, region: "global" },
+      { topicId: 2, sourceId: "x", rank: 5, region: "us" }, // the US list confirms it; the better rank counts
+      { topicId: 3, sourceId: "x", rank: 1, region: "global" },
+      { topicId: 3, sourceId: "mastodon", rank: 1, region: "global" },
+      { topicId: 4, sourceId: "x", rank: 1, region: "global" },
+      { topicId: 4, sourceId: "youtube", rank: 1, region: "us" }, // a video is no confirmation
+    ]);
+    expect(scores.map((s) => s.topicId)).toEqual([3, 2]);
+    expect(scores[0].score).toBeCloseTo(1.3);
+    expect(scores[1].score).toBeCloseTo(1 / Math.log2(3));
+  });
+
   it("orders by score, then best rank, then topic id", () => {
     const scores = scoreTopics([
       { topicId: 3, sourceId: "google_trends", rank: 2 },
