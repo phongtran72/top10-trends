@@ -32,6 +32,20 @@ export const FRESH_LIST_HOURS = 3;
 // 2026-09-27), so it would lend last week's weight to today's topics.
 export const UNSCORED_SOURCES: ReadonlySet<string> = new Set(["tiktok"]);
 
+// Lists that only back up other lists, written as `source:region`. X's
+// Worldwide list is mostly trends from countries that don't post in English:
+// over 30 hours to 2026-10-02 the filters kept 330 of its 600 trends, and 207
+// of those (63%) were not on X's US list, nearly all Brazilian, Thai,
+// Indonesian, Turkish or Indian names and fan tags that no language filter
+// can tell from English names ("Globo", "Lula", "Renan"). So a trend on such a
+// list never starts a topic, and it counts in the combined score only when
+// the topic also has a lead entry from another list (X's US list, Google
+// Trends, Bluesky or Mastodon).
+export const CONFIRM_ONLY_LISTS: ReadonlySet<string> = new Set(["x:global"]);
+export function confirmOnly(sourceId: string, region: string | undefined): boolean {
+  return CONFIRM_ONLY_LISTS.has(`${sourceId}:${region}`);
+}
+
 // Bluesky re-cuts its trending list every hour, and a topic near the edge
 // often drops out for an hour and comes back (research RQ1: 47% of its top-10
 // stays are returns). A Bluesky topic missing from its latest list keeps its
@@ -50,5 +64,6 @@ export const FETCH_RUN_RETENTION_DAYS = 90;
 // Bump when weights, filters, windows, grace or scoring change, so analyses
 // of stored snapshots can tell methods apart (topic_snapshots.algo_version).
 // r1: phase 2 as launched on 2026-10-01. r2: Bluesky trends marked cooling
-// are kept; only stale ones are dropped.
-export const RANKING_VERSION = "r2";
+// are kept; only stale ones are dropped. r3: X's Worldwide list only backs
+// up other lists (CONFIRM_ONLY_LISTS).
+export const RANKING_VERSION = "r3";

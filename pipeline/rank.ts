@@ -1,5 +1,5 @@
 import { getSource, type SourceId } from "@/collectors/registry";
-import { MATCH_THRESHOLD, UNSCORED_SOURCES } from "@/config/ranking";
+import { confirmOnly, MATCH_THRESHOLD, UNSCORED_SOURCES } from "@/config/ranking";
 import type { TrendItem } from "@/collectors/types";
 import { embeddingText, type Embedder } from "@/lib/embed";
 import { plainWords, prettyLabel } from "@/lib/text";
@@ -101,13 +101,15 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
   const matchable = keptByList.filter(({ list }) => !UNSCORED_SOURCES.has(list.source.id)).flatMap((k) => k.kept);
   // A run written as one word in this run's news (a brand like "Flydubai") stays whole in hashtags.
   const keep = plainWords(matchable.flatMap((item) => [item.title, ...(item.matchText ?? [])]));
+  const regionOf = new Map(matchable.map((item) => [keyOf.get(item)!, item.region]));
   const vectors = await input.embedder(matchable.map((item) => embeddingText(item, { keep })));
   const items: MatchItem[] = matchable.map((item, index) => {
     const source = getSource(item.source);
     return {
       key: keyOf.get(item)!,
       sourceId: item.source,
-      role: source.role,
+      // A confirm-only list (X's Worldwide) can join a topic but never starts one.
+      role: confirmOnly(item.source, item.region) ? "corroborating" : source.role,
       rank: runRank.get(item) ?? item.rank,
       weight: source.weight,
       title: item.title,
@@ -162,7 +164,7 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
   } else {
     const entries: ScoreEntry[] = items.flatMap((item) => {
       const topic = match.assignments.get(item.key);
-      return topic ? [{ topicId: topic.id!, sourceId: item.sourceId, rank: item.rank }] : [];
+      return topic ? [{ topicId: topic.id!, sourceId: item.sourceId, rank: item.rank, region: regionOf.get(item.key) }] : [];
     });
     scores = scoreTopics(entries);
   }
