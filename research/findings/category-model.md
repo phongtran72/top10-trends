@@ -1,6 +1,6 @@
 # Category as a live feature (task 5.14)
 
-**Status: tool built, first numbers in, targets not met yet (2026-10-01).** The classifier isn't shipped to the pipeline. It needs more labeled trends, which come as the stored lists grow.
+**Status: tool built, two runs in, targets not met yet (2026-10-02).** The classifier isn't shipped to the pipeline. It needs more labeled trends, which come as the stored lists grow.
 - Re-run `notebooks/09_category_model.ipynb` after each new batch of labels.
 - Ship it (task 5.14, step 3) only once it meets the targets below.
 
@@ -62,6 +62,23 @@ At the threshold chosen in training (0.75), with the platform as an input:
 - **"Other" mostly gets no answer, which is right.** It answers 2% of them. Leaving "other" out of the classes, so that it means the same as unknown, was tried and was worse (79% right at the same threshold).
 - **Incidents are the real miss:** it answers 22% of them and none rightly. They're named by a place or a person ("emirates", "amber guyger"), and the event is only in the article.
 - **More labels help, slowly.** Training on the newest n trends: 40% right with 65, 44% with 260, 52% with 520, 53% with 671. That's about 2 points per 150 trends at the end.
+
+## Re-run with 127 more labels (2026-10-02)
+
+1,072 labeled trends that the filters keep, first seen up to 2026-10-02 00:08 UTC: 747 train, and the newest 325 test (from 14:08 UTC on October 1). The test set moved with the data, so compare with the first run loosely.
+
+| | Target | First run (959) | Now (1,072) |
+| --- | --- | --- | --- |
+| Right, always answering | | 53% | 56% |
+| Each platform's most common category | | 31% | 43% |
+| Threshold chosen in training | | 0.75 | 0.80 |
+| Right, of the trends it answers | 85% | 83% | 90% |
+| Trends it answers | 50% | 37% | 35% |
+
+- **Its answers are now right often enough; it still answers too few.** At a threshold of 0.6 it would answer 50% and be right on 82%, so the two targets aren't met together yet.
+- **The simple rule got stronger too.** With Reddit now in training, each platform's most common category is right 43% of the time, so the classifier's lead over it is 13 points, down from 22.
+- **By platform at its threshold:** Bluesky answers 80% and all rightly; Hacker News 51%, all rightly; Google 39% (83% right); X 23% (86%); Reddit 16% (89%).
+- **The learning curve is noisy at this size:** 55% right with 520 training trends, 58% with 650, 56% with 747.
 
 ## What it means
 

@@ -336,6 +336,7 @@ Outside items are linked to topics with the same embedding model. Each source is
   - **It's sure about sports, tech, politics and gaming** (91–100% right where it answers) and misses incidents, which are named by a place or a person.
   - **More labels help slowly:** 40% right with 65 training trends, 52% with 520, 53% with 671.
   - **Leaving "other" out of the classes was tried and was worse.**
+  - **Re-run on 1,072 trends (2026-10-02):** at the confidence chosen in training (0.80) it answers 35% and is right on 90%; at 0.6 it would answer 50% and be right on 82%. The answers are good enough now, and there are still too few of them.
 - **So the shape is a classifier that may answer "unknown".** A wrong category is worse for a model than none.
 - **Next:** label each day's new trends (about 300) and re-run at about 2,000 and 3,000 labels. If it flattens below the targets, either settle for the few sure categories or keep category as a research label only.
 - **Starting targets, to revise once there are a few thousand labels:** where it answers, it matches the checked label on at least 85% of a held-out, time-split set, and it answers at least half of the topics; and adding category improves the task 5.6 models on the held-out weeks.

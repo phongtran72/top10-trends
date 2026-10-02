@@ -1,7 +1,7 @@
 # Topic categories
 
-**Status: three sets labeled and checked (2026-10-01).**
-- **What's labeled:** all 1,121 trends from the stored lists of 2026-09-30 11:32 to 2026-10-01 20:08 UTC (no YouTube). The first set was the 528 trends up to 02:08 UTC; the second set, 348 more, is in *Second set* below; the third, 245 more, in *Third set*.
+**Status: four sets labeled and checked (2026-10-02).**
+- **What's labeled:** all 1,248 trends from the stored lists of 2026-09-30 11:32 to 2026-10-02 00:08 UTC (no YouTube). The first set was the 528 trends up to 02:08 UTC; the second set, 348 more, is in *Second set* below; the third, 245 more, in *Third set*; the fourth, 127 more, in *Fourth set*.
 - **How:** the local model drafted a category and a news flag for each, and every draft was then checked. New trends get drafts on later runs; their checks come with each re-run.
 - **Who checked:** the research assistant (Claude, which also writes these notes), not the owner. Where this page says "checked", that's what it means.
 - **Where they feed in:** RQ1's lifecycles by category and RQ4's news by kind.
@@ -130,6 +130,10 @@ The signatures held on the second day's data: each platform's top category is th
   - a word read as its everyday meaning: "korn ferry tour" (golf) drafted as an incident;
   - hashtags on Mastodon: "#tbt" and "#musiquinta" (weekday tags) drafted as a meme and other, "#gersrb" (Germany–Serbia) as other.
 - **One rule made explicit:** a celebrity's arrest or court case takes the celebrity's category ("rick ross battery charge" is entertainment), and incident is kept for people known only for the event.
+
+## Fourth set (2026-10-02, data to 00:08 UTC)
+
+127 more trends, checked the same way: 21 corrected (the model agreed on 83%). All 1,248 trends are now checked, with 197 corrected (84% agreed). X's bare names were again the weak spot (12 of 46 corrected): "Kevin Warren" and "Taylor Rooks" (sports) drafted as other and entertainment, "#LightningStrikes" (the hockey team) as an incident.
 
 ## What it means for the forecasts
 
