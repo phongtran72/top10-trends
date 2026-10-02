@@ -19,6 +19,7 @@ export interface ScoreEntry {
   title?: string;
   region?: string;
   via?: "window" | "grace"; // not from the source's latest list
+  seenAt?: Date; // a graced entry: when the source last listed it
 }
 
 export interface TopicScore {
@@ -178,6 +179,7 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
         title: trendItems.title,
         region: trendItems.region,
         url: trendItems.url,
+        fetchedAt: trendItems.fetchedAt,
       })
       .from(trendItems)
       .innerJoin(topicItems, eq(topicItems.itemId, trendItems.id))
@@ -192,11 +194,11 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
       )
       .orderBy(desc(fetchRuns.startedAt), trendItems.rank);
     // Newest sighting first, so each missing topic keeps the rank it was last seen with.
-    for (const { url, ...row } of earlier) {
+    for (const { url, fetchedAt, ...row } of earlier) {
       if (present.has(row.topicId)) continue;
       present.add(row.topicId);
       if (listed.has(url)) continue;
-      graced.push({ ...row, sourceId, via: "grace" });
+      graced.push({ ...row, sourceId, via: "grace", seenAt: fetchedAt });
     }
   }
   return [...entries, ...graced, ...windowed];

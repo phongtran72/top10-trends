@@ -3,6 +3,7 @@ import { getSource, platformSlug, SOURCES, type SourceId } from "@/collectors/re
 import { FRESH_LIST_HOURS } from "@/config/ranking";
 import { rankings, topicItems, topics, trendItems } from "@/db/schema";
 import type { Db } from "@/db/types";
+import { currentEntries } from "@/pipeline/score";
 
 // Queries behind the combined top 10 and the topic pages. Plain JSON results
 // (dates as ISO strings), so they can be cached.
@@ -14,6 +15,9 @@ export interface PlatformRank {
   name: string;
   slug: string;
   rank: number;
+  // Set when the platform no longer lists the topic and it still counts at the
+  // rank it was last seen with (Bluesky's grace hours): the time of that sighting.
+  seenAt?: string;
 }
 
 export interface CombinedEntry {
@@ -45,7 +49,9 @@ const byRankThenWeight = (a: PlatformRank, b: PlatformRank) =>
   a.rank - b.rank || getSource(b.sourceId).weight - getSource(a.sourceId).weight;
 
 // Where each topic stands in each platform's newest filtered top 10 from the
-// `hours` before `at`.
+// three hours before `at`. A platform the combined score counted from outside
+// that top 10 is added at the rank the score used: a place past 10, or a
+// Bluesky topic in its grace hours (marked with when it was last listed).
 async function platformRanks(db: Db, topicIds: number[], at: Date, region: string): Promise<Map<number, PlatformRank[]>> {
   const result = new Map<number, PlatformRank[]>();
   if (topicIds.length === 0) return result;
@@ -75,6 +81,20 @@ async function platformRanks(db: Db, topicIds: number[], at: Date, region: strin
     if (!existing) list.push(entry);
     else existing.rank = Math.min(existing.rank, entry.rank);
     result.set(row.topicId, list);
+  }
+
+  const wanted = new Set(topicIds);
+  const onPage = new Map([...result].map(([topicId, list]) => [topicId, new Set(list.map((p) => p.sourceId))]));
+  for (const scored of await currentEntries(db, at)) {
+    if (!wanted.has(scored.topicId) || onPage.get(scored.topicId)?.has(scored.sourceId)) continue;
+    const entry = platformRank(scored.sourceId, scored.rank);
+    if (!entry) continue;
+    if (scored.via === "grace" && scored.seenAt) entry.seenAt = scored.seenAt.toISOString();
+    const list = result.get(scored.topicId) ?? [];
+    const index = list.findIndex((p) => p.sourceId === entry.sourceId);
+    if (index === -1) list.push(entry);
+    else if (entry.rank < list[index].rank) list[index] = entry;
+    result.set(scored.topicId, list);
   }
   for (const list of result.values()) list.sort(byRankThenWeight);
   return result;
