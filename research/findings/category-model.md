@@ -1,6 +1,6 @@
 # Category as a live feature (task 5.14)
 
-**Status: tool built, three runs in, targets not met yet (2026-10-02).** The classifier isn't shipped to the pipeline. It needs more labeled trends, which come as the stored lists grow.
+**Status: tool built, four runs in, targets not met; more labels alone won't get there (2026-10-02).** The classifier isn't shipped to the pipeline. It needs more labeled trends, which come as the stored lists grow.
 - Re-run `notebooks/09_category_model.ipynb` after each new batch of labels, and compare runs on its rolling score, not on the single split.
 - Ship it (task 5.14, step 3) only once it meets the targets below.
 
@@ -99,6 +99,38 @@ At the threshold chosen in training (0.75), with the platform as an input:
 - **Against the targets (85% right, 50% answered):** at 0.8 it's right often enough and answers 38%; at 0.7 it answers 47% and is right on 83%. It's close on each and not there on both.
 - **Block by block it's right 39% to 69% of the time,** and each platform's most common category 21% to 61%. The classifier leads that simple rule by 15 points on average, in every block.
 - **The single split, for the record:** at the threshold chosen in training (0.9) it answers 43% of the newest 347 trends and is right on 91%.
+
+## Fourth run: more labels stopped helping (2026-10-02, data to 17:08 UTC)
+
+1,468 labeled trends that the filters keep (320 more), every one checked. On the rolling score (1,321 trends predicted):
+
+| Threshold | Trends it answers | Right, of those | At 1,148 trends |
+| --- | --- | --- | --- |
+| none | 100% | 57% | 59% |
+| 0.7 | 46% | 83% | 47%, 83% |
+| 0.8 | 37% | 86% | 38%, 86% |
+| 0.9 | 25% | 90% | 25%, 91% |
+
+- **The score didn't move with 28% more labels.** Block by block there's no climb either: the tenths are right 46% to 68% of the time whether 300 or 1,300 trends came before them. More labels of the same kind won't reach the targets.
+- **It leads each platform's most common category by 16 points,** in every block.
+- **It knows five categories and guesses at the rest.** At 0.8:
+
+| Checked category | Trends | Answered | Right, of those |
+| --- | --- | --- | --- |
+| tech | 127 | 59% | 97% |
+| gaming | 79 | 62% | 96% |
+| calendar | 82 | 32% | 96% |
+| sports | 321 | 53% | 94% |
+| politics | 135 | 44% | 93% |
+| entertainment | 185 | 26% | 67% |
+| other | 160 | 16% | 60% |
+| business | 48 | 21% | 40% |
+| incident | 47 | 11% | 20% |
+
+- **Limiting it to those five** (answer only when it says sports, politics, tech, gaming or calendar): at 0.7 it answers 36% of all trends and is right on 87%, and it catches 55% of the trends that are in those categories. That's the fallback if nothing better turns up.
+- **By platform at 0.8:** Twitch answers 98% (94% right), Hacker News 59% (88%), Bluesky 54% (93%), Google 36% (82%), X 29% (77%), Reddit 23% (85%). TikTok and Pinterest get almost no answers: their hashtags and searches look like nothing in the hourly lists.
+
+**The next lever is the text, not the labels.** From the 2026-10-02 18:07 UTC run the pipeline stores each Google trend's headlines and each Bluesky topic's description (`trend_items.match_text`, migration 0005). The live pipeline embeds that text with the title, and until now research could only embed the title. The next run compares, on the same new trends, vectors from the title alone with vectors from the title and its stored text. Google is where the gap should close: its bare queries ("lito", "drake", "detention") are named by their headlines.
 
 ## What it means
 

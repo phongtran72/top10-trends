@@ -1,7 +1,7 @@
 # Topic categories
 
-**Status: five sets labeled and checked (2026-10-02).**
-- **What's labeled:** all 1,332 trends from the stored lists of 2026-09-30 11:32 to 2026-10-02 03:08 UTC (no YouTube). The first set was the 528 trends up to 02:08 UTC; the second set, 348 more, is in *Second set* below; the third, 245 more, in *Third set*; the fourth, 127 more, in *Fourth set*; the fifth, 84 more, in *Fifth set*.
+**Status: six sets labeled and checked (2026-10-02).**
+- **What's labeled:** all 1,728 trends from the stored lists of 2026-09-30 11:32 to 2026-10-02 17:08 UTC (no YouTube). The first set was the 528 trends up to 02:08 UTC; the second set, 348 more, is in *Second set* below; the third, 245 more, in *Third set*; the fourth, 127 more, in *Fourth set*; the fifth, 84 more, in *Fifth set*; the sixth, 396 more, in *Sixth set*.
 - **How:** the local model drafted a category and a news flag for each, and every draft was then checked. New trends get drafts on later runs; their checks come with each re-run.
 - **Who checked:** the research assistant (Claude, which also writes these notes), not the owner. Where this page says "checked", that's what it means.
 - **Where they feed in:** RQ1's lifecycles by category and RQ4's news by kind.
@@ -138,6 +138,15 @@ The signatures held on the second day's data: each platform's top category is th
 ## Fifth set (2026-10-02, data to 03:08 UTC)
 
 84 more trends: 15 corrected (the model agreed on 82%). All 1,332 trends are checked, with 212 corrected (84% agreed). Most were Thursday Night Football names on X, which the model drafted as other ("Boswell", "Igor", "Jaleel McLaughlin").
+
+## Sixth set (2026-10-02, data to 17:08 UTC)
+
+396 more trends, a day's worth: 81 corrected (the model agreed on 80%). All 1,728 trends are checked, with 293 corrected (83% agreed).
+
+- **Friday's tags were the weak spot on Mastodon** (10 of 18 corrected): "#FensterFreitag", "#FootpathFriday" and "#FursuitFriday" are weekday tags, drafted as other or lifestyle.
+- **X's bare names again** (39 of 147): the Indiana Fever drafted as health, "Caitlin" and "Kelsey Mitchell" as entertainment, the Sharks' "#TurnItAllTeal" as a meme.
+- **TikTok's list changed** (18 new hashtags). "#cornell", "#cornelluniversity" and "#cornell7" are the Cornell case Google listed on October 1, drafted as other; "#pac" is the wrestler who died, drafted as politics.
+- **Reddit's home and family clips** were drafted as lifestyle; they're other here, and lifestyle is kept for food, fashion, home, travel and crafts.
 
 ## What it means for the forecasts
 
