@@ -12,7 +12,7 @@ export interface TrendItem {
   url: string; // absolute link to the trend, search or post
   metricValue?: number; // post count, views, approximate searches…
   metricLabel?: string; // 'posts', 'views', 'searches'…
-  matchText?: string[]; // extra text for topic matching only (e.g. news headlines); not stored
+  matchText?: string[]; // extra text for topic matching only (e.g. news headlines); stored with the item for 28 days
   flags?: { nsfw?: boolean; status?: string; direction?: TrendDirection }; // read by filters and research; only status is stored in trend_items
   // A daily popularity curve the source reports for this item (TikTok: 7 days,
   // values 0–100). Not stored in trend_items; phase 5 keeps it for research.

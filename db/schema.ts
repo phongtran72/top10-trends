@@ -62,6 +62,8 @@ export const trendItems = pgTable(
     metricValue: bigint("metric_value", { mode: "number" }),
     metricLabel: text("metric_label"),
     status: text("status"), // Bluesky's lifecycle label (trending, saturating, cooling, stale); null for other sources
+    // The extra text matching reads: Google Trends' news headlines, Bluesky's trend description; null for other sources.
+    matchText: text("match_text").array(),
     fetchedAt: timestamptz("fetched_at").notNull(),
   },
   (t) => [index("trend_items_source_region_fetched_idx").on(t.sourceId, t.region, t.fetchedAt.desc())],

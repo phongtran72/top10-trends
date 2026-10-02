@@ -67,7 +67,7 @@ Passed on 2026-10-01 and confirmed by the owner: 33 heartbeats over 31 hours in 
       url: string;              // absolute link to the trend, search or post
       metricValue?: number;     // post count, views, approximate searches…
       metricLabel?: string;     // 'posts', 'views', 'searches'…
-      matchText?: string[];     // extra text for topic matching only (e.g. news headlines); not stored
+      matchText?: string[];     // extra text for topic matching only (e.g. news headlines); stored for 28 days (task 2.20)
       flags?: { nsfw?: boolean; status?: string }; // read by filters; not stored
     }
     export interface Collector {
@@ -135,6 +135,7 @@ Waived for phase 2 by the owner on 2026-10-01, after a day of soak: every phase 
 - [x] **2.17 Keep cooling Bluesky trends.** Drop only Bluesky trends marked `stale`: dropping `cooling` too kept a median of 1 of Bluesky's 25 trends an hour. Bump `RANKING_VERSION` to `r2` so stored snapshots tell the two rules apart.
 - [x] **2.18 Badges for every counted platform.** A topic's badges (home and topic pages) came only from each platform's top-10 page list, so a topic that counted through Bluesky's grace hours or a rank past 10 showed no badge for that platform. Add those platforms from the score's own entries at the rank the score used, and mark a graced Bluesky topic with when it was last listed ("Bluesky #1 · 2 h ago", rendered in the browser). Display only: no change to scores, snapshots or `RANKING_VERSION`.
 - [x] **2.19 X's Worldwide list only backs up other lists.** The combined top 10 carried Brazilian, Thai and Indonesian names and fan tags from X's Worldwide list ("Globo" at #1 on 2026-10-02), which the English filter can't tell from English names. Make the list confirm-only (`CONFIRM_ONLY_LISTS`): its trends never start a topic and count only when X's US list, Google Trends, Bluesky or Mastodon has the topic. Show X's US list on its page and dashboard card. Bump `RANKING_VERSION` to `r3`; no rebuild of earlier hours.
+- [x] **2.20 Store the match text.** Add `trend_items.match_text` (text[], migration 0005) and store each item's `matchText` there: Google Trends' news headlines and Bluesky's trend description, at most 5 texts of 1,000 characters, null when a source provides none. Replay restores it, so hours rebuilt from stored lists get the same matching text, context line and `news_count` as the live run, and a later rule change can be re-made over the stored lists instead of splitting the snapshot history. Purged with its row at 28 days. No ranking change, so `RANKING_VERSION` stays `r3`.
 
 **Gate 2.** Run the eval for 5 hours. In each hour, at least 8 of the 10 topics make sense and none is a duplicate. First look on 2026-10-01, from a replay of four sample hours: 8 or 9 of 10 made sense with no duplicates; the owner took phase 2 live on that basis. Confirm on live hours with `npm run eval -- --hours 5`.
 
