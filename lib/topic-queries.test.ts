@@ -104,3 +104,39 @@ describe("platformList after ranking", () => {
     expect(bluesky?.items.map((i) => [i.rank, i.title])).toEqual([[1, "New topic"]]);
   });
 });
+
+describe("badges for platforms counted from outside a page's top 10", () => {
+  it("marks a Bluesky topic in its grace hours and shows a rank past 10", async () => {
+    const db = await createTestDb();
+    try {
+      await upsertSources(db.db, planSources({ collectors: new Set(), disabled: [], env: {} }));
+      const earlier = new Date("2026-10-09T11:07:00Z");
+      const now = new Date("2026-10-09T12:07:00Z");
+      const rank = (at: Date, results: ListResult[]) =>
+        writeResults(db.db, results).then((itemIds) =>
+          rankRun({ db: db.db, results, itemIds, now: at, embedder: wordEmbedder, blocklist: new Set(), threshold: WORD_EMBEDDER_THRESHOLD }),
+        );
+      await rank(earlier, [list("bluesky", "global", earlier, ["Storm warning", "Harbor fire"])]);
+      const fillers = ["red apple", "blue river", "green forest", "quiet mountain", "silver bridge", "golden bell", "winter garden", "summer market", "morning train", "evening concert", "paper lantern"];
+      await rank(now, [
+        list("bluesky", "global", now, ["Harbor fire"]),
+        list("mastodon", "global", now, [...fillers, "harbor fire"]),
+      ]);
+
+      const top = await combinedTop(db.db);
+      const badges = Object.fromEntries(
+        top!.entries.map((e) => [e.label, e.platforms.map((p) => [p.sourceId, p.rank, p.seenAt ?? null])]),
+      );
+      expect(badges["Harbor fire"]).toEqual([
+        ["bluesky", 1, null],
+        ["mastodon", 12, null],
+      ]);
+      expect(badges["Storm warning"]).toEqual([["bluesky", 1, earlier.toISOString()]]);
+
+      const detail = await topicDetail(db.db, top!.entries.find((e) => e.label === "Storm warning")!.slug);
+      expect(detail?.platforms.map((p) => [p.sourceId, p.seenAt])).toEqual([["bluesky", earlier.toISOString()]]);
+    } finally {
+      await db.close();
+    }
+  });
+});
