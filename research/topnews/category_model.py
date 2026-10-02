@@ -191,6 +191,37 @@ def baselines(train_vectors, train_sources, train_labels, test_vectors, test_sou
     }
 
 
+def rolling(
+    vectors: np.ndarray, sources, labels, folds: int = 10, thresholds=(0.0, 0.6, 0.7, 0.8, 0.9), **fit_options
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """A steadier score than one split, for rows in time order: every block after the first is predicted by
+    a model trained on the blocks before it, and the predictions are pooled.
+
+    One split's score swings with what its test hours happened to hold (a football night is easy). Returns
+    the pooled score per threshold, and per block the share right when always answering beside the
+    platform-majority baseline, to show that swing.
+    """
+    sources, labels = np.asarray(sources), np.asarray(labels)
+    answers, confidence = out_of_fold(vectors, sources, labels, folds=folds, **fit_options)
+    known = ~np.isnan(confidence)
+    by_threshold = []
+    for threshold in thresholds:
+        gated = np.where(confidence[known] >= threshold, answers[known], UNKNOWN)
+        by_threshold.append({"threshold": threshold, **score(gated, labels[known])})
+    blocks = np.array_split(np.arange(len(labels)), folds)
+    by_block = []
+    for k in range(1, folds):
+        past, block = np.concatenate(blocks[:k]), blocks[k]
+        simple = baselines(vectors[past], sources[past], labels[past], vectors[block], sources[block], labels[block])
+        by_block.append(
+            {
+                "block": k, "training_trends": int(len(past)), "rows": int(len(block)),
+                "right": float((answers[block] == labels[block]).mean()), "platform_majority": simple["platform_majority"],
+            }
+        )
+    return pd.DataFrame(by_threshold), pd.DataFrame(by_block)
+
+
 def learning_curve(train_vectors, train_sources, train_labels, test_vectors, test_sources, test_labels, sizes, **fit_options) -> pd.DataFrame:
     """Accuracy on the test rows (always answering) when training on only the newest `n` training rows."""
     train_sources, train_labels = np.asarray(train_sources), np.asarray(train_labels)

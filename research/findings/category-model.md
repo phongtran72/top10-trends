@@ -1,7 +1,7 @@
 # Category as a live feature (task 5.14)
 
-**Status: tool built, two runs in, targets not met yet (2026-10-02).** The classifier isn't shipped to the pipeline. It needs more labeled trends, which come as the stored lists grow.
-- Re-run `notebooks/09_category_model.ipynb` after each new batch of labels.
+**Status: tool built, three runs in, targets not met yet (2026-10-02).** The classifier isn't shipped to the pipeline. It needs more labeled trends, which come as the stored lists grow.
+- Re-run `notebooks/09_category_model.ipynb` after each new batch of labels, and compare runs on its rolling score, not on the single split.
 - Ship it (task 5.14, step 3) only once it meets the targets below.
 
 ## Question
@@ -79,6 +79,26 @@ At the threshold chosen in training (0.75), with the platform as an input:
 - **The simple rule got stronger too.** With Reddit now in training, each platform's most common category is right 43% of the time, so the classifier's lead over it is 13 points, down from 22.
 - **By platform at its threshold:** Bluesky answers 80% and all rightly; Hacker News 51%, all rightly; Google 39% (83% right); X 23% (86%); Reddit 16% (89%).
 - **The learning curve is noisy at this size:** 55% right with 520 training trends, 58% with 650, 56% with 747.
+
+## A steadier score, and a third run (2026-10-02, data to 03:08 UTC)
+
+1,148 labeled trends that the filters keep (84 more).
+
+**One split's score swings with its test hours.** On the newest 30% this run, the classifier was right 67% of the time when always answering, up from 56% two hours of data earlier. Most of that is the test period, not the model: it now ends on a Thursday Night Football evening, full of player names on X and Google, and each platform's most common category alone was right 50% of the time there (43% before).
+
+**So runs are now compared on a rolling score** (`category_model.rolling`): every tenth of the trends, in time order, is predicted by a model trained only on the tenths before it, and the predictions are pooled (1,033 trends).
+
+| Threshold | Trends it answers | Right, of those |
+| --- | --- | --- |
+| none | 100% | 59% |
+| 0.6 | 56% | 79% |
+| 0.7 | 47% | 83% |
+| 0.8 | 38% | 86% |
+| 0.9 | 25% | 91% |
+
+- **Against the targets (85% right, 50% answered):** at 0.8 it's right often enough and answers 38%; at 0.7 it answers 47% and is right on 83%. It's close on each and not there on both.
+- **Block by block it's right 39% to 69% of the time,** and each platform's most common category 21% to 61%. The classifier leads that simple rule by 15 points on average, in every block.
+- **The single split, for the record:** at the threshold chosen in training (0.9) it answers 43% of the newest 347 trends and is right on 91%.
 
 ## What it means
 

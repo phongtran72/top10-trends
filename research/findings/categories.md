@@ -1,7 +1,7 @@
 # Topic categories
 
-**Status: four sets labeled and checked (2026-10-02).**
-- **What's labeled:** all 1,248 trends from the stored lists of 2026-09-30 11:32 to 2026-10-02 00:08 UTC (no YouTube). The first set was the 528 trends up to 02:08 UTC; the second set, 348 more, is in *Second set* below; the third, 245 more, in *Third set*; the fourth, 127 more, in *Fourth set*.
+**Status: five sets labeled and checked (2026-10-02).**
+- **What's labeled:** all 1,332 trends from the stored lists of 2026-09-30 11:32 to 2026-10-02 03:08 UTC (no YouTube). The first set was the 528 trends up to 02:08 UTC; the second set, 348 more, is in *Second set* below; the third, 245 more, in *Third set*; the fourth, 127 more, in *Fourth set*; the fifth, 84 more, in *Fifth set*.
 - **How:** the local model drafted a category and a news flag for each, and every draft was then checked. New trends get drafts on later runs; their checks come with each re-run.
 - **Who checked:** the research assistant (Claude, which also writes these notes), not the owner. Where this page says "checked", that's what it means.
 - **Where they feed in:** RQ1's lifecycles by category and RQ4's news by kind.
@@ -134,6 +134,10 @@ The signatures held on the second day's data: each platform's top category is th
 ## Fourth set (2026-10-02, data to 00:08 UTC)
 
 127 more trends, checked the same way: 21 corrected (the model agreed on 83%). All 1,248 trends are now checked, with 197 corrected (84% agreed). X's bare names were again the weak spot (12 of 46 corrected): "Kevin Warren" and "Taylor Rooks" (sports) drafted as other and entertainment, "#LightningStrikes" (the hockey team) as an incident.
+
+## Fifth set (2026-10-02, data to 03:08 UTC)
+
+84 more trends: 15 corrected (the model agreed on 82%). All 1,332 trends are checked, with 212 corrected (84% agreed). Most were Thursday Night Football names on X, which the model drafted as other ("Boswell", "Igor", "Jaleel McLaughlin").
 
 ## What it means for the forecasts
 
