@@ -102,6 +102,31 @@ describe("stored Bluesky status", () => {
   });
 });
 
+describe("stored match text", () => {
+  it("is restored on replayed items, so a rebuilt hour has the live run's context line and news count", async () => {
+    const db = await createTestDb();
+    try {
+      await upsertSources(db.db, planSources({ collectors: new Set(), disabled: [], env: {} }));
+      const at = hour(16);
+      const google = list("google_trends", "us", at, ["harbor fire"]);
+      google.items[0].matchText = ["Crews battle a fire at the harbor", "Harbor fire closes the port"];
+      await writeResults(db.db, [google, list("mastodon", "global", at, ["#sometag"])]);
+      const slots = await loadSlots(db.db);
+      expect(slots[0].results.map((r) => r.items.map((i) => i.matchText))).toEqual([
+        [["Crews battle a fire at the harbor", "Harbor fire closes the port"]],
+        [undefined],
+      ]);
+      await replaySlots(db.db, slots, { threshold: 0.8, embedder: wordEmbedder, blocklist: new Set() });
+      const [topic] = (await db.db.select().from(topics)).filter((t) => t.label === "harbor fire");
+      expect(topic.summary).toBe("Crews battle a fire at the harbor");
+      const snaps = (await db.db.select().from(topicSnapshots)).filter((s) => s.topicId === topic.id);
+      expect(snaps.map((s) => s.newsCount)).toEqual([2]);
+    } finally {
+      await db.close();
+    }
+  });
+});
+
 describe("memoEmbedder", () => {
   it("embeds each distinct text once", async () => {
     let calls = 0;

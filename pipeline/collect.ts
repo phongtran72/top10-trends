@@ -89,6 +89,16 @@ export async function collect(
   return Promise.all(tasks);
 }
 
+// The extra text matching reads (Google Trends' headlines, Bluesky's
+// descriptions), kept so a replay of stored lists reads what the live run
+// read. Null, not an empty array, when a source provides none.
+const MATCH_TEXT_MAX = 5;
+const MATCH_TEXT_LENGTH = 1000;
+export function storedMatchText(texts: readonly string[] | undefined): string[] | null {
+  const kept = (texts ?? []).map((text) => text.trim().slice(0, MATCH_TEXT_LENGTH)).filter(Boolean).slice(0, MATCH_TEXT_MAX);
+  return kept.length > 0 ? kept : null;
+}
+
 // One fetch_runs row per source and region, plus that list's trend_items in
 // one batch. Only the columns in PLAN.md › Data model are stored. Returns each
 // saved item's trend_items id, for topic matching.
@@ -124,6 +134,7 @@ export async function writeResults(db: Db, results: readonly ListResult[]): Prom
             // Only Bluesky sets flags.status. Lists are saved before the filters, so the label is kept for
             // every item, including the stale ones the rank step drops.
             status: item.flags?.status?.trim().toLowerCase().slice(0, 32) || null,
+            matchText: storedMatchText(item.matchText),
             fetchedAt: result.finishedAt,
           })),
         )
