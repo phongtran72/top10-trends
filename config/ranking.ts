@@ -40,7 +40,9 @@ export const UNSCORED_SOURCES: ReadonlySet<string> = new Set(["tiktok"]);
 // can tell from English names ("Globo", "Lula", "Renan"). So a trend on such a
 // list never starts a topic, and it counts in the combined score only when
 // the topic also has a lead entry from another list (X's US list, Google
-// Trends, Bluesky or Mastodon).
+// Trends, Bluesky or Mastodon). When X's US list has the topic too, X's rank
+// is the US one: a Thai fan tag at #19 in the US and #3 worldwide counts as
+// #19.
 export const CONFIRM_ONLY_LISTS: ReadonlySet<string> = new Set(["x:global"]);
 export function confirmOnly(sourceId: string, region: string | undefined): boolean {
   return CONFIRM_ONLY_LISTS.has(`${sourceId}:${region}`);
@@ -65,5 +67,6 @@ export const FETCH_RUN_RETENTION_DAYS = 90;
 // of stored snapshots can tell methods apart (topic_snapshots.algo_version).
 // r1: phase 2 as launched on 2026-10-01. r2: Bluesky trends marked cooling
 // are kept; only stale ones are dropped. r3: X's Worldwide list only backs
-// up other lists (CONFIRM_ONLY_LISTS).
-export const RANKING_VERSION = "r3";
+// up other lists (CONFIRM_ONLY_LISTS). r4: X's rank is its US list's when
+// the US list has the topic.
+export const RANKING_VERSION = "r4";

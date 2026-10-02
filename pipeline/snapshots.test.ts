@@ -65,10 +65,28 @@ describe("buildSnapshots", () => {
   });
 });
 
+describe("X's two lists in a snapshot", () => {
+  it("records the US list's rank and metric when both lists have the topic, and the Worldwide rank with no position when only it does", () => {
+    const rows = buildSnapshots(
+      [
+        { topicId: 1, sourceId: "x", rank: 3, region: "global", metricValue: 900 },
+        { topicId: 1, sourceId: "x", rank: 19, region: "us", metricValue: 40 },
+        { topicId: 2, sourceId: "x", rank: 1, region: "global", metricValue: 5000 },
+      ],
+      at,
+      options,
+    );
+    expect(rows.map((r) => [r.topicId, r.position, r.ranks, r.metrics])).toEqual([
+      [1, 1, { x: 19 }, { x: 40 }],
+      [2, null, { x: 1 }, { x: 5000 }],
+    ]);
+  });
+});
+
 describe("snapshot metadata", () => {
   it("names the method that made a row", () => {
-    expect(algoVersion(0.86)).toBe("nomic-embed-text-v1.5.q8.384/t0.86/r3");
-    expect(algoVersion(0.8, true)).toBe("nomic-embed-text-v1.5.q8.384/t0.80/r3+replay");
+    expect(algoVersion(0.86)).toBe("nomic-embed-text-v1.5.q8.384/t0.86/r4");
+    expect(algoVersion(0.8, true)).toBe("nomic-embed-text-v1.5.q8.384/t0.80/r4+replay");
   });
 
   it("records each topic's news count, defaulting to 0", () => {

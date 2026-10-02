@@ -3,7 +3,7 @@ import { RANKING_VERSION } from "@/config/ranking";
 import { topicSnapshots } from "@/db/schema";
 import { EMBEDDING_DIMENSIONS, EMBEDDING_DTYPE, EMBEDDING_MODEL } from "@/lib/embed";
 import type { Db } from "./db";
-import { scoreTopics, type ScoreEntry } from "./score";
+import { bestEntries, scoreTopics, type ScoreEntry } from "./score";
 
 // Topic snapshots: one row per topic per run, kept permanently as history for
 // a future prediction model. Built from the same current entries as the
@@ -50,22 +50,14 @@ export function buildSnapshots(
   const scores = scoreTopics(kept, sources);
   const position = new Map(scores.map((s, index) => [s.topicId, { position: index + 1, score: s.score }]));
 
-  // Best rank per topic and platform, with the metric of that best-ranked item.
-  const byTopic = new Map<number, Map<SourceId, { rank: number; metric: number | null }>>();
-  for (const entry of kept) {
-    const platforms = byTopic.get(entry.topicId) ?? new Map<SourceId, { rank: number; metric: number | null }>();
-    const best = platforms.get(entry.sourceId);
-    if (!best || entry.rank < best.rank) platforms.set(entry.sourceId, { rank: entry.rank, metric: entry.metricValue ?? null });
-    byTopic.set(entry.topicId, platforms);
-  }
-
-  return [...byTopic]
+  // Each platform's rank for the topic, the one the score uses, with that item's metric.
+  return [...bestEntries(kept, sources)]
     .map(([topicId, platforms]) => {
       const ranks: Record<string, number> = {};
       const metrics: Record<string, number> = {};
-      for (const [sourceId, { rank, metric }] of platforms) {
-        ranks[sourceId] = rank;
-        if (metric !== null) metrics[sourceId] = metric;
+      for (const [sourceId, entry] of platforms) {
+        ranks[sourceId] = entry.rank;
+        if (entry.metricValue !== null && entry.metricValue !== undefined) metrics[sourceId] = entry.metricValue;
       }
       const scored = position.get(topicId);
       return {

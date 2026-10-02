@@ -8,8 +8,9 @@ import type { Db } from "./db";
 // Combined score (CLAUDE.md invariant 7): the sum over platforms of
 // weight / log2(best rank + 1). A corroborating platform counts only when a
 // lead platform also has the topic, and only lists fetched in the last three
-// hours count. An entry from a confirm-only list (X's Worldwide list) counts
-// toward its platform's best rank but not as a lead.
+// hours count. An entry from a confirm-only list (X's Worldwide list) is no
+// lead, and gives its platform's rank only when the platform's lead list
+// lacks the topic.
 
 export interface ScoreEntry {
   topicId: number;
@@ -27,30 +28,40 @@ export interface ScoreEntry {
 export interface TopicScore {
   topicId: number;
   score: number;
-  platforms: { sourceId: SourceId; rank: number }[]; // best rank per platform, counted or not
+  platforms: { sourceId: SourceId; rank: number }[]; // each platform's rank (bestEntries), counted or not
+}
+
+const backsUp = (entry: ScoreEntry) => confirmOnly(entry.sourceId, entry.region);
+
+// Each platform's entry for each topic: its best-ranked one, taken from the
+// platform's own lead lists when one of them has the topic. So X's Worldwide
+// rank stands in only when X's US list lacks the topic; it never lifts a
+// topic the US list ranks lower.
+export function bestEntries(entries: readonly ScoreEntry[], sources: readonly SourceDef[] = PLATFORMS): Map<number, Map<SourceId, ScoreEntry>> {
+  const known = new Set(sources.map((s) => s.id));
+  const best = new Map<number, Map<SourceId, ScoreEntry>>();
+  for (const entry of entries) {
+    if (!known.has(entry.sourceId)) continue;
+    const platforms = best.get(entry.topicId) ?? new Map<SourceId, ScoreEntry>();
+    const held = platforms.get(entry.sourceId);
+    const better = !held || (backsUp(entry) !== backsUp(held) ? backsUp(held) : entry.rank < held.rank);
+    if (better) platforms.set(entry.sourceId, entry);
+    best.set(entry.topicId, platforms);
+  }
+  return best;
 }
 
 export function scoreTopics(entries: readonly ScoreEntry[], sources: readonly SourceDef[] = PLATFORMS): TopicScore[] {
   const byId = new Map(sources.map((s) => [s.id, s]));
-  const best = new Map<number, Map<SourceId, number>>();
-  const led = new Set<number>(); // topics with an entry from a lead list
-  for (const { topicId, sourceId, rank, region } of entries) {
-    const source = byId.get(sourceId);
-    if (!source) continue;
-    if (source.role === "lead" && !confirmOnly(sourceId, region)) led.add(topicId);
-    const ranks = best.get(topicId) ?? new Map<SourceId, number>();
-    ranks.set(sourceId, Math.min(rank, ranks.get(sourceId) ?? Infinity));
-    best.set(topicId, ranks);
-  }
-
   const scores: TopicScore[] = [];
-  for (const [topicId, ranks] of best) {
-    if (!led.has(topicId)) continue;
+  for (const [topicId, chosen] of bestEntries(entries, sources)) {
+    const led = [...chosen.values()].some((entry) => byId.get(entry.sourceId)!.role === "lead" && !backsUp(entry));
+    if (!led) continue;
     let score = 0;
-    for (const [sourceId, rank] of ranks) score += byId.get(sourceId)!.weight / Math.log2(rank + 1);
+    for (const [sourceId, entry] of chosen) score += byId.get(sourceId)!.weight / Math.log2(entry.rank + 1);
     // Best rank first; ties by weight, then id, so the order is stable.
-    const platforms = [...ranks]
-      .map(([sourceId, rank]) => ({ sourceId, rank }))
+    const platforms = [...chosen]
+      .map(([sourceId, entry]) => ({ sourceId, rank: entry.rank }))
       .sort(
         (a, b) =>
           a.rank - b.rank || byId.get(b.sourceId)!.weight - byId.get(a.sourceId)!.weight || a.sourceId.localeCompare(b.sourceId),
