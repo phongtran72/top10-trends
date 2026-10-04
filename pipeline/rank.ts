@@ -27,6 +27,7 @@ export interface RankInput {
   blocklist: ReadonlySet<string>;
   threshold?: number;
   replay?: boolean; // rebuilding from stored lists: no headlines or flags
+  nameMatch?: boolean; // off only to compare in a replay
 }
 
 export interface RankedTopic {
@@ -122,6 +123,7 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
   const existing = input.db ? await loadRecentTopics(input.db, input.now) : [];
   const match = matchItems(items, existing, {
     threshold: input.threshold,
+    nameMatch: input.nameMatch,
     now: input.now,
     labelFor,
     contextFor,

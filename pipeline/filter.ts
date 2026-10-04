@@ -3,7 +3,7 @@ import path from "node:path";
 import { englishDataset, englishRecommendedTransformers, RegExpMatcher } from "obscenity";
 import { detectAll } from "tinyld";
 import type { TrendItem } from "@/collectors/types";
-import { normalize } from "@/lib/text";
+import { nameKey, normalize } from "@/lib/text";
 
 // Filters (CLAUDE.md invariant 10): keep English items and drop NSFW posts,
 // Bluesky trends that are stale, profanity and evergreen tags.
@@ -37,7 +37,7 @@ const profanity = new RegExpMatcher({ ...englishDataset.build(), ...englishRecom
 
 // "#Monday Motivation!" → "mondaymotivation": how blocklist entries compare.
 export function compactText(text: string): string {
-  return normalize(text).replace(/[^\p{L}\p{N}]/gu, "");
+  return nameKey(text);
 }
 
 export function parseBlocklist(text: string): Set<string> {

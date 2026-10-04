@@ -1,14 +1,15 @@
 import { and, count, eq, gt, inArray, lte } from "drizzle-orm";
 import { TOPIC_WINDOW_HOURS } from "@/config/ranking";
-import { topicItems, topics } from "@/db/schema";
-import { slugify } from "@/lib/text";
+import { topicItems, topics, trendItems } from "@/db/schema";
+import { nameKey, slugify } from "@/lib/text";
 import type { Db } from "./db";
 import type { MatchResult, Topic } from "./match";
 
 // Loading and saving topics for matching.
 
 // Topics seen in the last 48 hours (and created by then, which matters when
-// replaying past hours), with how many items shaped each centroid.
+// replaying past hours), with how many items shaped each centroid and the
+// names of their members from those hours (for matching by name).
 export async function loadRecentTopics(db: Db, now: Date, hours = TOPIC_WINDOW_HOURS): Promise<Topic[]> {
   const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
   const rows = await db
@@ -34,8 +35,28 @@ export async function loadRecentTopics(db: Db, now: Date, hours = TOPIC_WINDOW_H
     )
     .groupBy(topicItems.topicId);
   const countOf = new Map(counts.map((c) => [c.topicId, Number(c.items)]));
+  const titles = await db
+    .selectDistinct({ topicId: topicItems.topicId, title: trendItems.title })
+    .from(topicItems)
+    .innerJoin(trendItems, eq(trendItems.id, topicItems.itemId))
+    .where(
+      and(
+        inArray(
+          topicItems.topicId,
+          rows.map((r) => r.id),
+        ),
+        gt(trendItems.fetchedAt, since),
+        lte(trendItems.fetchedAt, now),
+      ),
+    );
+  const namesOf = new Map<number, Set<string>>();
+  for (const { topicId, title } of titles) {
+    const name = nameKey(title);
+    if (name) namesOf.set(topicId, (namesOf.get(topicId) ?? new Set<string>()).add(name));
+  }
   return rows.map((row) => ({
     ...row,
+    names: namesOf.get(row.id) ?? new Set<string>(),
     count: Math.max(1, countOf.get(row.id) ?? 1),
     isNew: false,
     changed: false,

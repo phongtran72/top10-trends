@@ -52,6 +52,13 @@ export function normalize(text: string, options: SplitOptions = {}): string {
 }
 
 // Display form: hashtags split into words, the source's capitalization kept.
+// A name as one run of lowercase letters and digits, so the same name matches
+// however a source writes it: "#BahrainGP", "Bahrain GP" and "bahrain gp"
+// are all "bahraingp".
+export function nameKey(text: string): string {
+  return normalize(text).replace(/[^\p{L}\p{N}]/gu, "");
+}
+
 export function prettyLabel(text: string): string {
   return splitTitle(text, {});
 }
