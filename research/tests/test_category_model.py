@@ -130,3 +130,12 @@ def test_the_json_round_trip_scores_the_same():
     assert again.meta == {"trained_to": "2026-10-01"}
     assert cm.probabilities(again, vectors, sources) == pytest.approx(cm.probabilities(model, vectors, sources), abs=1e-4)
     assert '"dimensions": 3' in cm.to_json(model)
+
+
+def test_rolling_scores_only_the_rows_it_is_told_to():
+    vectors, sources, labels = clusters(noise=0.5)
+    scored = np.zeros(len(labels), dtype=bool)
+    scored[40:70] = True
+    by_threshold, by_block = cm.rolling(vectors, sources, labels, folds=3, thresholds=(0.0,), scored=scored)
+    assert by_threshold.iloc[0]["rows"] == 30  # every row trained; 30 were scored
+    assert by_block["rows"].tolist() == [30, 30]  # the per-block view still shows every block

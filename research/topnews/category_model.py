@@ -49,17 +49,22 @@ class Model:
     meta: dict = field(default_factory=dict)
 
 
-def training_set(items: pd.DataFrame, store=categories.STORE, name: str = "category_model") -> tuple[pd.DataFrame, np.ndarray]:
+def training_set(
+    items: pd.DataFrame, store=categories.STORE, name: str = "category_model", use_text: bool = True
+) -> tuple[pd.DataFrame, np.ndarray]:
     """The labeled trends that the pipeline's filters keep, oldest first, with their vectors in row order.
-    Columns: source_id, key, title, first_seen, category, llm_category, checked."""
+    Columns: source_id, key, title, first_seen, category, llm_category, checked, has_text. A vector is made
+    from the title and the trend's stored match text, as the pipeline's is; `use_text=False` uses the title
+    alone. The filters read the text too, so the two settings can keep slightly different trends."""
     trends = echo.trends(items)
-    filtered, vectors = echo.embed(trends, name, True, items)
+    filtered, vectors = echo.embed(trends, name, True, items, use_text)
     kept, kept_vectors = echo.kept_trends(trends, filtered, vectors)
     labels = categories.final(categories.read(store))[["source_id", "key", "category", "llm_category", "checked"]]
     table = kept.merge(labels, on=["source_id", "key"], how="left")
     labeled = table["category"].notna().to_numpy()
     order = np.argsort(table.loc[labeled, "first_seen"].to_numpy(), kind="stable")
-    columns = ["source_id", "key", "title", "first_seen", "category", "llm_category", "checked"]
+    table["has_text"] = table["match_text"].map(echo.has_text)
+    columns = ["source_id", "key", "title", "first_seen", "category", "llm_category", "checked", "has_text"]
     out = table.loc[labeled, columns].iloc[order].reset_index(drop=True)
     return out.assign(checked=out["checked"].astype(bool)), kept_vectors[labeled][order]
 
@@ -192,18 +197,22 @@ def baselines(train_vectors, train_sources, train_labels, test_vectors, test_sou
 
 
 def rolling(
-    vectors: np.ndarray, sources, labels, folds: int = 10, thresholds=(0.0, 0.6, 0.7, 0.8, 0.9), **fit_options
+    vectors: np.ndarray, sources, labels, folds: int = 10, thresholds=(0.0, 0.6, 0.7, 0.8, 0.9), scored=None,
+    **fit_options,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """A steadier score than one split, for rows in time order: every block after the first is predicted by
     a model trained on the blocks before it, and the predictions are pooled.
 
     One split's score swings with what its test hours happened to hold (a football night is easy). Returns
     the pooled score per threshold, and per block the share right when always answering beside the
-    platform-majority baseline, to show that swing.
+    platform-majority baseline, to show that swing. Every row trains; `scored` (a mask) limits which rows
+    count in the pooled score, for example to checked labels.
     """
     sources, labels = np.asarray(sources), np.asarray(labels)
     answers, confidence = out_of_fold(vectors, sources, labels, folds=folds, **fit_options)
     known = ~np.isnan(confidence)
+    if scored is not None:
+        known &= np.asarray(scored, dtype=bool)
     by_threshold = []
     for threshold in thresholds:
         gated = np.where(confidence[known] >= threshold, answers[known], UNKNOWN)

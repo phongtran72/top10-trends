@@ -195,3 +195,36 @@ def test_load_vectors_reads_the_embed_script_output(tmp_path):
     rows, vectors = echo.load_vectors(out)
     assert rows.loc[0, "id"] == "t0"
     assert vectors.shape == (1, 384)
+
+
+def test_trends_carry_the_latest_stored_match_text():
+    rows = [
+        {"run_id": 1, "source_id": "google_trends", "region": "us", "rank": 1, "title": "lito", "url": "u1", "fetched_at": T0, "match_text": None},
+        {"run_id": 2, "source_id": "google_trends", "region": "us", "rank": 2, "title": "lito", "url": "u2",
+         "fetched_at": T0 + pd.to_timedelta(1, unit="h"), "match_text": ["Lito Sousa dies", "Fans mourn"]},
+        {"run_id": 3, "source_id": "google_trends", "region": "us", "rank": 3, "title": "lito", "url": "u3",
+         "fetched_at": T0 + pd.to_timedelta(2, unit="h"), "match_text": []},
+        {"run_id": 1, "source_id": "x", "region": "us", "rank": 1, "title": "Lito", "url": "x", "fetched_at": T0, "match_text": None},
+    ]
+    t = echo.trends(pd.DataFrame(rows)).set_index("source_id")
+    assert t.loc["google_trends", "match_text"] == ["Lito Sousa dies", "Fans mourn"]  # an empty later list doesn't erase it
+    assert t.loc["x", "match_text"] is None
+    without = echo.trends(pd.DataFrame(rows).drop(columns="match_text"))
+    assert without["match_text"].isna().all()  # lists from before the column was stored
+
+
+def test_embed_input_sends_match_text_with_rows_and_groups_unless_told_not_to():
+    t = table([("google_trends", "lito", 0, 1, 2), ("x", "Lito", 0, 0, 1)]).assign(match_text=[["Lito Sousa dies"], None])
+    items = pd.DataFrame(
+        {
+            "source_id": ["google_trends", "x"], "title": ["lito", "Lito"],
+            "fetched_at": [T0, T0], "match_text": [["Lito Sousa dies"], None],
+        }
+    )
+    data = echo.embed_input(t, items)
+    assert data["rows"][0]["matchText"] == ["Lito Sousa dies"] and "matchText" not in data["rows"][1]
+    group = {g["source"]: g for g in data["groups"]["2026-10-01T12"]}
+    assert group["google_trends"]["matchText"] == ["Lito Sousa dies"] and "matchText" not in group["x"]
+    titles_only = echo.embed_input(t, items, use_text=False)
+    assert all("matchText" not in row for row in titles_only["rows"])
+    assert all("matchText" not in g for g in titles_only["groups"]["2026-10-01T12"])

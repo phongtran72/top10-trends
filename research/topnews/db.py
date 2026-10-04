@@ -111,18 +111,23 @@ def has_column(eng: Engine, table: str, column: str) -> bool:
 
 
 def trend_items(eng: Engine, days: float | None = 7, include_youtube: bool = False) -> pd.DataFrame:
-    """Stored list items (kept 28 days): source, region, rank, title, url, metric, status, fetched_at.
-    `status` is Bluesky's lifecycle label (trending, saturating, cooling, stale), stored since migration
-    0004; it's empty before that and for other sources."""
+    """Stored list items (kept 28 days): source, region, rank, title, url, metric, status, match_text,
+    fetched_at.
+    - `status` is Bluesky's lifecycle label (trending, saturating, cooling, stale), stored since migration
+      0004; it's empty before that and for other sources.
+    - `match_text` is the extra text the pipeline matches on, as a list: Google's headlines and Bluesky's
+      description, stored since migration 0005 (the 2026-10-02 18:07 UTC run); None before that and for
+      other sources."""
     where = _since(days).format(col="fetched_at")
     status = "status" if has_column(eng, "trend_items", "status") else "null::text as status"
+    match_text = "match_text" if has_column(eng, "trend_items", "match_text") else "null::text[] as match_text"
     excluded = "" if include_youtube else "and source_id <> all(:excluded)"
     params: dict = {} if days is None else {"seconds": days * 86400}
     if not include_youtube:
         params["excluded"] = list(EXCLUDED_BY_DEFAULT)
     return query(
         eng,
-        f"select run_id, source_id, region, rank, title, url, metric_value, metric_label, {status}, fetched_at "
+        f"select run_id, source_id, region, rank, title, url, metric_value, metric_label, {status}, {match_text}, fetched_at "
         f"from trend_items where true {where} {excluded} order by fetched_at, source_id, rank",
         **params,
     )

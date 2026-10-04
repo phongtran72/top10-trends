@@ -83,3 +83,15 @@ def test_a_store_from_before_the_checked_column_reads_as_unchecked(tmp_path):
     pd.DataFrame({"source_id": ["x"], "key": ["astros"], "title": ["astros"], "context": ["X trend"], "llm_category": ["sports"],
                   "llm_news": [True], "reviewed_category": [pd.NA], "reviewed_news": [pd.NA]}).to_csv(store, index=False)
     assert categories.read(store)["checked"].tolist() == [False]
+
+
+def test_context_prefers_the_stored_match_text_to_the_links_words():
+    url = "https://onefootball.com/en/news/lito-sousa-dies"
+    assert categories.context("google_trends", url, ["Lito Sousa dies", "Fans mourn", "A third"]) == (
+        "Google search trend (US); Lito Sousa dies / Fans mourn"
+    )
+    assert categories.context("google_trends", url, []) == "Google search trend (US); onefootball.com: en news lito sousa dies"
+    assert categories.context("bluesky", "https://bsky.app/x", ["A description of the topic"]) == (
+        "Bluesky trending topic; A description of the topic"
+    )
+    assert categories.context("x", None, None) == "X trend"
