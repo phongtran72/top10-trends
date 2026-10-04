@@ -139,6 +139,20 @@ The text helps where both sides have words to compare (Bluesky with Google, Goog
 1. Now: an exact-name rule on top of today's vectors. An item joins a topic when its normalized title equals a member's. It removes the splits and the top-10 duplicates and adds no wrong merge.
 2. For the review: also join when the title-alone similarity is 0.90 or more, keeping the text comparison at 0.86. That adds about 40 right pairs (a name inside a longer query, such as "eagles game sunday" with "Eagles") for about 6 wrong, and needs a second vector per item.
 
+**The exact-name rule, checked before it ships** (the web-app session's PR #25, replayed in memory over the same hours, 53 by then):
+
+| US view | Without the rule | With it |
+| --- | --- | --- |
+| Same-name splits (topic-hours) | 31 | 0 |
+| Hours with a name twice in the top 10 | 5 | 0 |
+| X and Google in one topic (topic-hours) | 10 | 54 |
+| Bluesky and Google | 21 | 19 |
+| Topics with members from 2 or more sources | 47 | 77 |
+
+- Of the 102 member pairs it adds, 40 have the same name on both sides and all 40 are the same subject. The other 62 come through the topic the item joined; 54 of them are one Formula 1 race, now a single story across five platforms.
+- It adds no wrong merge of its own. Four added pairs ride on merges the vectors had already made (two surname ones, two loose ones from Google's headlines).
+- The rule runs before the vectors, so it can move an item: 5 pairs disappear, where a Google query used to join a Bluesky story by its headlines and now joins the same name on X.
+
 **For research:** `echo.analyze` embeds titles alone by default, so the research questions treat every day alike and aren't cut down by the same effect. `use_text=True` gives the live pipeline's vectors.
 
 **Limits of this test:** one reader's verdicts (the research assistant's); pairs are counted inside topics, so one chained topic counts several times; 52 hours with a football weekend in them.
