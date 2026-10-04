@@ -1,6 +1,6 @@
 # Topic categories
 
-**Status: six sets labeled and checked (2026-10-02).**
+**Status: seven sets labeled; the seventh is checked for Google and Bluesky only (2026-10-04).**
 - **What's labeled:** all 1,728 trends from the stored lists of 2026-09-30 11:32 to 2026-10-02 17:08 UTC (no YouTube). The first set was the 528 trends up to 02:08 UTC; the second set, 348 more, is in *Second set* below; the third, 245 more, in *Third set*; the fourth, 127 more, in *Fourth set*; the fifth, 84 more, in *Fifth set*; the sixth, 396 more, in *Sixth set*.
 - **How:** the local model drafted a category and a news flag for each, and every draft was then checked. New trends get drafts on later runs; their checks come with each re-run.
 - **Who checked:** the research assistant (Claude, which also writes these notes), not the owner. Where this page says "checked", that's what it means.
@@ -147,6 +147,14 @@ The signatures held on the second day's data: each platform's top category is th
 - **X's bare names again** (39 of 147): the Indiana Fever drafted as health, "Caitlin" and "Kelsey Mitchell" as entertainment, the Sharks' "#TurnItAllTeal" as a meme.
 - **TikTok's list changed** (18 new hashtags). "#cornell", "#cornelluniversity" and "#cornell7" are the Cornell case Google listed on October 1, drafted as other; "#pac" is the wrestler who died, drafted as politics.
 - **Reddit's home and family clips** were drafted as lifestyle; they're other here, and lifestyle is kept for food, fashion, home, travel and crafts.
+
+## Seventh set (2026-10-04, data to 02:08 UTC)
+
+1,173 more trends drafted, 33 hours' worth. For this set the local model read each Google trend's real headlines and each Bluesky topic's description (the stored match text), not the words of a link.
+
+- **Checked: the 345 Google and Bluesky trends.** 31 corrected, so the model agreed on 91% (92% on Google, 85% on Bluesky), against 80–84% on earlier sets. Its remaining errors are judgment calls more than misreadings: a celebrity's arrest drafted as an incident ("diddy"), WWE results as sports, a policy story as business.
+- **Not checked: the other 828** (X 428, Reddit 198, Hacker News 125, Mastodon 34, Instagram 20, Twitch 16, TikTok 7). They stay drafts, marked unchecked in the store: they train the classifier and don't score it. A sample of them is the next check.
+- The store holds 2,901 trends: 2,073 checked and 828 drafts.
 
 ## What it means for the forecasts
 
