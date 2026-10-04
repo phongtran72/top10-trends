@@ -111,3 +111,33 @@
   text-align: left;
   font-variant-numeric: tabular-nums;
 }
+
+/* View and feed tabs: plain links; the current one is marked by weight and a
+   filled background, not by color alone. */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.625rem;
+}
+
+.tab {
+  padding: 0.1875rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.tab:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tabCurrent,
+.tabCurrent:hover {
+  border-color: var(--foreground);
+  background: var(--foreground);
+  color: var(--background);
+  font-weight: 600;
+}

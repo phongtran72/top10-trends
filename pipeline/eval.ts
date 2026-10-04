@@ -1,8 +1,9 @@
 import { and, asc, desc, eq, gt } from "drizzle-orm";
 import { getSource, type SourceId } from "@/collectors/registry";
+import { DEFAULT_VIEW, type View } from "@/config/ranking";
 import { rankings, topics } from "@/db/schema";
 import type { Db } from "./db";
-import { currentEntries } from "./score";
+import { currentEntries, viewEntries } from "./score";
 
 // Evaluation (TASKS.md 2.8): print the combined top 10 of a few past hours
 // with each topic's member items and score, for a person to judge whether at
@@ -17,6 +18,7 @@ export interface EvalTopic {
 
 export interface EvalHour {
   at: Date;
+  view: View;
   topics: EvalTopic[];
 }
 
@@ -26,7 +28,7 @@ export async function sampleHours(db: Db, count: number, now: Date, days = 7, ra
   const rows = await db
     .selectDistinct({ at: rankings.computedAt })
     .from(rankings)
-    .where(and(eq(rankings.list, "combined"), gt(rankings.computedAt, since)))
+    .where(and(eq(rankings.list, "combined"), eq(rankings.region, DEFAULT_VIEW), gt(rankings.computedAt, since)))
     .orderBy(desc(rankings.computedAt));
   const times = rows.map((r) => r.at);
   for (let i = times.length - 1; i > 0; i--) {
@@ -39,7 +41,7 @@ export async function sampleHours(db: Db, count: number, now: Date, days = 7, ra
 // One hour's combined top 10 with the items that made up each topic then:
 // exactly the entries the score counted (pipeline/score.ts currentEntries),
 // so Google's 3-hour window and Bluesky's grace show up too.
-export async function evalHour(db: Db, at: Date, region = "global"): Promise<EvalHour> {
+export async function evalHour(db: Db, at: Date, region: View = DEFAULT_VIEW): Promise<EvalHour> {
   const top = await db
     .select({ rank: rankings.rank, topicId: rankings.topicId, score: rankings.score, label: topics.label })
     .from(rankings)
@@ -48,12 +50,13 @@ export async function evalHour(db: Db, at: Date, region = "global"): Promise<Eva
     .orderBy(asc(rankings.rank));
 
   const topicIds = new Set(top.map((t) => t.topicId));
-  const members = (topicIds.size === 0 ? [] : await currentEntries(db, at))
+  const members = (topicIds.size === 0 ? [] : viewEntries(await currentEntries(db, at), region))
     .filter((entry) => topicIds.has(entry.topicId))
     .sort((a, b) => a.rank - b.rank || a.sourceId.localeCompare(b.sourceId));
 
   return {
     at,
+    view: region,
     topics: top.map((t) => ({
       rank: t.rank,
       label: t.label,
@@ -74,7 +77,7 @@ function memberLine(m: EvalTopic["members"][number]): string {
 }
 
 export function formatEvalHour(hour: EvalHour): string[] {
-  const lines = [`== ${hour.at.toISOString().slice(0, 16).replace("T", " ")} UTC`];
+  const lines = [`== ${hour.at.toISOString().slice(0, 16).replace("T", " ")} UTC${hour.view === DEFAULT_VIEW ? "" : ` (${hour.view} view)`}`];
   if (hour.topics.length === 0) lines.push("   (no combined ranking)");
   for (const topic of hour.topics) {
     lines.push(`  ${String(topic.rank).padStart(2)}. ${topic.label}  (score ${topic.score.toFixed(2)})`);

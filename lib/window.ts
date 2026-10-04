@@ -34,3 +34,33 @@ export function rankWindow<T extends WindowItem>(items: readonly T[]): T[] {
       (b.metricValue ?? -1) - (a.metricValue ?? -1) || time(b.fetchedAt) - time(a.fetchedAt) || a.rank - b.rank,
   );
 }
+
+export interface MergedPlace {
+  rank: number;
+  metricValue: number | null;
+}
+
+// One ranking across several feeds of a windowed source (Google Trends' four
+// countries, in the view that counts them all). Takes each feed's ranked window
+// (rankWindow's output). A title's volume is the sum of its feeds' volumes, and
+// every feed's row for that title gets the title's place. Without this, each
+// country's #1 would count as a #1, and four feeds would fill most of a top 10.
+export function mergeWindows<T extends WindowItem>(rows: readonly T[]): Map<T, MergedPlace> {
+  const groups = new Map<string, { rows: T[]; volume: number | null; newest: number; best: number }>();
+  for (const row of rows) {
+    const group = groups.get(key(row.title)) ?? { rows: [], volume: null, newest: 0, best: Infinity };
+    group.rows.push(row);
+    if (row.metricValue !== null && row.metricValue !== undefined) group.volume = (group.volume ?? 0) + row.metricValue;
+    group.newest = Math.max(group.newest, time(row.fetchedAt));
+    group.best = Math.min(group.best, row.rank);
+    groups.set(key(row.title), group);
+  }
+  const ordered = [...groups].sort(
+    ([a, x], [b, y]) => (y.volume ?? -1) - (x.volume ?? -1) || y.newest - x.newest || x.best - y.best || a.localeCompare(b),
+  );
+  const places = new Map<T, MergedPlace>();
+  ordered.forEach(([, group], index) => {
+    for (const row of group.rows) places.set(row, { rank: index + 1, metricValue: group.volume });
+  });
+  return places;
+}

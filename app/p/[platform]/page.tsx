@@ -2,23 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { COLLECTORS } from "@/collectors/index";
-import { pageRegion, platformBySlug, type SourceDef } from "@/collectors/registry";
+import { pageRegion, platformBySlug, platformSlug, type SourceDef } from "@/collectors/registry";
+import { RegionTabs } from "@/components/RegionTabs";
 import { RelativeTime } from "@/components/RelativeTime";
-import { getDb } from "@/lib/db";
+import { getPlatformList } from "@/lib/cached";
 import { hostOf, metricText, REGION_NAMES } from "@/lib/format";
+import { feedQuery, parseFeed } from "@/lib/view";
 import { WINDOWED_SOURCES } from "@/lib/window";
-import { platformList } from "@/lib/queries";
 import styles from "./page.module.css";
 
-// ISR: no page is rendered at build time (generateStaticParams returns []),
-// so `next build` never queries the database. Each page renders on its first
-// visit and is then served from cache until the pipeline revalidates
-// /p/[platform] after a run; the hourly revalidate is a safety net.
-export const revalidate = 3600;
-
-export async function generateStaticParams() {
-  return [];
-}
+// Renders per request, because it reads `?region=` (which of the source's
+// feeds to show), so `next build` never queries the database. Its list comes
+// from the cache under the `trends` tag, which the pipeline expires after
+// each run.
 
 export async function generateMetadata({ params }: PageProps<"/p/[platform]">): Promise<Metadata> {
   const source = platformBySlug((await params).platform);
@@ -36,11 +32,12 @@ function orderText(source: SourceDef): string {
   return hours === undefined ? `in ${source.name}'s own order` : `the last ${hours} hours' trends by search volume`;
 }
 
-export default async function PlatformPage({ params }: PageProps<"/p/[platform]">) {
+export default async function PlatformPage({ params, searchParams }: PageProps<"/p/[platform]">) {
   const source = platformBySlug((await params).platform);
   if (!source) notFound();
-  const list = await platformList(getDb(), source);
-  const region = REGION_NAMES[pageRegion(source)];
+  const feed = parseFeed(source, (await searchParams).region);
+  const list = await getPlatformList(source.id, feed);
+  const region = REGION_NAMES[feed];
 
   return (
     <>
@@ -49,6 +46,16 @@ export default async function PlatformPage({ params }: PageProps<"/p/[platform]"
         {region} · {orderText(source)} ·{" "}
         {list ? <RelativeTime iso={list.fetchedAt} prefix="updated" /> : "no list yet"}
       </p>
+      {source.regions.length > 1 && (
+        <RegionTabs
+          label="Feed"
+          tabs={[pageRegion(source), ...source.regions.filter((r) => r !== pageRegion(source))].map((r) => ({
+            href: `/p/${platformSlug(source.id)}${feedQuery(source, r)}`,
+            label: REGION_NAMES[r],
+            current: r === feed,
+          }))}
+        />
+      )}
       {source.note && <p className={styles.note}>{source.note}</p>}
 
       {list ? (
@@ -75,7 +82,7 @@ export default async function PlatformPage({ params }: PageProps<"/p/[platform]"
         <p className={styles.empty}>
           {!COLLECTORS.has(source.id)
             ? `${source.name} arrives in a later phase.`
-            : `No ${source.name} list has been collected yet. Check the status page.`}
+            : `No ${source.name} list for ${region} has been collected yet. Check the status page.`}
         </p>
       )}
 

@@ -4,16 +4,19 @@ import { COLLECTORS } from "@/collectors/index";
 import { PLATFORMS } from "@/collectors/registry";
 import { PlatformBadges } from "@/components/PlatformBadges";
 import { RankChange } from "@/components/RankChange";
+import { RegionTabs } from "@/components/RegionTabs";
 import { RelativeTime } from "@/components/RelativeTime";
+import { VIEWS } from "@/config/ranking";
 import { getCombinedTop, getDashboard } from "@/lib/cached";
 import type { DashboardEntry, Staying } from "@/lib/dashboard";
 import { metricText, REGION_NAMES } from "@/lib/format";
+import { parseView, VIEW_NAMES, VIEW_NOTES, viewQuery } from "@/lib/view";
 import styles from "./page.module.css";
 
-// The home page: the combined top 10 across platforms, then the dashboard
-// (every platform at a glance and what changed since the last hourly list).
-// It renders per request (never at build time) from data cached under the
-// `trends` tag.
+// The home page: the combined top 10 across platforms for the chosen view
+// (`?region=us`, Global by default), then the dashboard (every platform at a
+// glance and what changed since the last hourly list). It renders per request
+// (never at build time) from data cached under the `trends` tag.
 
 function Entry({ entry, children }: { entry: DashboardEntry | Staying; children?: React.ReactNode }) {
   return (
@@ -53,9 +56,10 @@ function Meter({ value, max }: { value: number; max: number }) {
   );
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }: PageProps<"/">) {
   await connection();
-  const combined = await getCombinedTop();
+  const view = parseView((await searchParams).region);
+  const combined = await getCombinedTop(view);
   const data = await getDashboard();
   const later = PLATFORMS.filter((p) => !COLLECTORS.has(p.id)).map((p) => p.name);
 
@@ -73,19 +77,28 @@ export default async function Home() {
         .
       </p>
 
-      {combined && combined.entries.length > 0 && (
-        <section className={styles.section} aria-labelledby="combined">
-          <h2 id="combined">Top 10 across platforms</h2>
-          <p className={styles.note}>
-            Topics ranked by how high they trend on each platform ·{" "}
-            <RelativeTime iso={combined.computedAt} prefix="updated" />
-          </p>
+      <section className={styles.section} aria-labelledby="combined">
+        <h2 id="combined">Top 10 across platforms</h2>
+        <RegionTabs
+          label="View"
+          tabs={VIEWS.map((v) => ({ href: `/${viewQuery(v)}#combined`, label: VIEW_NAMES[v], current: v === view }))}
+        />
+        <p className={styles.note}>
+          {VIEW_NOTES[view]}
+          {combined ? (
+            <>
+              {" "}
+              · <RelativeTime iso={combined.computedAt} prefix="updated" />
+            </>
+          ) : null}
+        </p>
+        {combined && combined.entries.length > 0 ? (
           <ol className={styles.combined}>
             {combined.entries.map((entry) => (
               <li key={entry.topicId} className={styles.topic}>
                 <span className={styles.topicRank}>{entry.rank}</span>
                 <div className={styles.topicBody}>
-                  <Link href={`/t/${entry.slug}`} className={styles.topicLabel}>
+                  <Link href={`/t/${entry.slug}${viewQuery(view)}`} className={styles.topicLabel}>
                     {entry.label}
                   </Link>
                   {entry.summary && <p className={styles.topicSummary}>{entry.summary}</p>}
@@ -95,8 +108,10 @@ export default async function Home() {
               </li>
             ))}
           </ol>
-        </section>
-      )}
+        ) : (
+          <p className={styles.empty}>No combined list for this view yet. It appears after the next hourly run.</p>
+        )}
+      </section>
 
       {data.highlights.length > 0 && (
         <section className={styles.section} aria-labelledby="highlights">

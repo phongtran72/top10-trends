@@ -1,8 +1,8 @@
 import { and, desc, eq, gt, inArray, lte, notInArray } from "drizzle-orm";
 import { PLATFORMS, type SourceDef, type SourceId } from "@/collectors/registry";
-import { BLUESKY_GRACE_HOURS, confirmOnly, FRESH_LIST_HOURS, TOP_N, UNSCORED_SOURCES } from "@/config/ranking";
+import { BLUESKY_GRACE_HOURS, confirmOnly, EVERY_LIST_VIEW, FRESH_LIST_HOURS, inView, TOP_N, UNSCORED_SOURCES, type View } from "@/config/ranking";
 import { fetchRuns, rankings, topicItems, trendItems } from "@/db/schema";
-import { rankWindow, WINDOWED_SOURCES } from "@/lib/window";
+import { mergeWindows, rankWindow, WINDOWED_SOURCES, type MergedPlace } from "@/lib/window";
 import type { Db } from "./db";
 
 // Combined score (CLAUDE.md invariant 7): the sum over platforms of
@@ -23,6 +23,9 @@ export interface ScoreEntry {
   title?: string;
   via?: "window" | "grace"; // not from the source's latest list
   seenAt?: Date; // a graced entry: when the source last listed it
+  // A windowed source's entry: its place and volume across all the source's
+  // feeds, which the view with every list uses instead of `rank`.
+  merged?: MergedPlace;
 }
 
 export interface TopicScore {
@@ -32,6 +35,14 @@ export interface TopicScore {
 }
 
 const backsUp = (entry: ScoreEntry) => confirmOnly(entry.sourceId, entry.region);
+
+// The entries one view counts: those from the lists in that view. In the view
+// with every list, a windowed source's feeds count as one list.
+export function viewEntries(entries: readonly ScoreEntry[], view: View): ScoreEntry[] {
+  return entries
+    .filter((entry) => inView(view, entry.sourceId, entry.region))
+    .map((entry) => (view === EVERY_LIST_VIEW && entry.merged ? { ...entry, rank: entry.merged.rank, metricValue: entry.merged.metricValue } : entry));
+}
 
 // Each platform's entry for each topic: its best-ranked one, taken from the
 // platform's own lead lists when one of them has the topic. So X's Worldwide
@@ -134,9 +145,10 @@ export async function currentEntries(db: Db, now: Date, hours = FRESH_LIST_HOURS
     // Marked "window" only when the item has already left the source's latest list.
     const newest = new Map<string, number>();
     for (const row of rows) newest.set(row.region, Math.max(newest.get(row.region) ?? 0, row.fetchedAt.getTime()));
+    const merged = mergeWindows(rows);
     for (const row of rows) {
       const left = row.fetchedAt.getTime() < newest.get(row.region)!;
-      windowed.push({ topicId: row.topicId, sourceId, rank: row.rank, metricValue: row.metricValue, title: row.title, region: row.region, via: left ? "window" : undefined });
+      windowed.push({ topicId: row.topicId, sourceId, rank: row.rank, metricValue: row.metricValue, title: row.title, region: row.region, via: left ? "window" : undefined, merged: merged.get(row) });
     }
   }
   const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
@@ -226,29 +238,34 @@ export interface PlatformRow {
   topicId: number | null;
 }
 
-// Writes the combined top 10 and each platform's top 10 for one run. Until
-// phase 3 adds a US view, every ranking is the `global` view.
+// Per-platform rows don't depend on the view (each row's item names its feed),
+// so they are written once, under this region.
+export const PLATFORM_ROWS_REGION = "global";
+
+// Writes each view's combined top 10 (`region` is the view) and each
+// platform's top 10 for one run.
 export async function writeRankings(
   db: Db,
   computedAt: Date,
-  combined: readonly TopicScore[],
+  combined: ReadonlyMap<View, readonly TopicScore[]>,
   platforms: readonly PlatformRow[],
-  region = "global",
 ): Promise<void> {
   const rows = [
-    ...combined.slice(0, TOP_N).map((topic, index) => ({
-      computedAt,
-      list: "combined",
-      region,
-      rank: index + 1,
-      topicId: topic.topicId,
-      itemId: null,
-      score: topic.score,
-    })),
+    ...[...combined].flatMap(([view, scores]) =>
+      scores.slice(0, TOP_N).map((topic, index) => ({
+        computedAt,
+        list: "combined",
+        region: view as string,
+        rank: index + 1,
+        topicId: topic.topicId,
+        itemId: null,
+        score: topic.score,
+      })),
+    ),
     ...platforms.map((row) => ({
       computedAt,
       list: row.sourceId,
-      region,
+      region: PLATFORM_ROWS_REGION,
       rank: row.rank,
       topicId: row.topicId,
       itemId: row.itemId,

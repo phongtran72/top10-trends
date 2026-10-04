@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gt, gte, inArray, lte, sql } from "drizzle-orm";
 import { pageRegion, SOURCES, type SourceDef, type SourceId } from "@/collectors/registry";
+import type { Region } from "@/collectors/types";
 import { APIFY_FREE_MONTHLY_CREDIT, APIFY_SCHEDULES, X_COST_PER_REQUEST } from "@/config/costs";
 import { fetchRuns, rankings, trendItems } from "@/db/schema";
 import type { Db } from "@/db/types";
@@ -32,11 +33,12 @@ function iso(value: Date | string | null | undefined): string | null {
 // timestamp its lists may be fetched.
 const RANKING_MARGIN_MS = 15 * 60_000;
 
-// A platform's latest successful list, top 10 in the source's own order (by
+// A platform's latest successful list for one feed (by default the one its
+// page shows first), top 10 in the source's own order (by
 // search volume over 3 hours for Google Trends) and after filters when the
 // rank step has ranked that list (phase 2); the raw list otherwise.
-export async function platformList(db: Db, source: SourceDef, limit = 10): Promise<PlatformList | null> {
-  const region = pageRegion(source);
+export async function platformList(db: Db, source: SourceDef, feed?: Region, limit = 10): Promise<PlatformList | null> {
+  const region = feed ?? pageRegion(source);
   const [run] = await db
     .select({ id: fetchRuns.id, finishedAt: fetchRuns.finishedAt, startedAt: fetchRuns.startedAt })
     .from(fetchRuns)

@@ -1,6 +1,7 @@
 import { and, asc, eq, gt, gte, inArray, min } from "drizzle-orm";
 import { getSource, SOURCES, type SourceId } from "@/collectors/registry";
 import type { Region, TrendItem } from "@/collectors/types";
+import { DEFAULT_VIEW } from "@/config/ranking";
 import { fetchRuns, rankings, sources, topicItems, topicSnapshots, topics, trendItems } from "@/db/schema";
 import type { Embedder } from "@/lib/embed";
 import type { ListResult } from "./collect";
@@ -201,10 +202,11 @@ export async function tuneStats(db: Db, threshold: number): Promise<TuneStats> {
     .from(topicItems)
     .innerJoin(trendItems, eq(trendItems.id, topicItems.itemId));
   const ranked = await db
-    .select({ at: rankings.computedAt, list: rankings.list, topicId: rankings.topicId })
+    .select({ at: rankings.computedAt, list: rankings.list, view: rankings.region, topicId: rankings.topicId })
     .from(rankings);
 
-  const combined = ranked.filter((r) => r.list === "combined" && r.topicId !== null);
+  // The tuning numbers are for the default (Global) view.
+  const combined = ranked.filter((r) => r.list === "combined" && r.view === DEFAULT_VIEW && r.topicId !== null);
   const platformsAt = new Map<string, Set<string>>();
   for (const row of ranked) {
     if (row.list === "combined" || row.topicId === null) continue;

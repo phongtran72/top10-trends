@@ -3,23 +3,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PlatformBadges } from "@/components/PlatformBadges";
 import { RankHistory } from "@/components/RankHistory";
+import { RegionTabs } from "@/components/RegionTabs";
 import { RelativeTime } from "@/components/RelativeTime";
-import { getDb } from "@/lib/db";
+import { DEFAULT_VIEW, VIEWS } from "@/config/ranking";
+import { getTopicDetail } from "@/lib/cached";
 import { hostOf } from "@/lib/format";
-import { topicDetail } from "@/lib/topic-queries";
+import { parseView, VIEW_NAMES, viewQuery } from "@/lib/view";
 import styles from "./page.module.css";
 
-// ISR, like /p/[platform]: no page is built at build time; each renders on its
-// first visit, is cached, and is refreshed when the pipeline revalidates
-// /t/[slug] after a run.
-export const revalidate = 3600;
-
-export async function generateStaticParams() {
-  return [];
-}
+// Renders per request, because it reads `?region=` (the view), so nothing is
+// built at build time. Its data comes from the cache under the `trends` tag,
+// which the pipeline expires after each run.
 
 export async function generateMetadata({ params }: PageProps<"/t/[slug]">): Promise<Metadata> {
-  const detail = await topicDetail(getDb(), (await params).slug);
+  const detail = await getTopicDetail((await params).slug, DEFAULT_VIEW);
   if (!detail) return {};
   return {
     title: detail.label,
@@ -27,8 +24,10 @@ export async function generateMetadata({ params }: PageProps<"/t/[slug]">): Prom
   };
 }
 
-export default async function TopicPage({ params }: PageProps<"/t/[slug]">) {
-  const detail = await topicDetail(getDb(), (await params).slug);
+export default async function TopicPage({ params, searchParams }: PageProps<"/t/[slug]">) {
+  const { slug } = await params;
+  const view = parseView((await searchParams).region);
+  const detail = await getTopicDetail(slug, view);
   if (!detail) notFound();
   const end = detail.history.at(-1)?.at ?? detail.lastSeen;
 
@@ -40,6 +39,10 @@ export default async function TopicPage({ params }: PageProps<"/t/[slug]">) {
       </p>
       <h1 className="page-title">{detail.label}</h1>
       {detail.summary && <p className="lede">{detail.summary}</p>}
+      <RegionTabs
+        label="View"
+        tabs={VIEWS.map((v) => ({ href: `/t/${detail.slug}${viewQuery(v)}`, label: VIEW_NAMES[v], current: v === view }))}
+      />
 
       <section className={styles.section} aria-labelledby="now">
         <h2 id="now">Trending now on</h2>
@@ -90,7 +93,7 @@ export default async function TopicPage({ params }: PageProps<"/t/[slug]">) {
       </section>
 
       <p className={styles.back}>
-        <Link href="/">← Back to the top 10</Link>
+        <Link href={`/${viewQuery(view)}`}>← Back to the top 10</Link>
       </p>
     </>
   );
