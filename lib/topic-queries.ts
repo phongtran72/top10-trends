@@ -1,9 +1,9 @@
 import { and, asc, desc, eq, gt, inArray, lte, ne } from "drizzle-orm";
 import { getSource, platformSlug, SOURCES, type SourceId } from "@/collectors/registry";
-import { FRESH_LIST_HOURS } from "@/config/ranking";
+import { confirmOnly, FRESH_LIST_HOURS } from "@/config/ranking";
 import { rankings, topicItems, topics, trendItems } from "@/db/schema";
 import type { Db } from "@/db/types";
-import { currentEntries } from "@/pipeline/score";
+import { bestEntries, currentEntries } from "@/pipeline/score";
 
 // Queries behind the combined top 10 and the topic pages. Plain JSON results
 // (dates as ISO strings), so they can be cached.
@@ -52,6 +52,8 @@ const byRankThenWeight = (a: PlatformRank, b: PlatformRank) =>
 // three hours before `at`. A platform the combined score counted from outside
 // that top 10 is added at the rank the score used: a place past 10, or a
 // Bluesky topic in its grace hours (marked with when it was last listed).
+// A confirm-only list (X's Worldwide) gives a badge only that second way,
+// so X's badge matches X's page and the score.
 async function platformRanks(db: Db, topicIds: number[], at: Date, region: string): Promise<Map<number, PlatformRank[]>> {
   const result = new Map<number, PlatformRank[]>();
   if (topicIds.length === 0) return result;
@@ -69,11 +71,13 @@ async function platformRanks(db: Db, topicIds: number[], at: Date, region: strin
     .orderBy(rankings.list, desc(rankings.computedAt));
   const newestAt = new Map(newest.map((n) => [n.list, n.computedAt.getTime()]));
   const rows = await db
-    .select({ list: rankings.list, computedAt: rankings.computedAt, rank: rankings.rank, topicId: rankings.topicId })
+    .select({ list: rankings.list, computedAt: rankings.computedAt, rank: rankings.rank, topicId: rankings.topicId, feed: trendItems.region })
     .from(rankings)
+    .innerJoin(trendItems, eq(trendItems.id, rankings.itemId))
     .where(and(window, inArray(rankings.topicId, topicIds)));
   for (const row of rows) {
     if (row.topicId === null || newestAt.get(row.list) !== row.computedAt.getTime()) continue;
+    if (confirmOnly(row.list, row.feed)) continue;
     const entry = platformRank(row.list, row.rank);
     if (!entry) continue;
     const list = result.get(row.topicId) ?? [];
@@ -83,18 +87,16 @@ async function platformRanks(db: Db, topicIds: number[], at: Date, region: strin
     result.set(row.topicId, list);
   }
 
-  const wanted = new Set(topicIds);
   const onPage = new Map([...result].map(([topicId, list]) => [topicId, new Set(list.map((p) => p.sourceId))]));
-  for (const scored of await currentEntries(db, at)) {
-    if (!wanted.has(scored.topicId) || onPage.get(scored.topicId)?.has(scored.sourceId)) continue;
-    const entry = platformRank(scored.sourceId, scored.rank);
-    if (!entry) continue;
-    if (scored.via === "grace" && scored.seenAt) entry.seenAt = scored.seenAt.toISOString();
-    const list = result.get(scored.topicId) ?? [];
-    const index = list.findIndex((p) => p.sourceId === entry.sourceId);
-    if (index === -1) list.push(entry);
-    else if (entry.rank < list[index].rank) list[index] = entry;
-    result.set(scored.topicId, list);
+  const scored = bestEntries(await currentEntries(db, at));
+  for (const topicId of topicIds) {
+    for (const [sourceId, counted] of scored.get(topicId) ?? []) {
+      if (onPage.get(topicId)?.has(sourceId)) continue;
+      const entry = platformRank(sourceId, counted.rank);
+      if (!entry) continue;
+      if (counted.via === "grace" && counted.seenAt) entry.seenAt = counted.seenAt.toISOString();
+      result.set(topicId, [...(result.get(topicId) ?? []), entry]);
+    }
   }
   for (const list of result.values()) list.sort(byRankThenWeight);
   return result;
