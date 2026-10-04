@@ -59,6 +59,13 @@ describe("platformList", () => {
     expect(list).toMatchObject({ region: "us", items: [{ title: "query one" }, { title: "query two" }] });
   });
 
+  it("reads another of the source's feeds when asked", async () => {
+    await run("google_trends", "gb", hoursAgo(1), "ok", ["uk query"]);
+    expect(await platformList(t.db, getSource("google_trends"), "gb")).toMatchObject({ region: "gb", items: [{ title: "uk query" }] });
+    expect(await platformList(t.db, getSource("google_trends"))).toMatchObject({ region: "us", items: [{ title: "query one" }, { title: "query two" }] });
+    expect(await platformList(t.db, getSource("google_trends"), "au")).toBeNull();
+  });
+
   it("returns null when a source has no successful list", async () => {
     expect(await platformList(t.db, getSource("youtube"))).toBeNull();
   });

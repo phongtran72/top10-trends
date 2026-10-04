@@ -50,10 +50,10 @@ describe("eval", () => {
     expect(formatEvalHour(hour).slice(0, 6)).toEqual([
       "== 2026-10-08 11:07 UTC",
       "   1. world series  (score 1.80)",
-      "        google_trends #1: world series",
-      "        youtube #1: World Series",
+      "        google_trends (us) #1: world series",
+      "        youtube (us) #1: World Series",
       "   2. flood watch  (score 0.63)",
-      "        google_trends #2: flood watch",
+      "        google_trends (us) #2: flood watch",
     ]);
   });
 });
@@ -65,7 +65,7 @@ describe("eval members", () => {
     const itemIds = await writeResults(t.db, results);
     await rankRun({ db: t.db, results, itemIds, now: at, embedder: wordEmbedder, blocklist: new Set() });
     const lines = formatEvalHour(await evalHour(t.db, at));
-    expect(lines).toContain("        google_trends #1: flood watch");
-    expect(lines).toContain("        google_trends #2: world series  [left the feed; still in its 3-hour window]");
+    expect(lines).toContain("        google_trends (us) #1: flood watch");
+    expect(lines).toContain("        google_trends (us) #2: world series  [left the feed; still in its 3-hour window]");
   });
 });

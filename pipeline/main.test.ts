@@ -79,7 +79,7 @@ describe("runPipeline", () => {
     expect(out.lines).toContain("mastodon (global): error: 503 mastodon.social: Service Unavailable");
     expect(out.lines).toContain("youtube (us): skipped: missing YOUTUBE_API_KEY");
     expect(out.lines.at(-1)).toMatch(
-      /^dry run: nothing written, 1 lists ok, 1 failed, 1 skipped, 8 sources not built yet \(\d+ ms\)$/,
+      /^dry run: nothing written, 1 lists ok, 1 failed, 4 skipped, 8 sources not built yet \(\d+ ms\)$/,
     );
   });
 
@@ -105,6 +105,9 @@ describe("runPipeline", () => {
       ["bluesky", "global", "ok", 2, null],
       ["mastodon", "global", "error", 0, "503 mastodon.social: Service Unavailable"],
       ["youtube", "us", "skipped", 0, "missing YOUTUBE_API_KEY"],
+      ["youtube", "gb", "skipped", 0, "missing YOUTUBE_API_KEY"],
+      ["youtube", "ca", "skipped", 0, "missing YOUTUBE_API_KEY"],
+      ["youtube", "au", "skipped", 0, "missing YOUTUBE_API_KEY"],
       ["heartbeat", "global", "ok", 0, null],
     ]);
     const items = await t.db.select().from(trendItems).orderBy(asc(trendItems.rank));
@@ -113,17 +116,23 @@ describe("runPipeline", () => {
       [runs[0].id, "bluesky", 2, "Test Launch", null, null],
     ]);
     expect(out.lines.slice(0, 2)).toEqual([
-      "rank: 2 items kept, 0 dropped; 2 matched to topics, 2 new topics, 2 topic snapshots",
+      "rank: 2 items kept, 0 dropped; 2 matched to topics, 2 new topics, 4 topic snapshots",
       "combined top 10:",
     ]);
     expect(out.lines.slice(-3)).toEqual([
       "error: mastodon (global): 503 mastodon.social: Service Unavailable",
       "revalidate: skipped (SITE_URL or REVALIDATE_SECRET not set)",
-      "run ok: heartbeat written, 1 lists ok, 1 failed, 1 skipped, 8 sources not built yet (0 ms)",
+      "run ok: heartbeat written, 1 lists ok, 1 failed, 4 skipped, 8 sources not built yet (0 ms)",
     ]);
     expect(await t.db.select().from(topics)).toHaveLength(2);
     const ranked = await t.db.select().from(rankings);
-    expect(ranked.filter((r) => r.list === "combined").map((r) => r.rank)).toEqual([1, 2]);
+    // One combined list per view: Global and US.
+    expect(ranked.filter((r) => r.list === "combined").map((r) => [r.region, r.rank])).toEqual([
+      ["global", 1],
+      ["global", 2],
+      ["us", 1],
+      ["us", 2],
+    ]);
     expect(ranked.filter((r) => r.list === "bluesky").map((r) => [r.rank, r.itemId !== null, r.topicId !== null])).toEqual([
       [1, true, true],
       [2, true, true],

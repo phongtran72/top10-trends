@@ -17,6 +17,15 @@ export const REGION_NAMES: Record<string, string> = {
   au: "Australia",
 };
 
+// Short forms for badges: "Google Trends UK #1".
+export const REGION_SHORT: Record<string, string> = {
+  global: "Worldwide",
+  us: "US",
+  gb: "UK",
+  ca: "Canada",
+  au: "Australia",
+};
+
 // "2026-09-30 12:07 UTC": the same on the server and in every browser.
 export function utcTime(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;

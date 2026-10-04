@@ -72,9 +72,11 @@ describe("rankRun", () => {
     expect(outcome.combined[0].score).toBeCloseTo(2.115);
 
     const ranked = await t.db.select().from(rankings);
-    expect(ranked.filter((r) => r.list === "combined").map((r) => [r.rank, r.score !== null])).toEqual([
-      [1, true],
-      [2, true],
+    expect(ranked.filter((r) => r.list === "combined").map((r) => [r.region, r.rank, r.score !== null])).toEqual([
+      ["global", 1, true],
+      ["global", 2, true],
+      ["us", 1, true],
+      ["us", 2, true],
     ]);
     // Each platform's filtered top 10, renumbered after filters.
     expect(ranked.filter((r) => r.list === "bluesky").map((r) => r.rank)).toEqual([1, 2]);
@@ -89,9 +91,10 @@ describe("rankRun", () => {
     ]);
     // Permanent snapshots leave YouTube out.
     const snaps = await t.db.select().from(topicSnapshots);
-    expect(snaps.map((s) => [s.position, s.platformCount, s.ranks, s.newsCount, s.algoVersion])).toEqual([
-      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.q8.384/t0.80/r4"],
-      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.q8.384/t0.80/r4"],
+    expect(snaps.map((s) => s.region)).toEqual(["global", "global", "us", "us"]);
+    expect(snaps.filter((s) => s.region === "global").map((s) => [s.position, s.platformCount, s.ranks, s.newsCount, s.algoVersion])).toEqual([
+      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.q8.384/t0.80/r5"],
+      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.q8.384/t0.80/r5"],
     ]);
     expect(formatRankOutcome(outcome)[2]).toBe("   1. world series · 2.12 · google_trends #1, youtube #1, bluesky #2 · new");
   });
@@ -182,6 +185,40 @@ describe("X's Worldwide list", () => {
     ]);
     const rows = (await t.db.select().from(rankings)).filter((r) => r.list === "x" && r.computedAt.getTime() === at.getTime());
     expect(rows.filter((r) => r.topicId === null)).toHaveLength(1);
+  });
+});
+
+describe("views", () => {
+  it("counts the UK feed and X's Worldwide list in Global only, and writes a ranking and snapshots for each view", async () => {
+    const at = new Date(Date.UTC(2026, 9, 15, 9, 7));
+    const outcome = await runOnce(at, [
+      list("google_trends", "us", at, [{ title: "alpha recall", metricValue: 2000, matchText: ["Alpha recall widens"] }]),
+      list("google_trends", "gb", at, [
+        { title: "alpha recall", metricValue: 1000 },
+        { title: "tower strike", metricValue: 5000, matchText: ["Tower strike begins"] },
+      ]),
+      list("youtube", "gb", at, [{ title: "Tower strike" }]),
+      list("x", "global", at, [{ title: "Tower strike" }]),
+    ]);
+    // Global: Google's two feeds count as one list by search volume (5,000 against 2,000 + 1,000), so the
+    // UK-only story is Google's #1, backed by YouTube UK and X Worldwide.
+    expect(outcome.views.global.map((c) => [c.label, c.platforms])).toEqual([
+      ["tower strike", [{ sourceId: "google_trends", rank: 1 }, { sourceId: "x", rank: 1 }, { sourceId: "youtube", rank: 1 }]],
+      ["alpha recall", [{ sourceId: "google_trends", rank: 2 }]],
+    ]);
+    // US: only the US feed counts, at its own rank, so the UK story isn't there.
+    expect(outcome.views.us.map((c) => [c.label, c.platforms])).toEqual([["alpha recall", [{ sourceId: "google_trends", rank: 1 }]]]);
+    expect(outcome.combined).toEqual(outcome.views.global);
+
+    const combined = (await t.db.select().from(rankings)).filter((r) => r.list === "combined" && r.computedAt.getTime() === at.getTime());
+    expect(combined.map((r) => [r.region, r.rank])).toEqual([["global", 1], ["global", 2], ["us", 1]]);
+    const snaps = (await t.db.select().from(topicSnapshots)).filter((s) => s.takenAt.getTime() === at.getTime());
+    // YouTube stays out of snapshots; the news count is the view's own headlines.
+    expect(snaps.map((s) => [s.region, s.position, s.ranks, s.newsCount])).toEqual([
+      ["global", 1, { x: 1, google_trends: 1 }, 1],
+      ["global", 2, { google_trends: 2 }, 1],
+      ["us", 1, { google_trends: 1 }, 1],
+    ]);
   });
 });
 

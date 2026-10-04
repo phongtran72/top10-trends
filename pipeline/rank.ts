@@ -1,20 +1,20 @@
 import { getSource, type SourceId } from "@/collectors/registry";
-import { confirmOnly, MATCH_THRESHOLD, UNSCORED_SOURCES } from "@/config/ranking";
+import { confirmOnly, DEFAULT_VIEW, inView, MATCH_THRESHOLD, UNSCORED_SOURCES, VIEWS, type View } from "@/config/ranking";
 import type { TrendItem } from "@/collectors/types";
 import { embeddingText, type Embedder } from "@/lib/embed";
 import { plainWords, prettyLabel } from "@/lib/text";
-import { rankWindow, WINDOWED_SOURCES } from "@/lib/window";
+import { mergeWindows, rankWindow, WINDOWED_SOURCES, type MergedPlace } from "@/lib/window";
 import type { ListResult } from "./collect";
 import type { Db } from "./db";
 import { filterItems, type Dropped } from "./filter";
 import { matchItems, type MatchItem, type Topic } from "./match";
-import { currentEntries, scoreTopics, windowedItems, writeRankings, type PlatformRow, type ScoreEntry, type TopicScore } from "./score";
+import { currentEntries, scoreTopics, viewEntries, windowedItems, writeRankings, type PlatformRow, type ScoreEntry, type TopicScore } from "./score";
 import { algoVersion, buildSnapshots, writeSnapshots } from "./snapshots";
 import { loadRecentTopics, saveMatches } from "./topics";
 
 // The rank step: filter this run's lists, embed what's left, match items to
-// topics, then write each platform's filtered top 10, the combined top 10 and
-// a snapshot of every current topic.
+// topics, then write each platform's filtered top 10 and, for each view
+// (Global and US), the combined top 10 and a snapshot of every current topic.
 // With no database (a dry run) it matches against no earlier topics and
 // scores this run's lists only.
 
@@ -42,7 +42,8 @@ export interface RankOutcome {
   dropped: Dropped[];
   created: number;
   matched: number;
-  combined: RankedTopic[];
+  combined: RankedTopic[]; // the default (Global) view
+  views: Record<View, RankedTopic[]>;
 }
 
 // A new topic is named after the item that created it: matching handles lead
@@ -149,34 +150,45 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
     }
   }
 
-  let scores: TopicScore[];
+  const scores = new Map<View, TopicScore[]>();
   let snapshots = 0;
   if (input.db) {
     const entries = await currentEntries(input.db, input.now);
-    scores = scoreTopics(entries);
-    await writeRankings(input.db, input.now, scores, platformRows);
-    const rows = buildSnapshots(entries, input.now, {
-      algoVersion: algoVersion(input.threshold ?? MATCH_THRESHOLD, input.replay),
-      newsCount: newsCounts(kept, keyOf, match.assignments),
+    const rows = VIEWS.flatMap((view) => {
+      const counted = viewEntries(entries, view);
+      scores.set(view, scoreTopics(counted));
+      return buildSnapshots(counted, input.now, {
+        region: view,
+        algoVersion: algoVersion(input.threshold ?? MATCH_THRESHOLD, input.replay),
+        newsCount: newsCounts(kept.filter((item) => inView(view, item.source, item.region)), keyOf, match.assignments),
+      });
     });
+    await writeRankings(input.db, input.now, scores, platformRows);
     await writeSnapshots(input.db, rows);
     snapshots = rows.length;
   } else {
+    // A windowed source's place across its feeds, from this run's lists alone.
+    const merged = new Map<number, MergedPlace>();
+    for (const sourceId of WINDOWED_SOURCES.keys()) {
+      const rows = keptByList
+        .filter(({ list }) => list.source.id === sourceId)
+        .flatMap(({ list, kept: listItems }) =>
+          listItems.map((item) => ({ key: keyOf.get(item)!, title: item.title, metricValue: item.metricValue, rank: runRank.get(item) ?? item.rank, fetchedAt: list.finishedAt })),
+        );
+      for (const [row, place] of mergeWindows(rows)) merged.set(row.key, place);
+    }
     const entries: ScoreEntry[] = items.flatMap((item) => {
       const topic = match.assignments.get(item.key);
-      return topic ? [{ topicId: topic.id!, sourceId: item.sourceId, rank: item.rank, region: regionOf.get(item.key) }] : [];
+      return topic
+        ? [{ topicId: topic.id!, sourceId: item.sourceId, rank: item.rank, region: regionOf.get(item.key), merged: merged.get(item.key) }]
+        : [];
     });
-    scores = scoreTopics(entries);
+    for (const view of VIEWS) scores.set(view, scoreTopics(viewEntries(entries, view)));
   }
 
   const topicById = new Map<number, Topic>(match.topics.map((t) => [t.id!, t]));
-  return {
-    kept: kept.length,
-    snapshots,
-    dropped,
-    created,
-    matched: match.assignments.size,
-    combined: scores.slice(0, 10).map((s) => {
+  const top = (view: View): RankedTopic[] =>
+    (scores.get(view) ?? []).slice(0, 10).map((s) => {
       const topic = topicById.get(s.topicId);
       return {
         label: topic?.label ?? `topic ${s.topicId}`,
@@ -184,7 +196,15 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
         isNew: topic ? topic.firstSeen.getTime() === input.now.getTime() : false,
         platforms: s.platforms,
       };
-    }),
+    });
+  return {
+    kept: kept.length,
+    snapshots,
+    dropped,
+    created,
+    matched: match.assignments.size,
+    combined: top(DEFAULT_VIEW),
+    views: Object.fromEntries(VIEWS.map((view) => [view, top(view)])) as Record<View, RankedTopic[]>,
   };
 }
 
@@ -196,11 +216,13 @@ export function formatRankOutcome(outcome: RankOutcome): string[] {
     `rank: ${outcome.kept} items kept, ${outcome.dropped.length} dropped${why ? ` (${why})` : ""}; ` +
       `${outcome.matched} matched to topics, ${outcome.created} new topics` +
       (outcome.snapshots > 0 ? `, ${outcome.snapshots} topic snapshots` : ""),
-    "combined top 10:",
   ];
-  outcome.combined.forEach((topic, index) => {
-    const where = topic.platforms.map((p) => `${p.sourceId} #${p.rank}`).join(", ");
-    lines.push(`  ${String(index + 1).padStart(2)}. ${topic.label} · ${topic.score.toFixed(2)} · ${where}${topic.isNew ? " · new" : ""}`);
-  });
+  for (const view of VIEWS) {
+    lines.push(view === DEFAULT_VIEW ? "combined top 10:" : `combined top 10 (${view} view):`);
+    outcome.views[view].forEach((topic, index) => {
+      const where = topic.platforms.map((p) => `${p.sourceId} #${p.rank}`).join(", ");
+      lines.push(`  ${String(index + 1).padStart(2)}. ${topic.label} · ${topic.score.toFixed(2)} · ${where}${topic.isNew ? " · new" : ""}`);
+    });
+  }
   return lines;
 }
