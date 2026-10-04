@@ -50,6 +50,30 @@ describe("embedTitles", () => {
     expect((await embedTitles(rows, new Set(), lengthEmbedder)).vectors[0]).toBe("flydubai".length);
   });
 
+  it("embeds a row's stored match text with its title, as the rank step does", async () => {
+    const result = await embedTitles(
+      [
+        { id: "a", source: "google_trends", title: "lito", matchText: ["Lito Sousa dies", "Palmeiras fan mourned", "a third headline"] },
+        { id: "b", source: "google_trends", title: "lito", matchText: null },
+        { id: "c", source: "google_trends", title: "lito", matchText: [] },
+      ],
+      new Set(),
+      lengthEmbedder,
+    );
+    expect(result.rows.map((row) => row.text)).toEqual(["lito. lito sousa dies. palmeiras fan mourned", "lito", "lito"]);
+  });
+
+  it("reads the match text in the filters and in the words that keep a hashtag whole", async () => {
+    const rows = [
+      { id: "a", source: "bluesky", title: "Flug umgeleitet", matchText: ["Ein Flug von Flydubai wurde nach Riad umgeleitet, berichten Medien"] },
+      { id: "b", source: "mastodon", title: "#flydubai", group: "22" },
+    ];
+    const groups = { "22": [{ source: "google_trends", title: "flight diverted", matchText: ["Flydubai flight diverts to Saudi Arabia"] }] };
+    const result = await embedTitles(rows, new Set(), lengthEmbedder, groups);
+    expect(result.rows[0]).toMatchObject({ kept: false, reason: "language" }); // the description gives the language away
+    expect(result.rows[1].text).toBe("flydubai"); // kept whole by a headline in its group
+  });
+
   it("needs no model call when nothing is kept", async () => {
     const never: Embedder = async () => {
       throw new Error("should not embed");

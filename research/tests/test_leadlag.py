@@ -130,3 +130,17 @@ def test_summaries_by_pair_and_by_platform():
     assert board.loc["google_trends", "first"] == pytest.approx(1 / 3)
     assert board.loc["x", "later"] == pytest.approx(1 / 3)
     assert board.loc["google_trends", "median_hours_ahead"] == pytest.approx(0)
+
+
+def test_one_clock_drops_googles_other_countries_and_nothing_else():
+    items = pd.DataFrame(
+        {
+            "source_id": ["google_trends", "google_trends", "google_trends", "x", "x", "bluesky"],
+            "region": ["us", "gb", "au", "us", "global", "global"],
+            "title": ["ashes", "ashes", "ashes", "Ashes", "Ashes", "Ashes squad named"],
+        }
+    )
+    kept = leadlag.one_clock(items)
+    assert kept[["source_id", "region"]].values.tolist() == [
+        ["google_trends", "us"], ["x", "us"], ["x", "global"], ["bluesky", "global"],
+    ]

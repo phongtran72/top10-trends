@@ -6,8 +6,9 @@ import { embedTitles, type GroupTitle, type TitleRow } from "@/lib/title-vectors
 import { loadBlocklist } from "@/pipeline/filter";
 
 // npx tsx scripts/embed-titles.ts <titles.json> <out> [--no-segment]: for the
-// research notebooks. Reads { rows: [{ id, source, title, group? }], groups?:
-// { [group]: [{ source, title }] } } (or just the rows array), applies the
+// research notebooks. Reads { rows: [{ id, source, title, matchText?, group? }],
+// groups?: { [group]: [{ source, title, matchText? }] } } (or just the rows
+// array; matchText is the item's stored trend_items.match_text), applies the
 // pipeline's filters and writes <out>.json (model, and per title: kept or why
 // dropped, and its row) and <out>.f32 (the kept titles' 384-number vectors,
 // float32). A row's group, such as the hour it was first seen, supplies the

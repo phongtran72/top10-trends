@@ -40,6 +40,7 @@ PLATFORM = {
     "pinterest": "Pinterest trending search (US)",
 }
 LINKED = frozenset({"google_trends", "hacker_news"})  # their url is the article itself
+COUNTRY = {"us": "US", "gb": "UK", "ca": "Canada", "au": "Australia"}  # Google's feeds (task 3.2)
 COLUMNS = ["source_id", "key", "title", "context", "llm_category", "llm_news", "reviewed_category", "reviewed_news", "checked"]
 
 
@@ -53,10 +54,17 @@ def link_words(url: str, limit: int = 12) -> str:
     return f"{host}: {' '.join(words)}".strip().rstrip(":")
 
 
-def context(source_id: str, url: str | None) -> str:
-    """Where a trend was listed, plus its article's site and words for Google Trends and Hacker News."""
+def context(source_id: str, url: str | None, match_text=None, region: str | None = None) -> str:
+    """Where a trend was listed, plus what says what it's about: its stored match text (Google's headlines,
+    Bluesky's description) when the lists kept one, else its article's site and words for Google Trends and
+    Hacker News. A Google trend from another country's feed says which."""
     parts = [PLATFORM.get(source_id, source_id)]
-    if source_id in LINKED and isinstance(url, str) and url.startswith("http"):
+    if source_id == "google_trends" and region in COUNTRY:
+        parts[0] = f"Google search trend ({COUNTRY[region]})"
+    texts = [str(t).strip() for t in match_text if str(t).strip()] if echo.has_text(match_text) else []
+    if texts:
+        parts.append(" / ".join(texts[:2])[:300])
+    elif source_id in LINKED and isinstance(url, str) and url.startswith("http"):
         parts.append(link_words(url))
     return "; ".join(parts)
 
@@ -65,8 +73,13 @@ def trend_table(items: pd.DataFrame) -> pd.DataFrame:
     """RQ6's trends (one per platform and item) with their latest url and the context the model sees."""
     trends = echo.trends(items)
     latest = rhythms.keyed(items).sort_values("fetched_at").drop_duplicates(["source_id", "key"], keep="last")
-    trends = trends.merge(latest[["source_id", "key", "url"]], on=["source_id", "key"], how="left")
-    return trends.assign(context=[context(s, u) for s, u in zip(trends["source_id"], trends["url"])])
+    trends = trends.merge(latest[["source_id", "key", "url", "region"]], on=["source_id", "key"], how="left")
+    return trends.assign(
+        context=[
+            context(s, u, m, r)
+            for s, u, m, r in zip(trends["source_id"], trends["url"], trends["match_text"], trends["region"])
+        ]
+    )
 
 
 def _read(store: Path) -> pd.DataFrame:

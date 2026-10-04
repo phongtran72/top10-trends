@@ -85,7 +85,8 @@ def since_all_present(items: pd.DataFrame) -> pd.DataFrame:
 
 
 def trends(items: pd.DataFrame) -> pd.DataFrame:
-    """One row per platform and distinct item: its latest title, sightings, best rank and fetches seen in."""
+    """One row per platform and distinct item: its latest title, sightings, best rank and fetches seen in,
+    and its latest stored match text (None where the lists kept none)."""
     df = rhythms.keyed(items).sort_values("fetched_at")
     grouped = df.groupby(["source_id", "key"], sort=False)
     out = grouped.agg(
@@ -96,13 +97,29 @@ def trends(items: pd.DataFrame) -> pd.DataFrame:
         fetches=("run_id", "nunique"),
     ).reset_index()
     out.insert(0, "trend_id", [f"t{i}" for i in range(len(out))])
+    out["match_text"] = None
+    if "match_text" in df:
+        stored = df[df["match_text"].map(has_text)].drop_duplicates(["source_id", "key"], keep="last")
+        latest = dict(zip(zip(stored["source_id"], stored["key"]), stored["match_text"]))
+        out["match_text"] = [latest.get(pair) for pair in zip(out["source_id"], out["key"])]
     return out
 
 
-def embed_input(trend_table: pd.DataFrame, items: pd.DataFrame | None = None) -> dict:
+def has_text(value) -> bool:
+    """True for a stored match text with something in it (not None, NaN or an empty list)."""
+    return isinstance(value, (list, tuple, np.ndarray)) and len(value) > 0
+
+
+def embed_input(trend_table: pd.DataFrame, items: pd.DataFrame | None = None, use_text: bool = True) -> dict:
     """What scripts/embed-titles.ts reads. With `items`, each trend is embedded as in the hour it was first
-    seen: that hour's titles decide which hashtag runs stay whole, as they would in that pipeline run."""
+    seen: that hour's titles decide which hashtag runs stay whole, as they would in that pipeline run.
+    A trend's stored match text goes with its title, as in the pipeline; `use_text=False` leaves it out
+    (titles only, as every vector was before the lists stored it)."""
     rows = [{"id": t.trend_id, "source": t.source_id, "title": t.title} for t in trend_table.itertuples(index=False)]
+    texts = trend_table["match_text"] if use_text and "match_text" in trend_table else [None] * len(rows)
+    for row, text in zip(rows, texts):
+        if has_text(text):
+            row["matchText"] = [str(t) for t in text]
     if items is None:
         return {"rows": rows}
     hours = pd.to_datetime(trend_table["first_seen"], utc=True).dt.floor("h").dt.strftime("%Y-%m-%dT%H")
@@ -110,17 +127,22 @@ def embed_input(trend_table: pd.DataFrame, items: pd.DataFrame | None = None) ->
         row["group"] = hour
     by_hour = items.assign(hour=pd.to_datetime(items["fetched_at"], utc=True).dt.floor("h").dt.strftime("%Y-%m-%dT%H"))
     by_hour = by_hour[by_hour["hour"].isin(set(hours))].drop_duplicates(["hour", "source_id", "title"])
-    groups = {
-        hour: [{"source": s, "title": t} for s, t in zip(group["source_id"], group["title"])]
-        for hour, group in by_hour.groupby("hour")
-    }
+    stored = by_hour["match_text"] if use_text and "match_text" in by_hour else pd.Series(None, index=by_hour.index, dtype=object)
+    groups: dict[str, list[dict]] = {}
+    for hour, source, title, text in zip(by_hour["hour"], by_hour["source_id"], by_hour["title"], stored):
+        entry = {"source": source, "title": title}
+        if has_text(text):
+            entry["matchText"] = [str(t) for t in text]
+        groups.setdefault(hour, []).append(entry)
     return {"rows": rows, "groups": groups}
 
 
 def embed(
-    trend_table: pd.DataFrame, name: str = "rq6_titles", segment: bool = True, items: pd.DataFrame | None = None
+    trend_table: pd.DataFrame, name: str = "rq6_titles", segment: bool = True, items: pd.DataFrame | None = None,
+    use_text: bool = True,
 ) -> tuple[pd.DataFrame, np.ndarray]:
-    """Runs the pipeline's filters and model on the trends' titles (scripts/embed-titles.ts).
+    """Runs the pipeline's filters and model on the trends' titles and stored match text
+    (scripts/embed-titles.ts); `use_text=False` embeds the titles alone.
 
     Writes research/data/<name>.json/.f32 (git ignores data/) and returns the
     filter result per trend, plus the kept trends' vectors in row order. Pass
@@ -129,7 +151,7 @@ def embed(
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     source = DATA_DIR / f"{name}_input.json"
     out = DATA_DIR / name
-    source.write_text(json.dumps(embed_input(trend_table, items)), encoding="utf-8")
+    source.write_text(json.dumps(embed_input(trend_table, items, use_text)), encoding="utf-8")
     npx = shutil.which("npx") or "npx"
     flags = [] if segment else ["--no-segment"]
     subprocess.run([npx, "tsx", "scripts/embed-titles.ts", str(source), str(out), *flags], cwd=REPO_ROOT, check=True)

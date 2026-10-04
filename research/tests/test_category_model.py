@@ -101,6 +101,17 @@ def test_score_counts_unknown_as_not_right_but_not_as_an_answer():
     assert groups.loc["x", "rows"] == 3 and np.isnan(groups.loc["reddit", "right_when_answered"])
 
 
+def test_rolling_pools_blocks_that_were_each_predicted_from_earlier_ones():
+    vectors, sources, labels = clusters(noise=0.5)
+    by_threshold, by_block = cm.rolling(vectors, sources, labels, folds=3, thresholds=(0.0, 0.9))
+    assert by_block["training_trends"].tolist() == [30, 60] and by_block["rows"].tolist() == [30, 30]
+    always, strict = by_threshold.iloc[0], by_threshold.iloc[1]
+    assert always["rows"] == 60 and always["answered"] == 1.0  # the first block has no earlier data, so it isn't scored
+    assert always["right_overall"] == pytest.approx(by_block["right"].mean())
+    assert strict["answered"] < 1.0 and strict["right_when_answered"] >= always["right_when_answered"]
+    assert by_block["platform_majority"].between(0, 1).all()
+
+
 def test_baselines_use_training_rows_only():
     train_vectors = np.eye(3)
     train_labels = np.array(["sports", "politics", "politics"], dtype=object)
@@ -119,3 +130,12 @@ def test_the_json_round_trip_scores_the_same():
     assert again.meta == {"trained_to": "2026-10-01"}
     assert cm.probabilities(again, vectors, sources) == pytest.approx(cm.probabilities(model, vectors, sources), abs=1e-4)
     assert '"dimensions": 3' in cm.to_json(model)
+
+
+def test_rolling_scores_only_the_rows_it_is_told_to():
+    vectors, sources, labels = clusters(noise=0.5)
+    scored = np.zeros(len(labels), dtype=bool)
+    scored[40:70] = True
+    by_threshold, by_block = cm.rolling(vectors, sources, labels, folds=3, thresholds=(0.0,), scored=scored)
+    assert by_threshold.iloc[0]["rows"] == 30  # every row trained; 30 were scored
+    assert by_block["rows"].tolist() == [30, 30]  # the per-block view still shows every block

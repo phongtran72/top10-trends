@@ -11,7 +11,9 @@ sightings. Three things keep a lead honest:
 - slow sources: TikTok, Instagram and Pinterest show up on their refresh
   schedule, not when the story broke, so their pairs are left out by default;
 - a threshold that makes matches precise (PAIR_THRESHOLD, the pipeline's),
-  because a wrong match gives a meaningless lead.
+  because a wrong match gives a meaningless lead;
+- one clock: Google's feeds for other countries are left out first
+  (`one_clock`), because their day starts at another hour.
 
 Fetches are hourly, so leads are good to about an hour, and sightings less
 than TIE_HOURS apart are a tie.
@@ -31,6 +33,20 @@ from .rhythms import SLOW_SOURCES
 PAIR_THRESHOLD = HEADLINE_THRESHOLD
 TIE_HOURS = 0.5
 SIDE = ["id", "platform", "title", "first", "censored", "start"]
+
+
+HOME_FEED = "us"
+
+
+def one_clock(items: pd.DataFrame, home: str = HOME_FEED) -> pd.DataFrame:
+    """The stored lists without Google's feeds for other countries (UK, Canada, Australia; task 3.2).
+
+    A story can reach Google's UK list hours before its US one, only because the UK's day starts earlier.
+    Leads are measured against Google's `home` feed, so "Google had it first" compares one country's
+    searches with lists that are worldwide or US anyway. Every other source is kept whole.
+    """
+    other_feed = (items["source_id"] == "google_trends") & (items["region"] != home)
+    return items[~other_feed]
 
 
 def source_starts(items: pd.DataFrame) -> pd.Series:
