@@ -29,11 +29,11 @@ export interface SourceDef {
 // Every source, in the order the site lists them. `heartbeat` is the
 // pipeline's own row that proves a run happened.
 export const SOURCES: readonly SourceDef[] = [
-  { id: "x", name: "X", role: "lead", weight: WEIGHTS.x, regions: ["global", "us"], pageFeed: "us", env: ["X_BEARER_TOKEN"], phase: 3, homepage: "https://x.com/explore", note: "X's Worldwide list is mostly trends in other languages, so this page shows its United States list." },
-  { id: "google_trends", name: "Google Trends", role: "lead", weight: WEIGHTS.google_trends, regions: ["us"], env: [], phase: 1, homepage: "https://trends.google.com/trending" },
+  { id: "x", name: "X", role: "lead", weight: WEIGHTS.x, regions: ["global", "us"], pageFeed: "us", env: ["X_BEARER_TOKEN"], phase: 3, homepage: "https://x.com/explore", note: "X's Worldwide list is mostly trends in other languages, so this page shows its United States list first." },
+  { id: "google_trends", name: "Google Trends", role: "lead", weight: WEIGHTS.google_trends, regions: ["us", "gb", "ca", "au"], env: [], phase: 1, homepage: "https://trends.google.com/trending" },
   { id: "bluesky", name: "Bluesky", role: "lead", weight: WEIGHTS.bluesky, regions: ["global"], env: [], phase: 1, homepage: "https://bsky.app" },
   { id: "mastodon", name: "Mastodon", role: "lead", weight: WEIGHTS.mastodon, regions: ["global"], env: [], phase: 1, homepage: "https://mastodon.social/explore/tags" },
-  { id: "youtube", name: "YouTube", role: "corroborating", weight: WEIGHTS.youtube, regions: ["us"], env: ["YOUTUBE_API_KEY"], phase: 1, homepage: "https://www.youtube.com" },
+  { id: "youtube", name: "YouTube", role: "corroborating", weight: WEIGHTS.youtube, regions: ["us", "gb", "ca", "au"], env: ["YOUTUBE_API_KEY"], phase: 1, homepage: "https://www.youtube.com" },
   { id: "reddit", name: "Reddit", role: "corroborating", weight: WEIGHTS.reddit, regions: ["global"], env: [], phase: 3, homepage: "https://www.reddit.com/r/popular/" },
   { id: "tiktok", name: "TikTok", role: "corroborating", weight: WEIGHTS.tiktok, regions: ["us"], env: ["APIFY_TOKEN"], optIn: "TIKTOK_ENABLED", phase: 3, homepage: "https://www.tiktok.com", note: "TikTok publishes this list for a 7-day window that runs several days behind, so these are last week's hashtags." },
   { id: "instagram", name: "Instagram", role: "corroborating", weight: WEIGHTS.instagram, regions: ["global"], env: ["APIFY_TOKEN"], optIn: "INSTAGRAM_ENABLED", phase: 3, homepage: "https://www.instagram.com/explore/", note: "Instagram refreshes this list every 3 hours; it is read three times a day, so it can be up to 12 hours old." },

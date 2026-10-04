@@ -1,11 +1,13 @@
 import Link from "next/link";
+import { REGION_SHORT } from "@/lib/format";
 import type { PlatformRank } from "@/lib/topic-queries";
 import { RelativeTime } from "./RelativeTime";
 import styles from "./trends.module.css";
 
-// Where a topic ranks on each platform, e.g. "Google Trends #2". A topic that
-// has left the platform's list but still counts shows when it was last
-// listed, e.g. "Bluesky #1 · 1 h ago".
+// Where a topic ranks on each platform, e.g. "Google Trends #2". A rank from a
+// feed the platform's page doesn't show first names the feed ("Google Trends
+// UK #1") and links to it. A topic that has left the platform's list but still
+// counts shows when it was last listed, e.g. "Bluesky #1 · 1 h ago".
 export function PlatformBadges({ platforms }: { platforms: PlatformRank[] }) {
   if (platforms.length === 0) return null;
   return (
@@ -13,11 +15,12 @@ export function PlatformBadges({ platforms }: { platforms: PlatformRank[] }) {
       {platforms.map((p) => (
         <li key={p.sourceId}>
           <Link
-            href={`/p/${p.slug}`}
+            href={`/p/${p.slug}${p.feed ? `?region=${p.feed}` : ""}`}
             className={styles.badge}
             title={p.seenAt ? `No longer on ${p.name}'s list; counted at the rank it was last seen with` : undefined}
           >
-            {p.name} <span className={styles.badgeRank}>#{p.rank}</span>
+            {p.name}
+            {p.feed ? ` ${REGION_SHORT[p.feed] ?? p.feed}` : ""} <span className={styles.badgeRank}>#{p.rank}</span>
             {p.seenAt ? (
               <>
                 {" · "}
