@@ -1,6 +1,6 @@
 # RQ2 · Lead and lag
 
-**Status: method ready, no result yet (2026-09-30).** Only one usable story pair so far. The main obstacle is that X, TikTok, Instagram and Pinterest joined the data at 22:08 UTC. Everything they had then is censored, meaning we can't tell when it really started. Re-run `notebooks/02_rq2_leadlag.ipynb` weekly.
+**Status: first result for Google against X (2026-10-04, below); other pairs still too few. As first written (2026-09-30):** Only one usable story pair so far. The main obstacle is that X, TikTok, Instagram and Pinterest joined the data at 22:08 UTC. Everything they had then is censored, meaning we can't tell when it really started. Re-run `notebooks/02_rq2_leadlag.ipynb` weekly.
 - **Within a few days:** Google against X should have about 20 usable stories, the fastest pair to fill (see below).
 - **Most other pairs:** will take weeks.
 - **After phase 2:** repeat it on topic snapshots.
@@ -40,6 +40,30 @@ This uses nomic-embed-text-v1.5 at the pipeline's 0.86, with data to 2026-10-01 
 - **One each:** Bluesky before X by 3 hours (the Christa Pike case), and Twitch before Bluesky by 1 hour (Silent Hill: Townfall).
 
 That's a first sign, on one evening of playoff baseball, that Google's feed shows a story about an hour before X's list does. It fits how the lists work: Google lists a trend as it starts, and X's list ranks by size.
+
+## First result: Google against X (2026-10-04)
+
+Stored lists from 2026-09-30 11:32 to 2026-10-04 21:08 UTC, Google's US feed only (`leadlag.one_clock`), matched on titles at 0.86.
+
+- **191 stories on two or more lists; 280 pairs of platforms within them.** 45 are censored and 53 involve a slow list, which leaves 203 usable pairs.
+- **Google against X has 118 stories,** enough for a first answer:
+
+| | Share of stories |
+| --- | --- |
+| Google listed it first | 54% |
+| Within half an hour of each other | 26% |
+| X listed it first | 19% |
+
+  - **The median lead is 1 hour for Google;** half the stories fall between a tie and Google 4 hours ahead.
+  - **It holds day by day:** Google first in 43% to 67% of each day's stories, X first in 0% to 26%.
+  - **The long leads are different things.** Where Google is a day ahead ("dominic west", "burkina faso", "payton talbott"), it's a search for a person or place before any talk about it. Where X is days ahead ("Thursday Night Football", "#GeneralConference", "Good Friday"), it's a standing tag that Google only listed once.
+- **Bluesky against Google: 22 stories,** Bluesky first in 12, Google in 9, median 1 hour for Bluesky. Too few to call.
+- **Bluesky against X (13) and Mastodon against X (13) are even.**
+- **Over all pairs, Google is the list most often first** (53% of its 155 pairs, 25% later) and X the one most often later (26% first, 52% later).
+
+**What it means.** A search trend on Google is, more often than not, an hour ahead of the same name trending on X. That fits what each list measures: Google's feed lists what is newly searched, and X's lists what many are already posting about. For the hours forecast, "on Google now, not yet on X" is a usable early sign for names; it's not a sign for standing tags.
+
+**Cautions.** Fetches are hourly, so a 1-hour lead is one fetch. X joined 10 hours after Google, which the censoring rule covers. Matching on titles at 0.86 has a few wrong pairs (two different players sharing a surname), which add noise in both directions.
 
 ## What it means for the forecasts
 
