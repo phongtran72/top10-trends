@@ -121,6 +121,9 @@ describe("badges for platforms counted from outside a page's top 10", () => {
       await rank(now, [
         list("bluesky", "global", now, ["Harbor fire"]),
         list("mastodon", "global", now, [...fillers, "harbor fire"]),
+        // X's Worldwide list has it at #1 and its US list at #3: the US rank is X's rank.
+        list("x", "global", now, ["Harbor fire"]),
+        list("x", "us", now, ["quiet mountain", "silver bridge", "Harbor fire"]),
       ]);
 
       const top = await combinedTop(db.db);
@@ -129,6 +132,7 @@ describe("badges for platforms counted from outside a page's top 10", () => {
       );
       expect(badges["Harbor fire"]).toEqual([
         ["bluesky", 1, null],
+        ["x", 3, null],
         ["mastodon", 12, null],
       ]);
       expect(badges["Storm warning"]).toEqual([["bluesky", 1, earlier.toISOString()]]);

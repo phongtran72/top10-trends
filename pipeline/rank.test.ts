@@ -90,8 +90,8 @@ describe("rankRun", () => {
     // Permanent snapshots leave YouTube out.
     const snaps = await t.db.select().from(topicSnapshots);
     expect(snaps.map((s) => [s.position, s.platformCount, s.ranks, s.newsCount, s.algoVersion])).toEqual([
-      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.q8.384/t0.80/r3"],
-      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.q8.384/t0.80/r3"],
+      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.q8.384/t0.80/r4"],
+      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.q8.384/t0.80/r4"],
     ]);
     expect(formatRankOutcome(outcome)[2]).toBe("   1. world series · 2.12 · google_trends #1, youtube #1, bluesky #2 · new");
   });
