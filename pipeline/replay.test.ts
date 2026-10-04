@@ -69,7 +69,7 @@ describe("tuning in a scratch copy", () => {
     expect(strict.top10Entries).toBe(8);
     const snaps = await scratch.db.select().from(topicSnapshots);
     expect(snaps).not.toHaveLength(0);
-    expect(new Set(snaps.map((s) => s.algoVersion))).toEqual(new Set(["nomic-embed-text-v1.5.q8.384/t0.80/r4+replay"]));
+    expect(new Set(snaps.map((s) => s.algoVersion))).toEqual(new Set(["nomic-embed-text-v1.5.q8.384/t0.80/r5+replay"]));
 
     await resetDerived(scratch.db);
     expect(await scratch.db.select().from(topics)).toHaveLength(0);
@@ -120,7 +120,7 @@ describe("stored match text", () => {
       const [topic] = (await db.db.select().from(topics)).filter((t) => t.label === "harbor fire");
       expect(topic.summary).toBe("Crews battle a fire at the harbor");
       const snaps = (await db.db.select().from(topicSnapshots)).filter((s) => s.topicId === topic.id);
-      expect(snaps.map((s) => s.newsCount)).toEqual([2]);
+      expect(snaps.map((s) => [s.region, s.newsCount])).toEqual([["global", 2], ["us", 2]]);
     } finally {
       await db.close();
     }

@@ -1,10 +1,11 @@
+import { DEFAULT_VIEW, VIEWS, type View } from "@/config/ranking";
 import { describeError } from "@/lib/errors";
 import { pipelineEnv } from "@/lib/env";
 import { loadLocalEnv } from "@/lib/local-env";
 import { createPipelineDb } from "@/pipeline/db";
 import { evalHour, formatEvalHour, sampleHours } from "@/pipeline/eval";
 
-// npm run eval -- --hours 5: prints the combined top 10 of 5 random past
+// npm run eval -- --hours 5 [--region us]: prints the combined top 10 of 5 random past
 // hours (from the last 7 days) with each topic's member items and score, for
 // the phase 2 review (TASKS.md Gate 2). Also runs as the `eval` workflow.
 
@@ -16,15 +17,24 @@ function hoursArg(argv: readonly string[]): number {
   return hours;
 }
 
+function viewArg(argv: readonly string[]): View {
+  const index = argv.indexOf("--region");
+  if (index === -1) return DEFAULT_VIEW;
+  const view = argv[index + 1];
+  if (!VIEWS.includes(view as View)) throw new Error(`--region must be one of: ${VIEWS.join(", ")}`);
+  return view as View;
+}
+
 async function main() {
   loadLocalEnv();
   const hours = hoursArg(process.argv.slice(2));
+  const view = viewArg(process.argv.slice(2));
   const env = pipelineEnv({ dryRun: false });
   const { db, close } = createPipelineDb(env.SESSION_DATABASE_URL);
   try {
     const times = await sampleHours(db, hours, new Date());
     if (times.length === 0) console.log("eval: no combined rankings in the last 7 days yet");
-    for (const at of times) for (const line of formatEvalHour(await evalHour(db, at))) console.log(line);
+    for (const at of times) for (const line of formatEvalHour(await evalHour(db, at, view))) console.log(line);
   } finally {
     await close();
   }

@@ -31,7 +31,7 @@ Sections 1–8 cover phases 0–1. Sections 9–13 are for later phases or optio
 2. **APIs & Services › Library**: enable **YouTube Data API v3**.
 3. **APIs & Services › Credentials › Create credentials › API key**. Restrict the key to YouTube Data API v3 → `YOUTUBE_API_KEY`.
 
-The free quota is 10,000 units a day; this site uses 24 a day (96 once phase 3 adds UK, Canada and Australia).
+The free quota is 10,000 units a day; this site uses 96 a day (one call an hour for each of the US, UK, Canada and Australia).
 
 ## 4. Twitch app (phase 1)
 

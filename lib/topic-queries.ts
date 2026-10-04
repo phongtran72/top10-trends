@@ -1,9 +1,9 @@
 import { and, asc, desc, eq, gt, inArray, lte, ne } from "drizzle-orm";
-import { getSource, platformSlug, SOURCES, type SourceId } from "@/collectors/registry";
-import { confirmOnly, FRESH_LIST_HOURS } from "@/config/ranking";
+import { getSource, pageRegion, platformSlug, SOURCES, type SourceId } from "@/collectors/registry";
+import { confirmOnly, DEFAULT_VIEW, FRESH_LIST_HOURS, inView, type View } from "@/config/ranking";
 import { rankings, topicItems, topics, trendItems } from "@/db/schema";
 import type { Db } from "@/db/types";
-import { bestEntries, currentEntries } from "@/pipeline/score";
+import { bestEntries, currentEntries, PLATFORM_ROWS_REGION, viewEntries } from "@/pipeline/score";
 
 // Queries behind the combined top 10 and the topic pages. Plain JSON results
 // (dates as ISO strings), so they can be cached.
@@ -18,6 +18,9 @@ export interface PlatformRank {
   // Set when the platform no longer lists the topic and it still counts at the
   // rank it was last seen with (Bluesky's grace hours): the time of that sighting.
   seenAt?: string;
+  // Set when the rank comes from a feed other than the one the platform's page
+  // shows first, such as Google Trends' UK feed: that feed's region.
+  feed?: string;
 }
 
 export interface CombinedEntry {
@@ -39,28 +42,31 @@ export interface CombinedTop {
 
 const known = new Set<string>(SOURCES.map((s) => s.id));
 
-function platformRank(list: string, rank: number): PlatformRank | null {
+function platformRank(list: string, rank: number, feed?: string): PlatformRank | null {
   if (!known.has(list)) return null;
   const source = getSource(list as SourceId);
-  return { sourceId: source.id, name: source.name, slug: platformSlug(source.id), rank };
+  const entry: PlatformRank = { sourceId: source.id, name: source.name, slug: platformSlug(source.id), rank };
+  if (feed && feed !== pageRegion(source)) entry.feed = feed;
+  return entry;
 }
 
 const byRankThenWeight = (a: PlatformRank, b: PlatformRank) =>
   a.rank - b.rank || getSource(b.sourceId).weight - getSource(a.sourceId).weight;
 
 // Where each topic stands in each platform's newest filtered top 10 from the
-// three hours before `at`. A platform the combined score counted from outside
+// three hours before `at`, among the lists in the view (the best rank when a
+// platform has several feeds). A platform the combined score counted from outside
 // that top 10 is added at the rank the score used: a place past 10, or a
 // Bluesky topic in its grace hours (marked with when it was last listed).
 // A confirm-only list (X's Worldwide) gives a badge only that second way,
 // so X's badge matches X's page and the score.
-async function platformRanks(db: Db, topicIds: number[], at: Date, region: string): Promise<Map<number, PlatformRank[]>> {
+async function platformRanks(db: Db, topicIds: number[], at: Date, view: View): Promise<Map<number, PlatformRank[]>> {
   const result = new Map<number, PlatformRank[]>();
   if (topicIds.length === 0) return result;
   const since = new Date(at.getTime() - FRESH_LIST_HOURS * HOUR);
   const window = and(
     ne(rankings.list, "combined"),
-    eq(rankings.region, region),
+    eq(rankings.region, PLATFORM_ROWS_REGION),
     gt(rankings.computedAt, since),
     lte(rankings.computedAt, at),
   );
@@ -77,22 +83,23 @@ async function platformRanks(db: Db, topicIds: number[], at: Date, region: strin
     .where(and(window, inArray(rankings.topicId, topicIds)));
   for (const row of rows) {
     if (row.topicId === null || newestAt.get(row.list) !== row.computedAt.getTime()) continue;
-    if (confirmOnly(row.list, row.feed)) continue;
-    const entry = platformRank(row.list, row.rank);
+    if (confirmOnly(row.list, row.feed) || !inView(view, row.list, row.feed)) continue;
+    const entry = platformRank(row.list, row.rank, row.feed);
     if (!entry) continue;
     const list = result.get(row.topicId) ?? [];
-    const existing = list.find((p) => p.sourceId === entry.sourceId);
-    if (!existing) list.push(entry);
-    else existing.rank = Math.min(existing.rank, entry.rank);
+    const index = list.findIndex((p) => p.sourceId === entry.sourceId);
+    // The best rank among the platform's feeds; on a tie, the feed its page shows.
+    if (index === -1) list.push(entry);
+    else if (entry.rank < list[index].rank || (entry.rank === list[index].rank && !entry.feed)) list[index] = entry;
     result.set(row.topicId, list);
   }
 
   const onPage = new Map([...result].map(([topicId, list]) => [topicId, new Set(list.map((p) => p.sourceId))]));
-  const scored = bestEntries(await currentEntries(db, at));
+  const scored = bestEntries(viewEntries(await currentEntries(db, at), view));
   for (const topicId of topicIds) {
     for (const [sourceId, counted] of scored.get(topicId) ?? []) {
       if (onPage.get(topicId)?.has(sourceId)) continue;
-      const entry = platformRank(sourceId, counted.rank);
+      const entry = platformRank(sourceId, counted.rank, counted.region);
       if (!entry) continue;
       if (counted.via === "grace" && counted.seenAt) entry.seenAt = counted.seenAt.toISOString();
       result.set(topicId, [...(result.get(topicId) ?? []), entry]);
@@ -118,9 +125,9 @@ async function latestCombinedAt(db: Db, region: string, notAfter?: Date): Promis
   return row?.computedAt ?? null;
 }
 
-// The newest combined top 10, with each topic's platforms and its change
+// A view's newest combined top 10, with each topic's platforms and its change
 // against the ranking computed about 24 hours earlier.
-export async function combinedTop(db: Db, region = "global"): Promise<CombinedTop | null> {
+export async function combinedTop(db: Db, region: View = DEFAULT_VIEW): Promise<CombinedTop | null> {
   const at = await latestCombinedAt(db, region);
   if (!at) return null;
   const rows = await db
@@ -185,7 +192,7 @@ export interface TopicDetail {
   links: { sourceId: SourceId; name: string; slug: string; items: TopicLink[] }[];
 }
 
-export async function topicDetail(db: Db, slug: string, region = "global"): Promise<TopicDetail | null> {
+export async function topicDetail(db: Db, slug: string, region: View = DEFAULT_VIEW): Promise<TopicDetail | null> {
   const [topic] = await db.select().from(topics).where(eq(topics.slug, slug)).limit(1);
   if (!topic) return null;
   const at = (await latestCombinedAt(db, region)) ?? topic.lastSeen;

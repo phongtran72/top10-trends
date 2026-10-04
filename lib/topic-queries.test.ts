@@ -105,6 +105,44 @@ describe("platformList after ranking", () => {
   });
 });
 
+describe("views", () => {
+  it("gives each view its own top 10, and names the feed in a badge when it isn't the page's first", async () => {
+    const db = await createTestDb();
+    try {
+      await upsertSources(db.db, planSources({ collectors: new Set(), disabled: [], env: {} }));
+      const now = new Date("2026-10-10T12:07:00Z");
+      const results = [
+        list("google_trends", "us", now, ["budget vote", "tower strike"]),
+        list("google_trends", "gb", now, ["tower strike", "harbor fire"]),
+      ];
+      const itemIds = await writeResults(db.db, results);
+      await rankRun({ db: db.db, results, itemIds, now, embedder: wordEmbedder, blocklist: new Set(), threshold: WORD_EMBEDDER_THRESHOLD });
+
+      const badges = async (view: "global" | "us") =>
+        (await combinedTop(db.db, view))!.entries.map((e) => [e.rank, e.label, e.platforms.map((p) => [p.sourceId, p.rank, p.feed ?? null])]);
+      expect(await badges("us")).toEqual([
+        [1, "budget vote", [["google_trends", 1, null]]],
+        [2, "tower strike", [["google_trends", 2, null]]],
+      ]);
+      // Global: the UK feed ranks "tower strike" higher than the US feed does, and only it has "harbor fire".
+      expect(await badges("global")).toEqual([
+        [1, "budget vote", [["google_trends", 1, null]]],
+        [2, "tower strike", [["google_trends", 1, "gb"]]],
+        [3, "harbor fire", [["google_trends", 2, "gb"]]],
+      ]);
+
+      const slug = (await combinedTop(db.db, "global"))!.entries[2].slug;
+      expect((await topicDetail(db.db, slug, "global"))?.currentRank).toBe(3);
+      const inUs = await topicDetail(db.db, slug, "us");
+      expect(inUs?.currentRank).toBeNull();
+      expect(inUs?.platforms).toEqual([]);
+      expect(inUs?.history).toEqual([]);
+    } finally {
+      await db.close();
+    }
+  });
+});
+
 describe("badges for platforms counted from outside a page's top 10", () => {
   it("marks a Bluesky topic in its grace hours and shows a rank past 10", async () => {
     const db = await createTestDb();

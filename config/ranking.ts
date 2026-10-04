@@ -48,6 +48,22 @@ export function confirmOnly(sourceId: string, region: string | undefined): boole
   return CONFIRM_ONLY_LISTS.has(`${sourceId}:${region}`);
 }
 
+// The site's two views (task 3.2). A view is a set of lists, and a list is one
+// source's feed for one region. Global is every list. US is the US feeds and
+// the worldwide lists: no UK, Canada or Australia feed, and not X's Worldwide
+// list. Topics are matched once, over every list, and shared by both views;
+// each view has its own combined ranking and snapshots. In the view with
+// every list, Google Trends counts as one list across its countries, ranked
+// by search volume (lib/window.ts mergeWindows).
+export const VIEWS = ["global", "us"] as const;
+export type View = (typeof VIEWS)[number];
+export const DEFAULT_VIEW: View = "global";
+export const EVERY_LIST_VIEW: View = "global";
+export function inView(view: View, sourceId: string, region: string | undefined): boolean {
+  if (view === EVERY_LIST_VIEW) return true;
+  return (region === undefined || region === "us" || region === "global") && !confirmOnly(sourceId, region);
+}
+
 // Bluesky re-cuts its trending list every hour, and a topic near the edge
 // often drops out for an hour and comes back (research RQ1: 47% of its top-10
 // stays are returns). A Bluesky topic missing from its latest list keeps its
@@ -68,5 +84,6 @@ export const FETCH_RUN_RETENTION_DAYS = 90;
 // r1: phase 2 as launched on 2026-10-01. r2: Bluesky trends marked cooling
 // are kept; only stale ones are dropped. r3: X's Worldwide list only backs
 // up other lists (CONFIRM_ONLY_LISTS). r4: X's rank is its US list's when
-// the US list has the topic.
-export const RANKING_VERSION = "r4";
+// the US list has the topic. r5: two views, Global and US; Google Trends and
+// YouTube add UK, Canada and Australia feeds, which count in Global only.
+export const RANKING_VERSION = "r5";
