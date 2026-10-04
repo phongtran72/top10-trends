@@ -116,3 +116,17 @@ def test_summary_reports_label_balance_per_split():
     s = dataset.summary(table)
     assert set(s.index) <= {"train", "embargo", "test"}
     assert s.loc["train", "breakout_known"] >= 1
+
+
+def test_one_view_is_built_and_the_us_view_is_the_default_when_there_are_two():
+    rows = [(0, 1, 1, 1.0, {"x": 1}, 0), (1, 1, 2, 0.8, {"x": 2}, 0)]
+    one = snaps(rows)
+    assert dataset.select_view(one)[1] == "global"  # before the views existed there's only this one
+    two = pd.concat([one, one.assign(region="us", position=[3, 4])])
+    table, _ = dataset.build(two, TOPICS)
+    assert set(table["region"]) == {"us"} and len(table) == 2  # each topic once an hour, not twice
+    assert table["position"].tolist() == [3, 4] and table["d1_position"].tolist()[1] == -1  # changes stay inside the view
+    table, _ = dataset.build(two, TOPICS, view="global")
+    assert set(table["region"]) == {"global"} and table["position"].tolist() == [1, 2]
+    with pytest.raises(ValueError):
+        dataset.build(one, TOPICS, view="us")

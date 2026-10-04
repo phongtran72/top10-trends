@@ -1,11 +1,16 @@
 """5.2 · Dataset: one training table from topic snapshots, one row per topic per hour.
 
     python -m topnews.dataset                     # production snapshots (read-only)
+    python -m topnews.dataset --view global       # the Global view (default: us, from r5 on)
     python -m topnews.dataset --source replay     # snapshots rebuilt by scripts/replay-snapshots.ts
 
 Rows come from one `algo_version` family (a version with or without
 "+replay"), so every row was matched and scored the same way; `is_replay`
-marks rebuilt hours, whose `news_count` is always 0.
+marks rebuilt hours, whose `news_count` is always 0. They also come from one
+view (the snapshot's `region`): from r5 on (task 3.2) every hour is stored
+once for the Global view and once for the US view, with the same topics, so
+reading both would count each topic twice. The US view is the default, as the
+continuation of the single list before r5; `--view global` builds the other.
 
 Features, all known at the row's hour:
 - each platform's rank (`rank_<source>`), platform count, position and score,
@@ -59,6 +64,7 @@ END_TOLERANCE = pd.to_timedelta(15, unit="min")
 TEST_DAYS = 14
 EMBARGO_HOURS = HORIZON_HOURS
 KEY = ["region", "topic_id", "taken_at"]
+DEFAULT_VIEW = "us"
 
 
 def family(version: str) -> str:
@@ -89,6 +95,15 @@ def select_family(snaps: pd.DataFrame, name: str | None = None) -> tuple[pd.Data
     chosen = name or families.iloc[int(snaps["taken_at"].to_numpy().argmax())]
     picked = snaps[families == chosen]
     return picked.assign(is_replay=picked["algo_version"].str.endswith("+replay")), chosen
+
+
+def select_view(snaps: pd.DataFrame, view: str | None = None) -> tuple[pd.DataFrame, str]:
+    """The rows of one view (`region`): `view`, or the US view when there are several, or the only one."""
+    views = sorted(snaps["region"].unique())
+    chosen = view or (views[0] if len(views) == 1 else DEFAULT_VIEW)
+    if chosen not in views:
+        raise ValueError(f"no view {chosen!r} in these snapshots; they hold {views}")
+    return snaps[snaps["region"] == chosen], chosen
 
 
 def _rank_columns(frame: pd.DataFrame) -> list[str]:
@@ -202,9 +217,13 @@ def split(table: pd.DataFrame, test_days: float = TEST_DAYS, embargo_hours: floa
     )
 
 
-def build(snaps: pd.DataFrame, topics: pd.DataFrame, family_name: str | None = None) -> tuple[pd.DataFrame, str]:
-    """The training table: features and labels for one algo_version family, with a time split."""
+def build(
+    snaps: pd.DataFrame, topics: pd.DataFrame, family_name: str | None = None, view: str | None = None
+) -> tuple[pd.DataFrame, str]:
+    """The training table: features and labels for one algo_version family and one view, with a time split.
+    The table's `region` column says which view it was built from."""
     picked, chosen = select_family(snaps, family_name)
+    picked, _ = select_view(picked, view)
     table = features(picked, topics).merge(labels(picked), on=KEY, how="left")
     table = table.sort_values(["taken_at", "region", "topic_id"]).reset_index(drop=True)
     return table.assign(split=split(table)), chosen
@@ -241,6 +260,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--source", choices=["db", "replay"], default="db")
     parser.add_argument("--replay-prefix", default=str(db.REPO_ROOT / "research" / "data" / "replay"))
     parser.add_argument("--family", default=None, help="algo_version family; default: the newest snapshot's")
+    parser.add_argument("--view", default=None, help="global or us; default: us when the family has both views")
     parser.add_argument("--out", default=None, help="CSV path; default research/data/dataset_<source>.csv")
     args = parser.parse_args(argv)
 
@@ -252,11 +272,11 @@ def main(argv: list[str] | None = None) -> None:
     if snaps.empty:
         print("No topic snapshots yet. Try --source replay after npx tsx scripts/replay-snapshots.ts.")
         return
-    table, chosen = build(snaps, topics, args.family)
+    table, chosen = build(snaps, topics, args.family, args.view)
     out = Path(args.out or db.REPO_ROOT / "research" / "data" / f"dataset_{args.source}.csv")
     out.parent.mkdir(parents=True, exist_ok=True)
     table.to_csv(out, index=False)
-    print(f"family {chosen}: {len(table):,} rows, {table.topic_id.nunique():,} topics, "
+    print(f"family {chosen}, view {table.region.iloc[0]}: {len(table):,} rows, {table.topic_id.nunique():,} topics, "
           f"{table.taken_at.min():%Y-%m-%d %H:%M} to {table.taken_at.max():%Y-%m-%d %H:%M} UTC")
     print(summary(table).round(3).to_string())
     print(f"written to {out}")

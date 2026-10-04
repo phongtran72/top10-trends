@@ -95,3 +95,10 @@ def test_context_prefers_the_stored_match_text_to_the_links_words():
         "Bluesky trending topic; A description of the topic"
     )
     assert categories.context("x", None, None) == "X trend"
+
+
+def test_context_names_the_country_of_a_google_trend():
+    assert categories.context("google_trends", None, ["Ashes squad named"], "au") == "Google search trend (Australia); Ashes squad named"
+    assert categories.context("google_trends", None, None, "gb") == "Google search trend (UK)"
+    assert categories.context("google_trends", None, None, "us") == "Google search trend (US)"
+    assert categories.context("x", None, None, "us") == "X trend"  # only Google's feeds are per country here
