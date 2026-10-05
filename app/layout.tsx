@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site-url";
@@ -32,7 +33,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main className="container">{children}</main>
         <footer className="container site-footer">
           <p>A personal, non-commercial project. Lists refresh every hour; each links to its source.</p>
+          <p>Page views are counted without cookies and without identifying visitors.</p>
         </footer>
+        {/* Vercel Web Analytics (task 4.4): cookieless page-view counts; it sends nothing outside Vercel. */}
+        <Analytics />
       </body>
     </html>
   );

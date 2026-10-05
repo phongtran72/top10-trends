@@ -60,6 +60,7 @@ Runs triggered with this token count as yours, so GitHub can email you when one 
 3. Environment variables: `DATABASE_URL` now; `REVALIDATE_SECRET` in phase 1. Vercel applies changed variables only to new deployments, so redeploy after adding one.
 4. Deploy, then copy the production domain (for example `https://top10-trends.vercel.app`) → `SITE_URL`.
 5. **Settings › Functions › Function Region**: choose the region next to the database. For Supabase in `us-east-2` (Ohio) that is **Cleveland, `cle1`**; for `us-east-1` (North Virginia) keep Vercel's default, Washington `iad1`. Hobby allows one region.
+6. Phase 4: open the project's **Analytics** tab and turn on Web Analytics. It counts page views without cookies; the Hobby plan includes it up to a monthly limit shown there. Until it is on, the site's analytics script has nothing to report to, which does no harm.
 
 Hobby is for personal, non-commercial use. Adding ads or sponsors means moving to Pro ($20 a month).
 
