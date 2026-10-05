@@ -22,7 +22,7 @@ A personal, non-commercial website that shows the top 10 trending topics on each
 ## Layout
 
 ```
-app/                  Next.js routes: /, /p/[platform], /t/[slug], /archive/[date], /status, /api/revalidate
+app/                  Next.js routes: /, /p/[platform], /t/[slug], /archive, /archive/[date], /status, /api/revalidate
 collectors/           one file per source, plus registry.ts and types.ts; __fixtures__/ holds small synthetic responses
 pipeline/             run.ts (collect → merge → rank → write → purge → revalidate) and one module per step
 lib/                  db clients, env validation, HTTP helper, embeddings, text normalization

@@ -1,7 +1,8 @@
 import { unstable_cache } from "next/cache";
 import { getSource, type SourceId } from "@/collectors/registry";
 import type { Region } from "@/collectors/types";
-import type { View } from "@/config/ranking";
+import { ITEM_RETENTION_DAYS, type View } from "@/config/ranking";
+import { archiveDay, archiveDays, archivePlatformLists } from "@/lib/archive-queries";
 import { buildDashboard, DASHBOARD_WINDOW_HOURS } from "@/lib/dashboard";
 import { getDb } from "@/lib/db";
 import { platformList, recentTopItems, sourceStatuses, spendThisMonth } from "@/lib/queries";
@@ -49,6 +50,28 @@ export const getPlatformList = unstable_cache(
 );
 
 export const getSpend = unstable_cache(async () => spendThisMonth(getDb(), new Date()), ["spend-v1"], {
+  tags: [TRENDS_TAG],
+  revalidate: 3600,
+});
+
+export const getArchiveDays = unstable_cache(async () => archiveDays(getDb()), ["archive-days-v1"], {
+  tags: [TRENDS_TAG],
+  revalidate: 3600,
+});
+
+// A day's combined top 10s for one view, and whether that day's per-platform
+// lists are still stored (items are purged after 28 days).
+export const getArchiveDay = unstable_cache(
+  async (date: string, view: View) => {
+    const lists = await archiveDay(getDb(), date, view);
+    const oldestKept = Date.now() - ITEM_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    return { lists, platformListsKept: lists.some((list) => Date.parse(list.at) > oldestKept) };
+  },
+  ["archive-day-v1"],
+  { tags: [TRENDS_TAG], revalidate: 3600 },
+);
+
+export const getArchivePlatformLists = unstable_cache(async (at: string) => archivePlatformLists(getDb(), at), ["archive-platform-lists-v1"], {
   tags: [TRENDS_TAG],
   revalidate: 3600,
 });

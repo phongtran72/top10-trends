@@ -111,6 +111,11 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         ) : (
           <p className={styles.empty}>No combined list for this view yet. It appears after the next hourly run.</p>
         )}
+        <p className={styles.note}>
+          <Link href="/archive" className={styles.cardMore}>
+            Earlier top 10s, hour by hour →
+          </Link>
+        </p>
       </section>
 
       {data.highlights.length > 0 && (

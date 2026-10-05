@@ -160,7 +160,7 @@ Passed on 2026-10-05 and confirmed by the owner. At 03:23 UTC `/status` projecte
 
 ## Phase 4 · Polish and launch (weeks 7–8)
 
-- [ ] **4.1 Archive.** `/archive/[date]` shows the combined lists for each hour of that day, and per-platform lists only for the last 28 days. The home page links to it.
+- [x] **4.1 Archive.** `/archive/[date]` shows the combined lists for each hour of that day (a UTC day, with Global and United States tabs), and with `?hour=14` that hour's list beside every platform's own list, which exist only for the last 28 days. `/archive` lists the days. The header and the home page link to it. Times are shown in the visitor's time zone.
 - [ ] **4.2 Sharing and search.** Open Graph images for the home and topic pages, page titles and descriptions, `sitemap.xml` and `robots.txt`.
 - [ ] **4.3 Failure alerts.** GitHub emails you about failed runs triggered with your token (turn on Actions notifications for failed runs only). `/status` and the home page show a banner when any source has failed for 6 hours or more.
 - [ ] **4.4 Analytics.** Add privacy-friendly page analytics, such as Vercel Web Analytics.

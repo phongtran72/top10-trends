@@ -18,6 +18,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               Top 10 Social Trends
             </Link>
             <nav aria-label="Site">
+              <Link href="/archive">Archive</Link>
               <Link href="/status">Status</Link>
             </nav>
           </div>
