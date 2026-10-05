@@ -8,6 +8,8 @@ import {
   NAMING_MAX_TITLES,
   NAMING_TEXT_LENGTH,
   REASON_MAX_LENGTH,
+  TOPIC_CATEGORIES,
+  type TopicCategory,
 } from "@/config/naming";
 import { FRESH_LIST_HOURS } from "@/config/ranking";
 import { topicItems, topics, trendItems } from "@/db/schema";
@@ -19,11 +21,12 @@ import { RUN_LIST_MARGIN_MS } from "./score";
 import { EXCLUDED_FROM_HISTORY } from "./snapshots";
 
 // Topic names (task 3.6): the first time a topic is in a combined top 10,
-// Claude writes it a short display name and a one-line reason, from the names
-// the platforms list it under and the stored headlines. They go in
-// `topics.name` and `topics.reason`; `label` (the platform's own wording, which
-// matching uses) and `summary` (the first headline) are never touched, so
-// matching and replays don't depend on what a model wrote.
+// Claude writes it a short display name and a one-line reason and picks its
+// category, from the names the platforms list it under and the stored
+// headlines. They go in `topics.name`, `topics.reason` and `topics.category`;
+// `label` (the platform's own wording, which matching uses) and `summary` (the
+// first headline) are never touched, so matching and replays don't depend on
+// what a model wrote.
 //
 // A topic is named once and never renamed. YouTube titles are never sent or
 // used: the name is kept for good, and YouTube's policy allows neither.
@@ -37,10 +40,11 @@ export interface NamingInput {
 export interface Naming {
   name: string;
   reason: string | null;
+  category: TopicCategory | null;
 }
 
 // Null when the model declines or its answer can't be used.
-export type TopicNamer = (input: NamingInput) => Promise<{ name: string; reason: string | null } | null>;
+export type TopicNamer = (input: NamingInput) => Promise<{ name: string; reason: string | null; category?: string | null } | null>;
 
 // Thrown by a namer when no later call can succeed this run (a refused key).
 export class NamingUnavailable extends Error {}
@@ -54,7 +58,7 @@ const tidy = (text: string) =>
 
 // The model's answer, checked: a name that is too long, empty or profane is
 // dropped whole (a cut-off name misleads); a long reason is cut at a word.
-export function tidyNaming(raw: { name: string; reason: string | null }): Naming | null {
+export function tidyNaming(raw: { name: string; reason: string | null; category?: string | null }): Naming | null {
   const name = tidy(raw.name).replace(/^#+/, "").replace(/\.$/, "");
   if (!nameKey(name) || name.length > NAME_MAX_LENGTH || hasProfanity(name)) return null;
   let reason: string | null = tidy(raw.reason ?? "");
@@ -63,7 +67,8 @@ export function tidyNaming(raw: { name: string; reason: string | null }): Naming
     reason = `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 1)).replace(/[\s,;:]+$/, "")}…`;
   }
   if (!reason || hasProfanity(reason)) reason = null;
-  return { name, reason };
+  const category = TOPIC_CATEGORIES.find((known) => known === raw.category) ?? null;
+  return { name, reason, category };
 }
 
 const known = new Set<string>(SOURCES.map((s) => s.id));
@@ -124,7 +129,7 @@ export function hasContext(input: NamingInput): boolean {
 }
 
 export interface NamingOutcome {
-  named: { topicId: number; label: string; name: string; reason: string | null }[];
+  named: { topicId: number; label: string; name: string; reason: string | null; category: TopicCategory | null }[];
   noContext: number;
   unusable: number; // declined, or an answer that failed the checks
   failed: string[]; // short error reasons
@@ -174,7 +179,7 @@ export async function nameTopics(db: Db, options: NamingOptions): Promise<Naming
         continue;
       }
       // Named once: the `name is null` guard keeps a concurrent run from renaming it.
-      await db.update(topics).set({ name: naming.name, reason: naming.reason }).where(and(eq(topics.id, topicId), isNull(topics.name)));
+      await db.update(topics).set(naming).where(and(eq(topics.id, topicId), isNull(topics.name)));
       outcome.named.push({ topicId, label: input.label, ...naming });
     } catch (error) {
       outcome.failed.push(describeError(error));
@@ -192,6 +197,6 @@ export function formatNaming(outcome: NamingOutcome): string[] {
   if (outcome.waiting > 0) parts.push(`${outcome.waiting} left for the next run`);
   return [
     `names: ${parts.join(", ")}`,
-    ...outcome.named.map((n) => `  ${n.label} → ${n.name}${n.reason ? ` · ${n.reason}` : ""}`),
+    ...outcome.named.map((n) => `  ${n.label} → ${n.name}${n.category ? ` [${n.category}]` : ""}${n.reason ? ` · ${n.reason}` : ""}`),
   ];
 }

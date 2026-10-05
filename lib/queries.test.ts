@@ -152,9 +152,9 @@ describe("spendThisMonth", () => {
     ]);
     const spend = await spendThisMonth(t.db, now);
     const claude = spend.lines.find((line) => line.service === "Claude (topic names)");
-    expect(claude).toMatchObject({ detail: "2 topics named × about $0.0009" });
-    expect(claude?.toDate).toBeCloseTo(0.0018);
+    expect(claude).toMatchObject({ detail: "2 topics named × about $0.0010" });
+    expect(claude?.toDate).toBeCloseTo(0.002);
     // 2 names in the 10 hours since the first, at the same pace for the 11 hours 50 minutes left.
-    expect(claude?.projected).toBeCloseTo(0.0018 + (0.0018 / 10) * (11 + 50 / 60), 6);
+    expect(claude?.projected).toBeCloseTo(0.002 + (0.002 / 10) * (11 + 50 / 60), 6);
   });
 });

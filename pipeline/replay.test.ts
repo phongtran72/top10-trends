@@ -139,16 +139,16 @@ describe("Claude's names across a rebuild", () => {
       const options = { threshold: 0.8, embedder: wordEmbedder, blocklist: new Set<string>() };
       await replaySlots(db.db, slots, options);
       const { eq } = await import("drizzle-orm");
-      await db.db.update(topics).set({ name: "Harbor Fire", reason: "A fire closed the port." }).where(eq(topics.label, "harbor fire"));
+      await db.db.update(topics).set({ name: "Harbor Fire", reason: "A fire closed the port.", category: "incident" }).where(eq(topics.label, "harbor fire"));
 
       const saved = await saveNames(db.db);
-      expect(saved).toEqual([{ slug: "harbor-fire-20261001", name: "Harbor Fire", reason: "A fire closed the port." }]);
+      expect(saved).toEqual([{ slug: "harbor-fire-20261001", name: "Harbor Fire", reason: "A fire closed the port.", category: "incident" }]);
       await resetDerived(db.db);
       await replaySlots(db.db, slots, options);
-      expect(await restoreNames(db.db, [...saved, { slug: "gone-20261001", name: "Gone", reason: null }])).toBe(1);
-      expect((await db.db.select().from(topics)).map((t) => [t.label, t.name, t.reason]).sort()).toEqual([
-        ["harbor fire", "Harbor Fire", "A fire closed the port."],
-        ["tower strike", null, null],
+      expect(await restoreNames(db.db, [...saved, { slug: "gone-20261001", name: "Gone", reason: null, category: null }])).toBe(1);
+      expect((await db.db.select().from(topics)).map((t) => [t.label, t.name, t.reason, t.category]).sort()).toEqual([
+        ["harbor fire", "Harbor Fire", "A fire closed the port.", "incident"],
+        ["tower strike", null, null, null],
       ]);
     } finally {
       await db.close();

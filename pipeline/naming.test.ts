@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { asc } from "drizzle-orm";
 import { getSource, planSources, type SourceId } from "@/collectors/registry";
 import type { Region, TrendItem } from "@/collectors/types";
+import { readFileSync } from "node:fs";
+import { TOPIC_CATEGORIES } from "@/config/naming";
 import { topics } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
 import { writeResults, type ListResult } from "./collect";
@@ -49,11 +51,13 @@ afterAll(async () => {
 
 describe("tidyNaming", () => {
   it("cleans the name and keeps a reason within 120 characters", () => {
-    expect(tidyNaming({ name: ' "Bahrain Grand Prix." ', reason: " Verstappen won   the race. " })).toEqual({
+    expect(tidyNaming({ name: ' "Bahrain Grand Prix." ', reason: " Verstappen won   the race. ", category: "sports" })).toEqual({
       name: "Bahrain Grand Prix",
       reason: "Verstappen won the race.",
+      category: "sports",
     });
-    expect(tidyNaming({ name: "#BahrainGP", reason: "" })).toEqual({ name: "BahrainGP", reason: null });
+    // A category outside the list is dropped; the name is still used.
+    expect(tidyNaming({ name: "#BahrainGP", reason: "", category: "motorsport" })).toEqual({ name: "BahrainGP", reason: null, category: null });
     const long = tidyNaming({ name: "Budget vote", reason: `${"word ".repeat(40)}end` });
     expect(long?.reason?.length).toBeLessThanOrEqual(120);
     expect(long?.reason?.endsWith("word…")).toBe(true);
@@ -63,7 +67,7 @@ describe("tidyNaming", () => {
     expect(tidyNaming({ name: "  ", reason: "x" })).toBeNull();
     expect(tidyNaming({ name: "x".repeat(61), reason: null })).toBeNull();
     expect(tidyNaming({ name: "what the fuck", reason: null })).toBeNull();
-    expect(tidyNaming({ name: "Budget vote", reason: "what the fuck" })).toEqual({ name: "Budget vote", reason: null });
+    expect(tidyNaming({ name: "Budget vote", reason: "what the fuck" })).toEqual({ name: "Budget vote", reason: null, category: null });
   });
 });
 
@@ -95,20 +99,20 @@ describe("nameTopics", () => {
     const namer: TopicNamer = async (input) => {
       asked.push(input.label);
       if (input.label === "tower strike") throw new Error("429 api.anthropic.com: rate limited");
-      return { name: "Harbor Fire Closes Port", reason: "A fire at the harbor has closed the port." };
+      return { name: "Harbor Fire Closes Port", reason: "A fire at the harbor has closed the port.", category: "incident" };
     };
     const outcome = await nameTopics(t.db, { topicIds: top, now, namer });
     expect(asked).toEqual(["harbor fire", "tower strike"]); // "Quartz" is a bare name: never sent
     expect(outcome).toMatchObject({ noContext: 1, unusable: 0, failed: ["429 api.anthropic.com: rate limited"], waiting: 0 });
     expect(formatNaming(outcome)).toEqual([
       "names: 1 named, 1 with nothing to go on, 1 failed (429 api.anthropic.com: rate limited)",
-      "  harbor fire → Harbor Fire Closes Port · A fire at the harbor has closed the port.",
+      "  harbor fire → Harbor Fire Closes Port [incident] · A fire at the harbor has closed the port.",
     ]);
     const rows = await t.db.select().from(topics).orderBy(asc(topics.id));
-    expect(rows.map((r) => [r.label, r.summary, r.name, r.reason])).toEqual([
-      ["harbor fire", "Crews battle a fire at the harbor", "Harbor Fire Closes Port", "A fire at the harbor has closed the port."],
-      ["tower strike", "Tower strike enters its second day", null, null],
-      ["Quartz", null, null, null],
+    expect(rows.map((r) => [r.label, r.summary, r.name, r.reason, r.category])).toEqual([
+      ["harbor fire", "Crews battle a fire at the harbor", "Harbor Fire Closes Port", "A fire at the harbor has closed the port.", "incident"],
+      ["tower strike", "Tower strike enters its second day", null, null, null],
+      ["Quartz", null, null, null, null],
     ]);
 
     // A later run asks only about the topic that still has no name.
@@ -119,11 +123,11 @@ describe("nameTopics", () => {
   });
 
   it("stops at the cap, at the time budget, and when the key is refused", async () => {
-    await t.db.update(topics).set({ name: null, reason: null });
+    await t.db.update(topics).set({ name: null, reason: null, category: null });
     const capped = await nameTopics(t.db, { topicIds: top, now, namer: async () => ({ name: "A name", reason: null }), limit: 1 });
     expect([capped.named.length, capped.waiting]).toEqual([1, 1]);
 
-    await t.db.update(topics).set({ name: null, reason: null });
+    await t.db.update(topics).set({ name: null, reason: null, category: null });
     const late = await nameTopics(t.db, { topicIds: top, now, namer: async () => ({ name: "A name", reason: null }), budgetMs: 0 });
     expect([late.named.length, late.waiting]).toEqual([0, 2]);
 
@@ -146,5 +150,13 @@ describe("nameTopics", () => {
     const tooLong = await nameTopics(t.db, { topicIds: top, now, namer: async () => ({ name: "x".repeat(80), reason: null }) });
     expect(tooLong.unusable).toBe(2);
     expect((await t.db.select().from(topics)).every((row) => row.name === null)).toBe(true);
+  });
+});
+
+describe("categories", () => {
+  it("are the same list research uses", () => {
+    const python = readFileSync("research/topnews/llm.py", "utf8");
+    const tuple = /^CATEGORIES = \(([^)]*)\)/m.exec(python)?.[1] ?? "";
+    expect([...tuple.matchAll(/"([a-z]+)"/g)].map((m) => m[1])).toEqual([...TOPIC_CATEGORIES]);
   });
 });

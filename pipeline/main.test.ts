@@ -175,13 +175,13 @@ describe("runPipeline", () => {
 
       const lines = await run((apiKey) => {
         keys.push(apiKey);
-        return async () => ({ name: "The Example Final", reason: "Fans are reacting to the final." });
+        return async () => ({ name: "The Example Final", reason: "Fans are reacting to the final.", category: "sports" });
       }, "2026-10-21T13:07:00Z");
       expect(keys).toEqual(["test-key"]);
       expect(lines).toContain("names: 1 named");
-      expect(lines).toContain("  Example Final → The Example Final · Fans are reacting to the final.");
-      expect((await db.db.select().from(topics)).map((row) => [row.label, row.name, row.reason])).toEqual([
-        ["Example Final", "The Example Final", "Fans are reacting to the final."],
+      expect(lines).toContain("  Example Final → The Example Final [sports] · Fans are reacting to the final.");
+      expect((await db.db.select().from(topics)).map((row) => [row.label, row.name, row.reason, row.category])).toEqual([
+        ["Example Final", "The Example Final", "Fans are reacting to the final.", "sports"],
       ]);
     } finally {
       await db.close();

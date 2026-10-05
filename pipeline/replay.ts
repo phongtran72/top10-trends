@@ -164,15 +164,25 @@ export async function copyLists(from: Db, to: Db, since?: Date): Promise<number>
 // costs money), so a rebuild saves them first and gives each back to the
 // rebuilt topic with the same slug. A topic whose slug is gone loses its
 // name; if it is still in a top 10, the next run names it again.
-export async function saveNames(db: Db): Promise<{ slug: string; name: string; reason: string | null }[]> {
-  const rows = await db.select({ slug: topics.slug, name: topics.name, reason: topics.reason }).from(topics).where(isNotNull(topics.name));
+export interface SavedName {
+  slug: string;
+  name: string;
+  reason: string | null;
+  category: string | null;
+}
+
+export async function saveNames(db: Db): Promise<SavedName[]> {
+  const rows = await db
+    .select({ slug: topics.slug, name: topics.name, reason: topics.reason, category: topics.category })
+    .from(topics)
+    .where(isNotNull(topics.name));
   return rows.map((row) => ({ ...row, name: row.name! }));
 }
 
-export async function restoreNames(db: Db, saved: readonly { slug: string; name: string; reason: string | null }[]): Promise<number> {
+export async function restoreNames(db: Db, saved: readonly SavedName[]): Promise<number> {
   let restored = 0;
-  for (const { slug, name, reason } of saved) {
-    const rows = await db.update(topics).set({ name, reason }).where(eq(topics.slug, slug)).returning({ id: topics.id });
+  for (const { slug, ...kept } of saved) {
+    const rows = await db.update(topics).set(kept).where(eq(topics.slug, slug)).returning({ id: topics.id });
     restored += rows.length;
   }
   return restored;

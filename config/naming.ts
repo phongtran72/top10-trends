@@ -12,6 +12,27 @@ export const NAMES_PER_RUN = 12;
 export const NAMING_BUDGET_MS = 30_000;
 export const NAMING_TIMEOUT_MS = 10_000;
 
+// The research categories (research/topnews/llm.py CATEGORIES; a test keeps
+// the two lists the same). Claude picks one for each topic it names, which
+// gives research a category for every top-10 topic without a second call.
+export const TOPIC_CATEGORIES = [
+  "sports",
+  "politics",
+  "entertainment",
+  "tech",
+  "gaming",
+  "business",
+  "science",
+  "health",
+  "weather",
+  "incident",
+  "lifestyle",
+  "calendar",
+  "meme",
+  "other",
+] as const;
+export type TopicCategory = (typeof TOPIC_CATEGORIES)[number];
+
 export const NAME_MAX_LENGTH = 60;
 export const REASON_MAX_LENGTH = 120;
 
