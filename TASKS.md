@@ -199,7 +199,7 @@ Research on attention and forecasts for creators and marketers, built on one dat
 - [ ] **5.8 Outside data.** Free collectors that give the hours and days models their features, each with fixtures, tests and a SETUP.md step for any key, in order:
     1. Wikipedia pageviews (the research module `topnews.wiki` and notebook 08 are done; the pipeline collector comes when a model needs live figures);
     2. GDELT;
-    3. event calendars (TheSportsDB, Nager.Date, TMDB, IGDB through the Twitch app).
+    3. event calendars: sports fixtures from the leagues' own schedules, as Trend Forecaster reads them (TheSportsDB's free tier lacks most fixtures; PLAN.md › Outside data), Nager.Date, TMDB, and IGDB through the Twitch app.
 
     The weeks-ahead "coming up" list isn't built here: it moved to Trend Forecaster (PLAN.md › Forecast horizons).
 - [ ] **5.9 Pages** (web-app session). "Rising" and "expected lifespan" on the home and topic pages. `/forecasts` lists recent forecasts with their outcomes and the running precision, lead time and calibration. An optional `/research` page summarizes the findings.

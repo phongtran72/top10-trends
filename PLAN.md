@@ -333,7 +333,16 @@ Reddit joined on 2026-10-01 as a corroborating source, with its first list in th
    - **What it shows:** calendar moments peak in their month every year (National Day for Truth and Reconciliation 6.7× in September, Fat Bear Week 4.6× in October).
    - **Lag:** figures arrive a day late, so they help the days horizon, not the hours one.
 2. GDELT: news volume and tone, updated every 15 minutes.
-3. Event calendars: TheSportsDB (fixtures), Nager.Date (holidays), TMDB (film and TV releases) and IGDB (game releases, through the existing Twitch app).
+3. Event calendars: sports fixtures from the leagues' own schedules, Nager.Date (holidays), TMDB (film and TV releases) and IGDB (game releases, through the existing Twitch app).
+   - **Fixtures: not TheSportsDB** (changed 2026-10-05). Its free tier returned 3 of a Sunday's NFL games and asks for a subscription for the rest. Trend Forecaster found sources that answer without a key and reads them in its `forecaster/fixtures.py`:
+     - MLB's stats API (`statsapi.mlb.com`), the one with published terms, which allow personal, non-commercial use;
+     - the NHL's schedule API (`api-web.nhle.com`);
+     - FIFA's match calendar (`api.fifa.com`), for national teams and many club leagues;
+     - a volunteer-run mirror of the NCAA scoreboard (`ncaa-api.henrygd.me`), for college football;
+     - nflverse's season file on GitHub, for the NFL.
+   - **The risk:** all but MLB's are public but undocumented and can change or close without notice. A pipeline collector would run on GitHub's servers for a public site, so each host's terms need a look before one is built. Trend Forecaster reads each at most once in 20 hours.
+   - **Who does what** (the split under *Forecast horizons* holds): naming tomorrow's fixtures as candidates is Trend Forecaster's. A "this topic's team has a game soon" feature for the hours and days models is this project's, and can borrow that file rather than rebuild it.
+   - **Its first numbers** (four days of lists, one weekend): 62% of NFL games were a trend within 24 hours (10 of 16), 25% of national-team football matches, 16% of NHL games, 12% of college football games and 2% of club football matches. Only fixtures starting in the next 24 hours trended. Most of what trends around a game is a team or a player by name ("Colts", "Drake Maye"), which a schedule alone doesn't name, so the useful link for a topic is whether its name matches a team with a game in the next day.
 
 Outside items are linked to topics with the same embedding model. Each source is a collector like the others: it only fetches and maps, runs in its own try/catch, and no page view ever calls it.
 
