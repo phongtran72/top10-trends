@@ -4,7 +4,7 @@ import type { Region } from "@/collectors/types";
 import { rankings, topicSnapshots, topics, trendItems } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
 import { writeResults, type ListResult } from "./collect";
-import { copyLists, loadSlots, memoEmbedder, rebuildCheck, replaySlots, resetDerived, tuneStats } from "./replay";
+import { copyLists, loadSlots, memoEmbedder, rebuildCheck, replaySlots, resetDerived, restoreNames, saveNames, tuneStats } from "./replay";
 import { upsertSources } from "./sources";
 import { wordEmbedder } from "./test-embedder";
 
@@ -123,6 +123,33 @@ describe("stored match text", () => {
       expect(topic.summary).toBe("Crews battle a fire at the harbor");
       const snaps = (await db.db.select().from(topicSnapshots)).filter((s) => s.topicId === topic.id);
       expect(snaps.map((s) => [s.region, s.newsCount])).toEqual([["global", 2], ["us", 2]]);
+    } finally {
+      await db.close();
+    }
+  });
+});
+
+describe("Claude's names across a rebuild", () => {
+  it("are saved before the reset and given back to the rebuilt topic with the same slug", async () => {
+    const db = await createTestDb();
+    try {
+      await upsertSources(db.db, planSources({ collectors: new Set(), disabled: [], env: {} }));
+      await writeResults(db.db, [list("google_trends", "us", hour(15), ["harbor fire", "tower strike"])]);
+      const slots = await loadSlots(db.db);
+      const options = { threshold: 0.8, embedder: wordEmbedder, blocklist: new Set<string>() };
+      await replaySlots(db.db, slots, options);
+      const { eq } = await import("drizzle-orm");
+      await db.db.update(topics).set({ name: "Harbor Fire", reason: "A fire closed the port." }).where(eq(topics.label, "harbor fire"));
+
+      const saved = await saveNames(db.db);
+      expect(saved).toEqual([{ slug: "harbor-fire-20261001", name: "Harbor Fire", reason: "A fire closed the port." }]);
+      await resetDerived(db.db);
+      await replaySlots(db.db, slots, options);
+      expect(await restoreNames(db.db, [...saved, { slug: "gone-20261001", name: "Gone", reason: null }])).toBe(1);
+      expect((await db.db.select().from(topics)).map((t) => [t.label, t.name, t.reason]).sort()).toEqual([
+        ["harbor fire", "Harbor Fire", "A fire closed the port."],
+        ["tower strike", null, null],
+      ]);
     } finally {
       await db.close();
     }

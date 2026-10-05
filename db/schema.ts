@@ -73,8 +73,12 @@ export const trendItems = pgTable(
 export const topics = pgTable("topics", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   slug: text("slug").notNull().unique(),
-  label: text("label").notNull(),
-  summary: text("summary"),
+  label: text("label").notNull(), // the platform's own wording; matching by name uses it
+  summary: text("summary"), // the first Google Trends headline attached to it
+  // A display name and a one-line reason written by Claude the first time the
+  // topic is in a combined top 10 (task 3.6); null until then, never rewritten.
+  name: text("name"),
+  reason: text("reason"),
   centroid: real("centroid").array(384).notNull(),
   firstSeen: timestamptz("first_seen").notNull(),
   lastSeen: timestamptz("last_seen").notNull(),
