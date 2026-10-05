@@ -89,6 +89,74 @@ Rules compared on the 230 pairs (85 the same story):
   - every contained pair in the set is at 0.80 or more, because that's how pairs were picked, so the set can't say whether the rule needs a floor;
   - the pipeline matches an item to a topic's centroid, not to one title. A short two-word name inside many different stories ("jack smith" in each day's Jack Smith story) could chain them into one topic, which a pair test can't show.
 
+## Headlines in the vector split same-name topics (2026-10-04)
+
+The live pipeline embeds a Google trend as its title plus two headlines, and a Bluesky topic as its title plus its description. An X trend is a bare name. So "anthony richardson. Headline. Headline" against "Anthony Richardson" scores about 0.80, under the 0.86 threshold, and the same name becomes two topics. The threshold was tuned on replays, which had titles only until the lists stored match text (2026-10-02 18:07 UTC), so the tuning never saw this.
+
+**In the live snapshots** (79 live hours, r1 to r5, the US view for r5):
+
+| | Topic-hours |
+| --- | --- |
+| X and Google in one topic | 23 |
+| The same name as two topics in one hour, one on X and one on Google | 59 |
+| The same in the 28 rebuilt hours, which had titles only | 50 merged, 0 split |
+
+Examples: "Bahrain GP" and "bahrain gp" for six hours on October 4, "Anthony Richardson", "Jeremiah Smith", "Tom Cotton". The web-app session found the same name twice in 11 of 64 combined top 10s.
+
+**Pair against pair** on the lists since the text was stored (51 hours, Google's US feed), the same trends embedded both ways, at 0.86:
+
+| Pair of platforms | Titles only | Title and text |
+| --- | --- | --- |
+| Google and X | 101 | 5 |
+| Bluesky and Google | 13 | 17 |
+| Bluesky and X | 10 | 3 |
+| Google and Mastodon | 9 | 1 |
+| Google and Instagram | 7 | 0 |
+| Google and Reddit | 5 | 8 |
+| All pairs | 195 | 76 (54 in both) |
+
+The text helps where both sides have words to compare (Bluesky with Google, Google with Reddit's long titles) and hurts where one side is a bare name. The 141 pairs lost sit at a median of 0.80 once the text is in.
+
+**Topic against topic:** four in-memory replays of the same 52 hours (`scripts/replay-snapshots.ts --since … [--titles-only] [--threshold …]`), US view:
+
+| | Live: title and text, 0.86 | Titles only, 0.86 | Titles only, 0.90 | Titles only, 0.93 |
+| --- | --- | --- | --- | --- |
+| Topics | 985 | 872 | 1,019 | 1,068 |
+| Topic-hours on 2 or more platforms | 1.2% | 4.1% | 2.0% | 1.6% |
+| X and Google in one topic (topic-hours) | 10 | 103 | 64 | 56 |
+| Bluesky and Google | 19 | 13 | 0 | 0 |
+| Same-name splits (topic-hours) | 30 | 0 | 0 | 0 |
+| Hours with a name twice in the Global top 10 | 5 of 52 | 0 | 0 | 0 |
+| Cross-platform member pairs | 93 | 268 | 119 | 74 |
+| Of those, the same name on both sides | 15 | 54 | 56 | 56 |
+
+- **Titles only removes every split, and at 0.86 it brings wrong merges back.** Of the 220 member pairs it has and live doesn't, read one by one, 164 are the same story, 52 are not and 4 are unclear: 24% wrong.
+- **The wrong ones are chains through a shared word,** which a topic's centroid makes worse than pair matching suggests: "ty france" inside the France–Italy topic; "Índia" pulling in three other matches; "its gameday" joining the Braves, Lions and Packers; surnames ("sean tucker" with "kyle tucker", "nolan wells" with "austin wells").
+- **A stricter title threshold fixes most of that and loses the text's gain.** At 0.90, of the pairs read, 79 are right and 6 wrong; but no Bluesky topic joins a Google one, because a sentence and a query never reach 0.90 on titles.
+- **What the text adds is nearly all right:** 45 member pairs that titles miss, such as "Plague death reported in Siberia" with "pneumonic plague", and "F1 returns to Sepang" with "bahrain gp", "lewis hamilton" and Reddit's race result.
+
+**So the two kinds of evidence want different rules,** and the recommendation sent to the web-app session is in two steps:
+1. Now: an exact-name rule on top of today's vectors. An item joins a topic when its normalized title equals a member's. It removes the splits and the top-10 duplicates and adds no wrong merge.
+2. For the review: also join when the title-alone similarity is 0.90 or more, keeping the text comparison at 0.86. That adds about 40 right pairs (a name inside a longer query, such as "eagles game sunday" with "Eagles") for about 6 wrong, and needs a second vector per item.
+
+**The exact-name rule, checked before it ships** (the web-app session's PR #25, replayed in memory over the same hours, 53 by then):
+
+| US view | Without the rule | With it |
+| --- | --- | --- |
+| Same-name splits (topic-hours) | 31 | 0 |
+| Hours with a name twice in the top 10 | 5 | 0 |
+| X and Google in one topic (topic-hours) | 10 | 54 |
+| Bluesky and Google | 21 | 19 |
+| Topics with members from 2 or more sources | 47 | 77 |
+
+- Of the 102 member pairs it adds, 40 have the same name on both sides and all 40 are the same subject. The other 62 come through the topic the item joined; 54 of them are one Formula 1 race, now a single story across five platforms.
+- It adds no wrong merge of its own. Four added pairs ride on merges the vectors had already made (two surname ones, two loose ones from Google's headlines).
+- The rule runs before the vectors, so it can move an item: 5 pairs disappear, where a Google query used to join a Bluesky story by its headlines and now joins the same name on X.
+
+**For research:** `echo.analyze` embeds titles alone by default, so the research questions treat every day alike and aren't cut down by the same effect. `use_text=True` gives the live pipeline's vectors.
+
+**Limits of this test:** one reader's verdicts (the research assistant's); pairs are counted inside topics, so one chained topic counts several times; 52 hours with a football weekend in them.
+
 ## Limits
 
 - 238 pairs from one day, heavy on the MLB playoffs. The differences between the top two models are within noise.
