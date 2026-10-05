@@ -164,7 +164,7 @@ Passed on 2026-10-05 and confirmed by the owner. At 03:23 UTC `/status` projecte
 - [x] **4.2 Sharing and search.** Open Graph images for the home page (the current top 5) and topic pages (name, place and platforms), drawn on demand with `next/og`; page titles, descriptions and canonical links, with absolute URLs from `lib/site-url.ts` (Vercel's production domain, or `SITE_URL`); `sitemap.xml` (home, platforms, archive days, and topics from the last 28 days' top 10s) and `robots.txt`.
 - [x] **4.3 Failure alerts.** GitHub emails you about failed runs triggered with your token (**[You]** turn on Actions notifications for failed runs only: SETUP.md §6). `/status` and the home page show a banner when any source has failed for 6 hours or more, or when the hourly update itself hasn't finished for 6 hours (`lib/alerts.ts`).
 - [x] **4.4 Analytics.** Add privacy-friendly page analytics: Vercel Web Analytics (`@vercel/analytics`, cookieless) in the root layout, with a line in the footer saying so. **[You]** turn it on for the project in Vercel (SETUP.md §7).
-- [ ] **4.5 README.** What the site is, screenshots, architecture, how to run locally, and attribution for every data source.
+- [x] **4.5 README.** What the site is, screenshots (`docs/screenshots/`), architecture, how the combined list is made, how to run locally, and attribution for every data source, the embedding model and the word list.
 - [ ] **[You]** Check the site on a phone and a desktop, then share the link.
 
 **Gate 4.** Launch.
