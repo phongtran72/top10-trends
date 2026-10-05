@@ -45,6 +45,7 @@ export interface RankOutcome {
   matched: number;
   combined: RankedTopic[]; // the default (Global) view
   views: Record<View, RankedTopic[]>;
+  topTopicIds: number[]; // saved topics in any view's top 10, best first
 }
 
 // A new topic is named after the item that created it: matching handles lead
@@ -206,6 +207,9 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
     created,
     matched: match.assignments.size,
     combined: top(DEFAULT_VIEW),
+    topTopicIds: input.db
+      ? [...new Set(Array.from({ length: 10 }, (_, place) => VIEWS.flatMap((view) => scores.get(view)?.[place]?.topicId ?? [])).flat())]
+      : [],
     views: Object.fromEntries(VIEWS.map((view) => [view, top(view)])) as Record<View, RankedTopic[]>,
   };
 }

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getSource, planSources } from "@/collectors/registry";
-import { fetchRuns, trendItems } from "@/db/schema";
+import { fetchRuns, topics, trendItems } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
 import { upsertSources } from "@/pipeline/sources";
 import { platformList, recentTopItems, sourceStatuses, spendThisMonth } from "./queries";
@@ -140,5 +140,21 @@ describe("spendThisMonth", () => {
     expect(pinterest.projected).toBeCloseTo(0.03);
     // Apify's free $5 a month covers TikTok, Instagram and Pinterest, so only X is out of pocket.
     expect(spend.outOfPocket).toBeCloseTo(x.projected, 5);
+  });
+
+  it("estimates Claude from the topics it named this month", async () => {
+    const centroid = new Array(384).fill(0);
+    await t.db.insert(topics).values([
+      { slug: "a-20260930", label: "a", name: "A", centroid, firstSeen: hoursAgo(10), lastSeen: hoursAgo(1) },
+      { slug: "b-20260930", label: "b", name: "B", centroid, firstSeen: hoursAgo(4), lastSeen: hoursAgo(1) },
+      { slug: "c-20260930", label: "c", centroid, firstSeen: hoursAgo(4), lastSeen: hoursAgo(1) }, // never named
+      { slug: "d-20260820", label: "d", name: "D", centroid, firstSeen: hoursAgo(24 * 40), lastSeen: hoursAgo(24 * 40) }, // last month
+    ]);
+    const spend = await spendThisMonth(t.db, now);
+    const claude = spend.lines.find((line) => line.service === "Claude (topic names)");
+    expect(claude).toMatchObject({ detail: "2 topics named × about $0.0010" });
+    expect(claude?.toDate).toBeCloseTo(0.002);
+    // 2 names in the 10 hours since the first, at the same pace for the 11 hours 50 minutes left.
+    expect(claude?.projected).toBeCloseTo(0.002 + (0.002 / 10) * (11 + 50 / 60), 6);
   });
 });

@@ -139,6 +139,55 @@ describe("runPipeline", () => {
     ]);
   });
 
+  it("names the top 10's topics with Claude when ANTHROPIC_API_KEY is set, and a failure there never fails the run", async () => {
+    const db = await createTestDb();
+    try {
+      // Bluesky gives a description, so there is something to summarize.
+      const collectors: ReadonlyMap<SourceId, Collector> = new Map<SourceId, Collector>([
+        [
+          "bluesky",
+          {
+            id: "bluesky",
+            fetch: async (region) => [
+              { source: "bluesky", region, rank: 1, title: "Example Final", url: "https://bsky.app/a", matchText: ["Fans react to the example final"] },
+            ],
+          },
+        ],
+      ]);
+      const keys: string[] = [];
+      const run = (createNamer: NonNullable<Parameters<typeof runPipeline>[2]["createNamer"]>, at: string) => {
+        const out = capture();
+        return runPipeline([], { SESSION_DATABASE_URL: sessionUrl, ANTHROPIC_API_KEY: "test-key" }, {
+          openDb: () => ({ db: db.db, close: async () => {} }),
+          log: out.log,
+          now: () => new Date(at),
+          collectors,
+          createNamer,
+          ...offline,
+        }).then(() => out.lines);
+      };
+
+      const failing = await run(() => {
+        throw new Error("no client");
+      }, "2026-10-21T12:07:00Z");
+      expect(failing).toContain("names: failed: no client");
+      expect(failing.at(-1)).toMatch(/^run ok: heartbeat written/);
+
+      const lines = await run((apiKey) => {
+        keys.push(apiKey);
+        return async () => ({ name: "The Example Final", reason: "Fans are reacting to the final.", category: "sports" });
+      }, "2026-10-21T13:07:00Z");
+      expect(keys).toEqual(["test-key"]);
+      expect(lines).toContain("names: 1 named");
+      expect(lines).toContain("  Example Final → The Example Final [sports] · Fans are reacting to the final.");
+      expect((await db.db.select().from(topics)).map((row) => [row.label, row.name, row.reason, row.category])).toEqual([
+        ["Example Final", "The Example Final", "Fans are reacting to the final.", "sports"],
+      ]);
+    } finally {
+      await db.close();
+    }
+  });
+
   it("fails a full run without SESSION_DATABASE_URL", async () => {
     await expect(
       runPipeline([], {}, { openDb: () => ({ db: t.db, close: async () => {} }), log: () => {}, collectors: new Map(), ...offline }),

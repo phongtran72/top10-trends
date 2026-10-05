@@ -111,7 +111,11 @@ TikTok's, Instagram's and Pinterest's terms ban scraping, so these sources are y
 
 ## 13. Anthropic and OpenAI (optional)
 
-- Anthropic Console API key → `ANTHROPIC_API_KEY`, for Claude Haiku 4.5 topic names (about $3.24 a month).
+- Anthropic Console API key → `ANTHROPIC_API_KEY`, for Claude Haiku 4.5 topic names (about $3 a month). The code is in place and stays off until the key exists:
+    1. In the [Anthropic Console](https://console.anthropic.com/), add a small amount of prepaid credit (a few dollars lasts over a month; there is no subscription). Leave automatic top-ups off if you want a hard stop, and set a spend limit if the console offers one; the code also caps naming at 12 topics a run.
+    2. Create an API key.
+    3. Add it as the GitHub secret `ANTHROPIC_API_KEY` (repository → Settings → Secrets and variables → Actions, or `gh secret set ANTHROPIC_API_KEY`, which asks for the value without showing it). Never paste it into a chat.
+    4. The next hourly run names the topics in the combined top 10; its log has a line starting `names:`. To turn naming off, delete the secret.
 - OpenAI API key → `OPENAI_API_KEY`, only if you chose OpenAI embeddings in phase 2 (about $0.06 a month).
 
 ## 14. Read-only role for research (phase 5)

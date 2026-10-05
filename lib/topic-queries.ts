@@ -42,6 +42,12 @@ export interface CombinedTop {
 
 const known = new Set<string>(SOURCES.map((s) => s.id));
 
+// What a page shows for a topic: Claude's name and reason when it has them
+// (task 3.6), else the platform's own wording and the first headline.
+function displayText(topic: { label: string; summary: string | null; name: string | null; reason: string | null }) {
+  return { label: topic.name ?? topic.label, summary: topic.reason ?? topic.summary };
+}
+
 function platformRank(list: string, rank: number, feed?: string): PlatformRank | null {
   if (!known.has(list)) return null;
   const source = getSource(list as SourceId);
@@ -137,6 +143,8 @@ export async function combinedTop(db: Db, region: View = DEFAULT_VIEW): Promise<
       slug: topics.slug,
       label: topics.label,
       summary: topics.summary,
+      name: topics.name,
+      reason: topics.reason,
       score: rankings.score,
     })
     .from(rankings)
@@ -161,10 +169,11 @@ export async function combinedTop(db: Db, region: View = DEFAULT_VIEW): Promise<
   return {
     computedAt: at.toISOString(),
     compared,
-    entries: rows.map((row) => {
+    entries: rows.map(({ name, reason, ...row }) => {
       const was = previous.get(row.topicId);
       return {
         ...row,
+        ...displayText({ ...row, name, reason }),
         score: row.score ?? 0,
         change: was === undefined ? null : was - row.rank,
         platforms: platforms.get(row.topicId) ?? [],
@@ -249,8 +258,7 @@ export async function topicDetail(db: Db, slug: string, region: View = DEFAULT_V
   const platforms = await platformRanks(db, [topic.id], at, region);
   return {
     slug: topic.slug,
-    label: topic.label,
-    summary: topic.summary,
+    ...displayText(topic),
     firstSeen: topic.firstSeen.toISOString(),
     lastSeen: topic.lastSeen.toISOString(),
     currentRank: current?.rank ?? null,

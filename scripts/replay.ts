@@ -15,6 +15,8 @@ import {
   rebuildCheck,
   replaySlots,
   resetDerived,
+  restoreNames,
+  saveNames,
   tuneStats,
 } from "@/pipeline/replay";
 
@@ -105,6 +107,7 @@ async function rebuild(argv: readonly string[]) {
     }
     const slots = await loadSlots(db);
     console.log(`rebuild: ${slots.length} hourly slots at threshold ${threshold}`);
+    const names = await saveNames(db);
     await resetDerived(db);
     const { created } = await replaySlots(db, slots, {
       threshold,
@@ -114,7 +117,8 @@ async function rebuild(argv: readonly string[]) {
         if ((i + 1) % 24 === 0) console.log(`rebuild: ${i + 1}/${slots.length} slots`);
       },
     });
-    console.log(`rebuild: done, ${created} topics`);
+    const restored = await restoreNames(db, names);
+    console.log(`rebuild: done, ${created} topics${names.length > 0 ? `; ${restored} of ${names.length} Claude names carried over` : ""}`);
   } finally {
     await close();
   }

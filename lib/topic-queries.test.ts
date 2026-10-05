@@ -1,6 +1,8 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getSource, planSources, type SourceId } from "@/collectors/registry";
 import type { Region, TrendItem } from "@/collectors/types";
+import { topics } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
 import { writeResults, type ListResult } from "@/pipeline/collect";
 import { rankRun } from "@/pipeline/rank";
@@ -68,6 +70,20 @@ describe("combinedTop", () => {
     ]);
     expect(top?.entries[0].score).toBeCloseTo(1.8);
     expect(top?.entries[0].slug).toBe("world-series-20261007");
+  });
+});
+
+describe("Claude's names", () => {
+  it("are shown in place of the label and the headline when a topic has them", async () => {
+    await t.db.update(topics).set({ name: "World Series", reason: "The Dodgers won the series." }).where(eq(topics.slug, "world-series-20261007"));
+    const top = await combinedTop(t.db);
+    expect(top?.entries.map((e) => [e.label, e.summary])).toEqual([
+      ["World Series", "The Dodgers won the series."],
+      ["flood watch", null],
+      ["New topic", null],
+    ]);
+    expect(await topicDetail(t.db, "world-series-20261007")).toMatchObject({ label: "World Series", summary: "The Dodgers won the series." });
+    await t.db.update(topics).set({ name: null, reason: null }).where(eq(topics.slug, "world-series-20261007"));
   });
 });
 

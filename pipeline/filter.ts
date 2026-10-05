@@ -35,6 +35,10 @@ const MIN_LATIN_SHARE = 0.8;
 
 const profanity = new RegExpMatcher({ ...englishDataset.build(), ...englishRecommendedTransformers });
 
+export function hasProfanity(text: string): boolean {
+  return profanity.hasMatch(text);
+}
+
 // "#Monday Motivation!" → "mondaymotivation": how blocklist entries compare.
 export function compactText(text: string): string {
   return nameKey(text);
