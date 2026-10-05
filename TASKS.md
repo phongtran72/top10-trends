@@ -156,6 +156,8 @@ Waived for phase 2 by the owner on 2026-10-01, after a day of soak: every phase 
 
 **Gate 3.** `/status` projects the month's spend within your chosen tier (Starter about $18, Plus about $19–24).
 
+Passed on 2026-10-05 and confirmed by the owner. At 03:23 UTC `/status` projected $19.29 for October, of which $14.99 is out of pocket: X $14.99 (200 requests so far, exactly 48 on each full day, none above the cap of 60), and TikTok $2.17, Instagram $1.86 and Pinterest $0.27 inside Apify's free $5. The page's figures matched a recount from `fetch_runs`. Claude naming was not on yet (no key); at about 3.7 topics an hour entering a combined top 10 it should add $2 to $3, for about $17 to $18 out of pocket. The X and Apify consoles hold the actual bills, which only the owner can see.
+
 ## Phase 4 · Polish and launch (weeks 7–8)
 
 - [ ] **4.1 Archive.** `/archive/[date]` shows the combined lists for each hour of that day, and per-platform lists only for the last 28 days. The home page links to it.
