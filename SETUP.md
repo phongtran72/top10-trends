@@ -51,7 +51,7 @@ The free quota is 10,000 units a day; this site uses 96 a day (one call an hour 
 2. Repository access: **only this repository**. Permissions: **Actions: Read and write**. Pick an expiration date and set a reminder to renew the token before it lapses.
 3. Save it as the GitHub secret `GH_DISPATCH_TOKEN` (section 8). The deploy workflow copies it into the Worker; after renewing the token, update the secret and run the `deploy-worker` workflow by hand.
 
-Runs triggered with this token count as yours, so GitHub can email you when one fails (turn on Actions notifications for failed runs only).
+Runs triggered with this token count as yours, so GitHub can email you when one fails. To turn that on: GitHub → your avatar → Settings → Notifications → Actions, tick Email and "Only notify for failed workflows". A run fails only when the pipeline itself breaks (the database is unreachable, say); one source failing never fails a run, so for those the site shows a banner on the home and status pages once a source has been failing for 6 hours.
 
 ## 7. Vercel website (after merging phase 0)
 

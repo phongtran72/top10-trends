@@ -4,6 +4,7 @@ import type { Region } from "@/collectors/types";
 import { ITEM_RETENTION_DAYS, type View } from "@/config/ranking";
 import { archiveDay, archiveDays, archivePlatformLists } from "@/lib/archive-queries";
 import { buildDashboard, DASHBOARD_WINDOW_HOURS } from "@/lib/dashboard";
+import { failingSources } from "@/lib/alerts";
 import { getDb } from "@/lib/db";
 import { platformList, recentTopItems, sourceStatuses, spendThisMonth } from "@/lib/queries";
 import { TRENDS_TAG } from "@/lib/revalidate";
@@ -80,5 +81,17 @@ export const getArchivePlatformLists = unstable_cache(async (at: string) => arch
 export const getSitemapTopics = unstable_cache(
   async () => recentTopTopics(getDb(), new Date(Date.now() - ITEM_RETENTION_DAYS * 24 * 60 * 60 * 1000)),
   ["sitemap-topics-v1"],
+  { tags: [TRENDS_TAG], revalidate: 3600 },
+);
+
+// Sources failing for six hours or more, for the banner (task 4.3). Recomputed
+// at least hourly even when the pipeline has stopped refreshing the cache,
+// which is exactly when the banner matters.
+export const getAlerts = unstable_cache(
+  async () => {
+    const now = new Date();
+    return failingSources(await sourceStatuses(getDb(), now), now);
+  },
+  ["alerts-v1"],
   { tags: [TRENDS_TAG], revalidate: 3600 },
 );

@@ -3,12 +3,13 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { COLLECTORS } from "@/collectors/index";
 import { PLATFORMS } from "@/collectors/registry";
+import { FailureBanner } from "@/components/FailureBanner";
 import { PlatformBadges } from "@/components/PlatformBadges";
 import { RankChange } from "@/components/RankChange";
 import { RegionTabs } from "@/components/RegionTabs";
 import { RelativeTime } from "@/components/RelativeTime";
 import { VIEWS } from "@/config/ranking";
-import { getCombinedTop, getDashboard } from "@/lib/cached";
+import { getAlerts, getCombinedTop, getDashboard } from "@/lib/cached";
 import type { DashboardEntry, Staying } from "@/lib/dashboard";
 import { metricText, REGION_NAMES } from "@/lib/format";
 import { parseView, VIEW_NAMES, VIEW_NOTES, viewQuery } from "@/lib/view";
@@ -65,6 +66,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   const view = parseView((await searchParams).region);
   const combined = await getCombinedTop(view);
   const data = await getDashboard();
+  const alerts = await getAlerts();
   const later = PLATFORMS.filter((p) => !COLLECTORS.has(p.id)).map((p) => p.name);
 
   return (
@@ -80,6 +82,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
         ) : null}
         .
       </p>
+      <FailureBanner alerts={alerts} />
 
       <section className={styles.section} aria-labelledby="combined">
         <h2 id="combined">Top 10 across platforms</h2>
