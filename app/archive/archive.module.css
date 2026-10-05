@@ -1,0 +1,127 @@
+.kicker {
+  margin-top: 2.25rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.kicker a:hover,
+.more:hover,
+.more a:hover {
+  color: var(--accent);
+}
+
+.kicker + :global(.page-title) {
+  margin-top: 0.25rem;
+}
+
+.empty {
+  margin-top: 1.5rem;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+/* The index: one row per day. */
+.days {
+  list-style: none;
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.day {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.day:hover .dayName {
+  color: var(--accent);
+}
+
+.dayName {
+  font-weight: 600;
+}
+
+.dayMeta {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* A day: one card per hour; an hour: one card per platform. */
+.section {
+  margin-top: 2rem;
+}
+
+.section h2 {
+  font-size: 1.125rem;
+}
+
+.cards {
+  margin-top: 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17.5rem, 1fr));
+  gap: 0.75rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.625rem;
+  background: var(--surface);
+  min-width: 0;
+}
+
+.card h3,
+.hour {
+  font-size: 1rem;
+}
+
+.feed {
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.entries {
+  list-style: none;
+  margin-top: 0.625rem;
+  display: grid;
+  gap: 0.375rem;
+  flex: 1;
+}
+
+.entries li {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  min-width: 0;
+}
+
+.entries a {
+  overflow-wrap: anywhere;
+}
+
+.entries a:hover {
+  color: var(--accent);
+}
+
+.rank {
+  flex: none;
+  width: 1.25rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.more {
+  display: inline-block;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}

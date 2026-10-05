@@ -31,6 +31,17 @@ export function utcTime(iso: string): string {
   return `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 }
 
+// "Sunday, October 4, 2026" (or "Oct 4") for a UTC day written "2026-10-04":
+// the same on the server and in every browser.
+export function dayName(date: string, style: "long" | "short" = "long"): string {
+  return new Date(`${date}T00:00:00.000Z`).toLocaleDateString(
+    "en-US",
+    style === "long"
+      ? { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }
+      : { month: "short", day: "numeric", timeZone: "UTC" },
+  );
+}
+
 export function relativeTime(iso: string, nowMs: number): string {
   const minutes = Math.floor((nowMs - new Date(iso).getTime()) / 60_000);
   if (minutes < 1) return "just now";
