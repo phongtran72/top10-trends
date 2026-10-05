@@ -174,11 +174,17 @@ def kept_trends(trend_table: pd.DataFrame, filtered: pd.DataFrame, vectors: np.n
 
 
 def analyze(
-    items: pd.DataFrame, name: str, slack_hours: float = SLACK_HOURS, segment: bool = True
+    items: pd.DataFrame, name: str, slack_hours: float = SLACK_HOURS, segment: bool = True, use_text: bool = False
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Trends → the pipeline's filters and model → cross-platform matches. Returns the matches and the dropped trends."""
+    """Trends → the pipeline's filters and model → cross-platform matches. Returns the matches and the dropped
+    trends.
+
+    Titles alone by default. That treats the days before and after the lists stored match text
+    (2026-10-02 18:07 UTC) alike, and it's what the threshold was tuned on. With `use_text=True` a Google
+    or Bluesky trend is embedded with its text, as the live pipeline does, and a bare name on another
+    platform then falls below the threshold (findings/matching.md): Google–X matches drop from 101 to 5."""
     table = trends(items)
-    filtered, vectors = embed(table, name, segment, items)
+    filtered, vectors = embed(table, name, segment, items, use_text)
     kept, kept_vectors = kept_trends(table, filtered, vectors)
     dropped = filtered[~filtered["kept"]].merge(table, left_on="id", right_on="trend_id")
     return cross_platform(kept, kept_vectors, slack_hours), dropped
