@@ -1,6 +1,6 @@
 # RQ4 · News and memes
 
-**Status: preliminary (2026-10-01).** One day of stored lists. The lifespans are too thin to compare yet, but two patterns are already visible.
+**Status: answered inside each platform on five days (2026-10-05, below). As first written (2026-10-01):** One day of stored lists. The lifespans are too thin to compare yet, but two patterns are already visible.
 - On this day, the trends linked to news were mostly sports names on X.
 - The one non-news kind that crossed platforms was the recurring calendar moment.
 - Re-run `notebooks/04_rq4_news.ipynb` weekly. After phase 2, repeat it with snapshots' `news_count`, and later with GDELT's news volume (task 5.8).
@@ -62,6 +62,34 @@ With nomic-embed-text-v1.5 at the pipeline's 0.86 and data to 2026-10-01 03:08 U
 News-linked trends now spread as often as calendar moments. With the hand-checked categories (`findings/categories.md`), the split is sharper: calendar 30%, sports 29%, gaming 10%, politics 6%, entertainment 2%.
 
 **Correction (2026-10-01, data to 13:07 UTC):** calendar moments cross mostly through the slow lists. Over every list 25% of them were matched on another list; on the hourly lists only 7% (3 of 42), because the rest of the matches are on Instagram, Pinterest and TikTok, and the TikTok–Pinterest ones are a week apart. Sports is the one kind that clearly spreads on the hourly lists (25%). The tables are in `findings/categories.md` › Second set.
+
+## Re-run on five days, inside each platform (2026-10-05)
+
+Stored lists to 2026-10-05 10:08 UTC, Google's US feed, the hourly lists. Each trend's news flag is the local model's (2,901 labeled trends; the flag isn't checked trend by trend), and trends are matched on titles at 0.86.
+
+Comparing news-driven trends with the rest across all lists mostly compares Google and Bluesky with Mastodon and Twitch. So the comparison here is inside each platform:
+
+| Platform | Stays: news, rest | Median time in the top 10: news, rest | Still listed after 3 h: news, rest | Difference? |
+| --- | --- | --- | --- | --- |
+| X | 81, 500 | 2 h, 2 h | 29%, 28% | no (p = 0.97) |
+| Hacker News | 117, 60 | 3 h, 3 h | 41%, 42% | no (p = 0.64) |
+| Reddit | 44, 154 | 3 h, 2 h | 39%, 30% | no (p = 0.38) |
+| Bluesky | 333, 41 | 1 h, 2 h | 25%, 32% | no (p = 0.14) |
+| Google Trends (US) | 694, 73 | 1 h, 1 h | 0%, 0% | none that matters |
+
+| Platform | Also on another list: news | The rest |
+| --- | --- | --- |
+| X | 27% of 79 | 20% of 538 |
+| Google Trends (US) | 23% of 599 | 18% of 66 |
+| Bluesky | 22% of 191 | 5% of 20 |
+| Reddit | 16% of 62 | 3% of 272 |
+| All hourly lists | 19% of 1,099 | 13% of 1,210 |
+
+- **News-driven trends don't last longer on a list.** Inside X, Hacker News, Reddit and Bluesky the two kinds stay about as long. The large differences in lifespan are between lists, not between news and the rest.
+- **They do spread a little more:** 19% against 13% over the hourly lists, and in the same direction on every platform. The gap is widest where the rest is personal or playful (Reddit's clips and jokes, 3%).
+- **The calendar result shrank to its real size.** On the hourly lists a fifth of calendar trends are on another list (17 of 80), the same as sports, where the first runs suggested 35–40% from two stories.
+
+So for the question as asked: a news story is no longer-lived than a meme on any one list, and somewhat more likely to be on a second one.
 
 ## What it means for the forecasts
 
