@@ -63,7 +63,7 @@ Start free; the Starter tier, about $18 a month, is the best value because X's l
 | Starter | ≈ $18 | Free tier + X | X trends hourly for Worldwide and US ($14.40), [Claude Haiku 4.5](https://platform.claude.com/docs/en/about-claude/pricing) topic names and one-line summaries (≈ $3.24), [OpenAI embeddings](https://developers.openai.com/api/docs/pricing) (≈ $0.06) |
 | Plus | ≈ $18 | Starter + TikTok, Instagram and Pinterest | TikTok's top 30 US hashtags (7-day window) daily, Instagram's top 10 trending topics three times a day and Pinterest's 25 growing US keywords twice a week via Apify actors: about $4.20 of usage a month together, inside [Apify's free plan](https://apify.com/pricing) ($5 a month, which blocks rather than bills beyond it; no subscription); the platforms' terms ban scraping |
 
-Above about $25, money mostly buys refresh speed (X every 15 minutes costs $57.60 a month) or enterprise listening data, which a personal top 10 does not need. Estimates assume a 30-day month of 720 hourly runs and about 5 new topics an hour to name, at roughly 600 input and 60 output tokens each.
+Above about $25, money mostly buys refresh speed (X every 15 minutes costs $57.60 a month) or enterprise listening data, which a personal top 10 does not need. Estimates assume a 30-day month of 720 hourly runs and about 5 new topics an hour to name, at roughly 600 input and 60 output tokens each. Measured on 2026-10-05 (Gate 3): X projects to $14.99 for a 31-day October, the three Apify sources to $4.30 of the free $5, and about 3.7 topics an hour enter a combined top 10 for Claude to name (about 650 input and 70 output tokens each), so about $17 to $18 a month out of pocket.
 
 ## Architecture
 
@@ -426,7 +426,7 @@ The biggest risks are a thin combined list on the Free tier, access changes at R
 | Breaking a data policy, such as YouTube's [30-day storage rule](https://developers.google.com/youtube/terms/developer-policies) or missing attribution | Medium | Purge items at 28 days, never name topics from video titles, and link every item to its source |
 | Duplicate or junk topics in the combined list | Medium | Centroid matching, English and profanity filters, threshold tuning, and a weekly look at 5 random hours |
 | The scheduler misses runs | Low | Pages show "updated N min ago"; a $4 a month droplet with system cron is the fallback |
-| Free-tier limits hit (Vercel 4 CPU-hours, Supabase 500 MB) | Low | Cached pages so visits rarely touch the database; the purge job keeps storage flat |
+| Free-tier limits hit (Vercel 4 CPU-hours, Supabase 500 MB) | Medium for the database | Cached pages so visits rarely touch the database. The purge keeps `trend_items` flat, but the permanent tables grow: on 2026-10-05 the database was 28 MB after five days, with about 17 topics created an hour (each keeps a 384-number centroid, about 2.4 KB) and about 200 snapshot rows an hour since the two views (about 230 bytes each). That is roughly 60 to 65 MB a month, so the 500 MB would fill in about seven months. Options to weigh at the 2026-10-07 review: drop the centroid of topics not seen for 48 hours (matching never reads them again), keep snapshots only for topics that were ever scored, or move to Supabase Pro ($25 a month) |
 
 This is not legal advice; if the site ever turns commercial, re-read each platform's terms, since Reddit, Vercel Hobby and several APIs treat commercial use differently.
 
