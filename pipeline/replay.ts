@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, gte, inArray, min } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNotNull, min } from "drizzle-orm";
 import { getSource, SOURCES, type SourceId } from "@/collectors/registry";
 import type { Region, TrendItem } from "@/collectors/types";
 import { DEFAULT_VIEW } from "@/config/ranking";
@@ -158,6 +158,34 @@ export async function copyLists(from: Db, to: Db, since?: Date): Promise<number>
     items += itemRows.length;
   }
   return items;
+}
+
+// Claude's names are the one thing a rebuild can't re-derive (and re-asking
+// costs money), so a rebuild saves them first and gives each back to the
+// rebuilt topic with the same slug. A topic whose slug is gone loses its
+// name; if it is still in a top 10, the next run names it again.
+export interface SavedName {
+  slug: string;
+  name: string;
+  reason: string | null;
+  category: string | null;
+}
+
+export async function saveNames(db: Db): Promise<SavedName[]> {
+  const rows = await db
+    .select({ slug: topics.slug, name: topics.name, reason: topics.reason, category: topics.category })
+    .from(topics)
+    .where(isNotNull(topics.name));
+  return rows.map((row) => ({ ...row, name: row.name! }));
+}
+
+export async function restoreNames(db: Db, saved: readonly SavedName[]): Promise<number> {
+  let restored = 0;
+  for (const { slug, ...kept } of saved) {
+    const rows = await db.update(topics).set(kept).where(eq(topics.slug, slug)).returning({ id: topics.id });
+    restored += rows.length;
+  }
+  return restored;
 }
 
 // Deletes everything the rank step derives, so it can be rebuilt from the lists.

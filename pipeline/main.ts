@@ -5,11 +5,13 @@ import { fetchRuns } from "@/db/schema";
 import { createEmbedder, type Embedder } from "@/lib/embed";
 import { cleanEnv, pipelineEnv, type RawEnv } from "@/lib/env";
 import { describeError } from "@/lib/errors";
+import { createClaudeNamer } from "@/lib/claude";
 import { createHttp } from "@/lib/http";
 import { collect, formatResults, writeResults, type ListResult } from "./collect";
 import { keepCurves } from "./curves";
 import type { Db } from "./db";
 import { loadBlocklist } from "./filter";
+import { formatNaming, nameTopics, type TopicNamer } from "./naming";
 import { purge } from "./purge";
 import { formatRankOutcome, rankRun } from "./rank";
 import { revalidateSite } from "./revalidate";
@@ -24,6 +26,7 @@ export interface RunDeps {
   fetch?: typeof fetch;
   createEmbedder?: () => Promise<Embedder>;
   blocklist?: ReadonlySet<string>;
+  createNamer?: (apiKey: string) => TopicNamer;
 }
 
 export function parseArgs(argv: readonly string[]): { dryRun: boolean; includePaid: boolean } {
@@ -71,10 +74,11 @@ export function summarize(
 
 // One pipeline run: check paid-source limits, collect every enabled source,
 // then upsert sources, write the lists, keep TikTok's curves, rank the lists
-// (filter, embed, match to topics, score), purge old rows, write the
-// heartbeat, ask the site to refresh its cached pages and print a summary. A
-// failing source, curves step, rank step or refresh is recorded and never
-// fails the run. With --dry-run nothing touches
+// (filter, embed, match to topics, score), name the top 10s' new topics when
+// ANTHROPIC_API_KEY is set, purge old rows, write the heartbeat, ask the site
+// to refresh its cached pages and print a summary. A failing source, curves
+// step, rank step, naming step or refresh is recorded and never fails the
+// run. With --dry-run nothing touches
 // the database and paid sources are skipped unless --include-paid is given:
 // each list and a combined top 10 from this run alone are printed instead.
 export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps: RunDeps): Promise<void> {
@@ -98,8 +102,22 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
       const embedder = await (deps.createEmbedder ?? createEmbedder)();
       const outcome = await rankRun({ db, results, itemIds, now: startedAt, embedder, blocklist: deps.blocklist ?? loadBlocklist() });
       for (const line of formatRankOutcome(outcome)) deps.log(line);
+      return outcome.topTopicIds;
     } catch (error) {
       deps.log(`rank: failed: ${describeError(error)}`);
+      return [];
+    }
+  };
+
+  // Claude names the top 10s' topics that have no name yet (task 3.6). Off without a key.
+  const name = async (db: Db, topicIds: readonly number[]) => {
+    const apiKey = cleanEnv(rawEnv).ANTHROPIC_API_KEY;
+    if (!apiKey || topicIds.length === 0) return;
+    try {
+      const namer = (deps.createNamer ?? createClaudeNamer)(apiKey);
+      for (const line of formatNaming(await nameTopics(db, { topicIds, now: startedAt, namer }))) deps.log(line);
+    } catch (error) {
+      deps.log(`names: failed: ${describeError(error)}`);
     }
   };
 
@@ -122,7 +140,7 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
       const itemIds = await writeResults(db, results);
       const curves = await keepCurves(db, results); // never throws
       if (curves) deps.log(curves);
-      await rank(results, db, itemIds);
+      await name(db, await rank(results, db, itemIds));
       const purged = await purge(db, startedAt);
       if (purged.items > 0 || purged.runs > 0) deps.log(`purged: ${purged.items} items, ${purged.runs} runs`);
       await writeHeartbeat(db, startedAt, now());

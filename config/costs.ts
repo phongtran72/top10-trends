@@ -4,6 +4,10 @@
 // X pay-per-use: each trends request, from prepaid credits.
 export const X_COST_PER_REQUEST = 0.01;
 
+// Claude Haiku 4.5 naming one topic (task 3.6): about 650 input tokens at $1
+// per million and 70 output tokens at $5 per million.
+export const CLAUDE_COST_PER_NAME = 0.001;
+
 // Apify actors run on schedules set up in Apify (SETUP.md §12), so their cost
 // is estimated from the schedule: the cost of one run × runs per day.
 export interface ApifySchedule {

@@ -1,8 +1,8 @@
 import { and, asc, desc, eq, gt, gte, inArray, lte, sql } from "drizzle-orm";
 import { pageRegion, SOURCES, type SourceDef, type SourceId } from "@/collectors/registry";
 import type { Region } from "@/collectors/types";
-import { APIFY_FREE_MONTHLY_CREDIT, APIFY_SCHEDULES, X_COST_PER_REQUEST } from "@/config/costs";
-import { fetchRuns, rankings, trendItems } from "@/db/schema";
+import { APIFY_FREE_MONTHLY_CREDIT, APIFY_SCHEDULES, CLAUDE_COST_PER_NAME, X_COST_PER_REQUEST } from "@/config/costs";
+import { fetchRuns, rankings, topics, trendItems } from "@/db/schema";
 import type { Db } from "@/db/types";
 
 // Read-only queries behind the site's pages. Results are plain JSON (dates as
@@ -209,7 +209,8 @@ export interface Spend {
 // that reached X × the per-request price. Apify sources are estimates from
 // their schedules, since their runs happen on Apify's side. Each source is
 // counted from its first run this month, so one that starts mid-month isn't
-// charged for the days before it.
+// charged for the days before it. Claude is an estimate too: the topics it
+// named this month × the usual cost of one naming call.
 export async function spendThisMonth(db: Db, now: Date): Promise<Spend> {
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
@@ -252,6 +253,21 @@ export async function spendThisMonth(db: Db, now: Date): Promise<Spend> {
     };
     lines.push(line);
     apify += line.projected;
+  }
+
+  const [named] = await db
+    .select({ n: sql<number>`count(*)`.mapWith(Number), first: sql<Date | null>`min(${topics.firstSeen})`.mapWith(topics.firstSeen) })
+    .from(topics)
+    .where(and(sql`${topics.name} is not null`, gte(topics.firstSeen, monthStart)));
+  if (named.n > 0) {
+    const toDate = named.n * CLAUDE_COST_PER_NAME;
+    const elapsedMs = Math.max(now.getTime() - (named.first ? new Date(named.first).getTime() : now.getTime()), hour);
+    lines.push({
+      service: "Claude (topic names)",
+      detail: `${named.n} topic${named.n === 1 ? "" : "s"} named × about $${CLAUDE_COST_PER_NAME.toFixed(4)}`,
+      toDate,
+      projected: toDate + (toDate / elapsedMs) * Math.max(monthEnd.getTime() - now.getTime(), 0),
+    });
   }
 
   const sum = (key: "toDate" | "projected") => lines.reduce((total, line) => total + line[key], 0);
