@@ -20,11 +20,12 @@ import {
 
 // Replays stored hourly lists through the rank step.
 //
-//   npm run replay -- tune [--days 7] [--thresholds 0.55,0.6,0.65,0.7,0.8] [--no-segment] [--out report.md]
+//   npm run replay -- tune [--days 7] [--thresholds 0.55,0.6,0.65,0.7,0.8] [--no-segment] [--no-name-match] [--out report.md]
 //     Read-only: copies the lists into an in-memory database, replays every
 //     hour at each threshold and reports the cross-platform merges, to pick
 //     MATCH_THRESHOLD (TASKS.md 2.9). --no-segment leaves one-word lowercase
-//     hashtags unsplit, to compare with lib/segment.ts off.
+//     hashtags unsplit, to compare with lib/segment.ts off. --no-name-match
+//     turns off joining by exact name, to compare with vectors alone.
 //
 //   npm run replay -- rebuild --threshold 0.6 --yes
 //     Writes: deletes topics, rankings and snapshots in SESSION_DATABASE_URL
@@ -46,6 +47,7 @@ async function tune(argv: readonly string[]) {
   const days = Number(option(argv, "days") ?? 7);
   const thresholds = (option(argv, "thresholds") ?? "0.55,0.6,0.65,0.7,0.75,0.8").split(",").map(parseThreshold);
   const segment = !argv.includes("--no-segment");
+  const nameMatch = !argv.includes("--no-name-match");
   setSegmentation(segment);
   const env = pipelineEnv({ dryRun: false });
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -62,15 +64,15 @@ async function tune(argv: readonly string[]) {
     const report = [
       "# Matching threshold replay",
       "",
-      `${slots.length} hourly slots, ${items} stored items. Replay matches on titles only (headlines aren't stored; Bluesky's status is, from 2026-10-01 15:07 UTC).`,
-      `One-word lowercase hashtags ${segment ? "are split into words" : "are left unsplit (--no-segment)"}.`,
+      `${slots.length} hourly slots, ${items} stored items. Replay reads what was stored at the time: Bluesky's status from 2026-10-01 15:07 UTC, headlines and descriptions from 2026-10-02 18:07 UTC; earlier hours match on titles only.`,
+      `One-word lowercase hashtags ${segment ? "are split into words" : "are left unsplit (--no-segment)"}. Items ${nameMatch ? "join a topic with exactly their name" : "are matched by vectors alone (--no-name-match)"}.`,
       "Look for wrong merges: the highest threshold with none is the one to pick.",
       "",
     ];
     for (const threshold of thresholds) {
       await resetDerived(scratch.db);
-      await replaySlots(scratch.db, slots, { threshold, embedder, blocklist });
-      const lines = formatTuneStats(await tuneStats(scratch.db, threshold));
+      await replaySlots(scratch.db, slots, { threshold, embedder, blocklist, nameMatch });
+      const lines = formatTuneStats(await tuneStats(scratch.db, threshold), 400);
       report.push(...lines);
       console.log(lines.slice(0, 2).join(" "));
     }

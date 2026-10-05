@@ -42,6 +42,25 @@ describe("loadRecentTopics", () => {
     expect(loaded.map((l) => [l.label, l.count, l.isNew, l.changed])).toEqual([["Recent", 1, false, false]]);
     expect(loaded[0].centroid).toHaveLength(384);
   });
+
+  it("loads the names of each topic's members from the window, for matching by name", async () => {
+    const [recent] = await loadRecentTopics(t.db, now);
+    const [run] = await t.db
+      .insert(fetchRuns)
+      .values({ sourceId: "x", region: "us", startedAt: hoursAgo(2), finishedAt: hoursAgo(2), status: "ok", itemCount: 2 })
+      .returning();
+    const rows = await t.db
+      .insert(trendItems)
+      .values([
+        { runId: run.id, sourceId: "x", region: "us", rank: 1, title: "#BahrainGP", url: "https://x.com", fetchedAt: hoursAgo(2) },
+        { runId: run.id, sourceId: "x", region: "us", rank: 2, title: "Old name", url: "https://x.com", fetchedAt: hoursAgo(60) },
+      ])
+      .returning({ id: trendItems.id });
+    await t.db.insert(topicItems).values(rows.map((row) => ({ topicId: recent.id!, itemId: row.id })));
+    const [loaded] = await loadRecentTopics(t.db, now);
+    expect([...(loaded.names ?? [])]).toEqual(["bahraingp"]); // the 60-hour-old member is outside the window
+    await t.db.delete(topicItems);
+  });
 });
 
 describe("saveMatches", () => {

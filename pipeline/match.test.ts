@@ -108,3 +108,44 @@ describe("matchItems", () => {
     expect(result.assignments.get(google.key)!.summary).toBe("A headline");
   });
 });
+
+describe("matching by name", () => {
+  it("joins a topic that has exactly the item's name, however far apart the vectors are", () => {
+    // X's bare name against Google's query with its headlines: unrelated vectors here.
+    const google = item("google_trends", "lead", 1, X, "bahrain gp");
+    const x = item("x", "lead", 2, Y, "#BahrainGP");
+    const other = item("x", "lead", 3, Y, "Bahrain");
+    const result = matchItems([google, x, other], [], options);
+    expect(result.assignments.get(x.key)).toBe(result.assignments.get(google.key));
+    expect(result.assignments.get(other.key)).not.toBe(result.assignments.get(google.key)); // a different name
+    expect(result.topics.map((t) => [t.label, t.count])).toEqual([
+      ["bahrain gp", 2],
+      ["Bahrain", 1],
+    ]);
+  });
+
+  it("matches a member's name as well as the label, and lets a corroborating item join by name", () => {
+    const existing: Topic = { ...topic(1, X), label: "F1 returns to Sepang", names: new Set(["bahraingp"]) };
+    const x = item("x", "lead", 1, Y, "Bahrain GP");
+    const video = item("youtube", "corroborating", 1, Y, "F1 returns to Sepang");
+    const result = matchItems([x, video], [existing], options);
+    expect(result.assignments.get(x.key)?.id).toBe(1);
+    expect(result.assignments.get(video.key)?.id).toBe(1);
+    expect(result.topics).toHaveLength(1);
+  });
+
+  it("brings two topics that already share a name back together, at the older one", () => {
+    const older: Topic = { ...topic(1, X), label: "Bahrain GP", firstSeen: new Date("2026-10-08T08:07:00Z") };
+    const newer: Topic = { ...topic(2, Y), label: "bahrain gp", firstSeen: new Date("2026-10-08T09:07:00Z") };
+    const google = item("google_trends", "lead", 1, Y, "bahrain gp"); // its vector is the newer topic's
+    const result = matchItems([google], [newer, older], options);
+    expect(result.assignments.get(google.key)?.id).toBe(1);
+  });
+
+  it("can be turned off, to compare in a replay", () => {
+    const google = item("google_trends", "lead", 1, X, "bahrain gp");
+    const x = item("x", "lead", 2, Y, "Bahrain GP");
+    const result = matchItems([google, x], [], { ...options, nameMatch: false });
+    expect(result.topics).toHaveLength(2);
+  });
+});

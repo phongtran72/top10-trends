@@ -4,6 +4,7 @@ import type { Region, TrendItem } from "@/collectors/types";
 import { DEFAULT_VIEW } from "@/config/ranking";
 import { fetchRuns, rankings, sources, topicItems, topicSnapshots, topics, trendItems } from "@/db/schema";
 import type { Embedder } from "@/lib/embed";
+import { nameKey } from "@/lib/text";
 import type { ListResult } from "./collect";
 import type { Db } from "./db";
 import { rankRun } from "./rank";
@@ -97,7 +98,7 @@ export async function loadSlots(db: Db, since?: Date): Promise<Slot[]> {
 export async function replaySlots(
   db: Db,
   slots: readonly Slot[],
-  options: { threshold: number; embedder: Embedder; blocklist: ReadonlySet<string>; onSlot?: (index: number) => void },
+  options: { threshold: number; embedder: Embedder; blocklist: ReadonlySet<string>; nameMatch?: boolean; onSlot?: (index: number) => void },
 ): Promise<{ created: number }> {
   let created = 0;
   for (const [index, slot] of slots.entries()) {
@@ -109,6 +110,7 @@ export async function replaySlots(
       embedder: options.embedder,
       blocklist: options.blocklist,
       threshold: options.threshold,
+      nameMatch: options.nameMatch,
       replay: true,
     });
     created += outcome.created;
@@ -192,6 +194,8 @@ export interface TuneStats {
   topics: number;
   top10Entries: number;
   multiPlatformEntries: number; // combined top-10 entries on 2+ platforms' top 10s that hour
+  hours: number; // hourly combined top 10s
+  duplicateHours: number; // of those, how many held the same name twice
   crossPlatform: CrossPlatformTopic[];
 }
 
@@ -233,7 +237,12 @@ export async function tuneStats(db: Db, threshold: number): Promise<TuneStats> {
     }))
     .sort((a, b) => b.hoursInTop10 - a.hoursInTop10 || a.label.localeCompare(b.label));
 
-  return { threshold, topics: topicRows.length, top10Entries: combined.length, multiPlatformEntries, crossPlatform };
+  // Gate 2 asks that no top 10 holds a duplicate; the same name twice is the kind a count can catch.
+  const namesAt = new Map<number, string[]>();
+  for (const row of combined) namesAt.set(row.at.getTime(), [...(namesAt.get(row.at.getTime()) ?? []), nameKey(labelOf.get(row.topicId!) ?? "")]);
+  const duplicateHours = [...namesAt.values()].filter((names) => new Set(names).size < names.length).length;
+
+  return { threshold, topics: topicRows.length, top10Entries: combined.length, multiPlatformEntries, hours: namesAt.size, duplicateHours, crossPlatform };
 }
 
 export function formatTuneStats(stats: TuneStats, limit = 25): string[] {
@@ -241,7 +250,8 @@ export function formatTuneStats(stats: TuneStats, limit = 25): string[] {
   const lines = [
     `## Threshold ${stats.threshold.toFixed(2)}`,
     `${stats.topics} topics; ${stats.crossPlatform.length} matched across 2+ platforms; ` +
-      `${share}% of combined top-10 entries were on 2+ platforms' top 10s that hour.`,
+      `${share}% of combined top-10 entries were on 2+ platforms' top 10s that hour; ` +
+      `${stats.duplicateHours} of ${stats.hours} hourly top 10s held the same name twice.`,
     "",
   ];
   for (const topic of stats.crossPlatform.slice(0, limit)) {

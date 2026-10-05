@@ -86,4 +86,6 @@ export const FETCH_RUN_RETENTION_DAYS = 90;
 // up other lists (CONFIRM_ONLY_LISTS). r4: X's rank is its US list's when
 // the US list has the topic. r5: two views, Global and US; Google Trends and
 // YouTube add UK, Canada and Australia feeds, which count in Global only.
-export const RANKING_VERSION = "r5";
+// r6: an item joins a topic that has exactly its name, before vectors are
+// compared (pipeline/match.ts).
+export const RANKING_VERSION = "r6";
