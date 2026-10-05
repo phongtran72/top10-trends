@@ -21,6 +21,7 @@ export async function generateMetadata({ params }: PageProps<"/t/[slug]">): Prom
   return {
     title: detail.label,
     description: detail.summary ?? `Where “${detail.label}” is trending across platforms, and how its rank changed this week.`,
+    alternates: { canonical: `/t/${detail.slug}` },
   };
 }
 

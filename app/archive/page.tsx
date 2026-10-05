@@ -8,6 +8,7 @@ import styles from "./archive.module.css";
 export const metadata: Metadata = {
   title: "Archive",
   description: "Past combined top 10s, hour by hour, for every day since the site began.",
+  alternates: { canonical: "/archive" },
 };
 
 // The archive's index: every day that has a combined top 10, newest first.

@@ -22,6 +22,7 @@ export async function generateMetadata({ params }: PageProps<"/p/[platform]">): 
   return {
     title: `${source.name} top 10`,
     description: `The top 10 on ${source.name} right now, ${orderText(source)}, refreshed every hour.`,
+    alternates: { canonical: `/p/${platformSlug(source.id)}` },
   };
 }
 

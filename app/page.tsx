@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { COLLECTORS } from "@/collectors/index";
@@ -17,6 +18,9 @@ import styles from "./page.module.css";
 // (`?region=us`, Global by default), then the dashboard (every platform at a
 // glance and what changed since the last hourly list). It renders per request
 // (never at build time) from data cached under the `trends` tag.
+
+// The Global and United States views are one page for search engines.
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 function Entry({ entry, children }: { entry: DashboardEntry | Staying; children?: React.ReactNode }) {
   return (

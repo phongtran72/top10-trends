@@ -9,6 +9,7 @@ import styles from "./page.module.css";
 export const metadata: Metadata = {
   title: "Status",
   description: "When each source last succeeded, its last error and its success rate over 24 hours.",
+  alternates: { canonical: "/status" },
 };
 
 function health(status: SourceStatus): { label: string; tone: "ok" | "warn" | "bad" | "idle" } {

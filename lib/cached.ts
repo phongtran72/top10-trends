@@ -7,7 +7,7 @@ import { buildDashboard, DASHBOARD_WINDOW_HOURS } from "@/lib/dashboard";
 import { getDb } from "@/lib/db";
 import { platformList, recentTopItems, sourceStatuses, spendThisMonth } from "@/lib/queries";
 import { TRENDS_TAG } from "@/lib/revalidate";
-import { combinedTop, topicDetail } from "@/lib/topic-queries";
+import { combinedTop, recentTopTopics, topicDetail } from "@/lib/topic-queries";
 
 // Database reads cached in Next's data cache under the `trends` tag, which
 // POST /api/revalidate expires after each pipeline run. The pages render per
@@ -75,3 +75,10 @@ export const getArchivePlatformLists = unstable_cache(async (at: string) => arch
   tags: [TRENDS_TAG],
   revalidate: 3600,
 });
+
+// Topics for sitemap.xml: those in a combined top 10 in the last 28 days.
+export const getSitemapTopics = unstable_cache(
+  async () => recentTopTopics(getDb(), new Date(Date.now() - ITEM_RETENTION_DAYS * 24 * 60 * 60 * 1000)),
+  ["sitemap-topics-v1"],
+  { tags: [TRENDS_TAG], revalidate: 3600 },
+);

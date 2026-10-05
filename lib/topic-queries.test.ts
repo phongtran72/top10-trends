@@ -9,7 +9,7 @@ import { rankRun } from "@/pipeline/rank";
 import { upsertSources } from "@/pipeline/sources";
 import { WORD_EMBEDDER_THRESHOLD, wordEmbedder } from "@/pipeline/test-embedder";
 import { platformList } from "./queries";
-import { combinedTop, topicDetail } from "./topic-queries";
+import { combinedTop, recentTopTopics, topicDetail } from "./topic-queries";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 const t0 = new Date("2026-10-07T12:07:00Z");
@@ -84,6 +84,16 @@ describe("Claude's names", () => {
     ]);
     expect(await topicDetail(t.db, "world-series-20261007")).toMatchObject({ label: "World Series", summary: "The Dodgers won the series." });
     await t.db.update(topics).set({ name: null, reason: null }).where(eq(topics.slug, "world-series-20261007"));
+  });
+});
+
+describe("recentTopTopics", () => {
+  it("lists the topics that were in a combined top 10 since a time, newest first, for the sitemap", async () => {
+    const all = await recentTopTopics(t.db, new Date("2026-10-01T00:00:00Z"));
+    expect(all.map((topic) => topic.slug).sort()).toEqual(["election-night-20261007", "flood-watch-20261007", "new-topic-20261008", "world-series-20261007"]);
+    expect(all[0].lastRankedAt).toBe(t1.toISOString());
+    // "Election night" was last ranked a day earlier.
+    expect((await recentTopTopics(t.db, new Date("2026-10-08T00:00:00Z"))).map((topic) => topic.slug)).not.toContain("election-night-20261007");
   });
 });
 

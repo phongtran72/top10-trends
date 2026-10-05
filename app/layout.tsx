@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SITE_DESCRIPTION, SITE_NAME, siteUrl } from "@/lib/site-url";
 import "./globals.css";
 
+// Titles, descriptions and share cards (task 4.2). `metadataBase` makes the
+// share images' and canonical links' URLs absolute; each page adds its own
+// title, description and canonical path.
 export const metadata: Metadata = {
-  title: { default: "Top 10 Social Trends", template: "%s · Top 10 Social Trends" },
-  description:
-    "The top 10 trending topics on each social platform, plus one combined list, refreshed every hour.",
+  metadataBase: new URL(siteUrl()),
+  title: { default: SITE_NAME, template: `%s · ${SITE_NAME}` },
+  description: SITE_DESCRIPTION,
+  openGraph: { type: "website", siteName: SITE_NAME, locale: "en_US" },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

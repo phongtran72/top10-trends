@@ -21,6 +21,7 @@ export async function generateMetadata({ params }: PageProps<"/archive/[date]">)
   return {
     title: `Top 10s on ${dayName(date)}`,
     description: `Every hourly top 10 across platforms on ${dayName(date)}.`,
+    alternates: { canonical: `/archive/${date}` },
   };
 }
 
