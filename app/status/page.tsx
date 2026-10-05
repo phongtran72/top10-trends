@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { FailureBanner } from "@/components/FailureBanner";
 import { RelativeTime } from "@/components/RelativeTime";
-import { getSourceStatuses, getSpend } from "@/lib/cached";
+import { getAlerts, getSourceStatuses, getSpend } from "@/lib/cached";
 import { successRate } from "@/lib/format";
 import type { SourceStatus } from "@/lib/queries";
 import styles from "./page.module.css";
@@ -9,6 +10,7 @@ import styles from "./page.module.css";
 export const metadata: Metadata = {
   title: "Status",
   description: "When each source last succeeded, its last error and its success rate over 24 hours.",
+  alternates: { canonical: "/status" },
 };
 
 function health(status: SourceStatus): { label: string; tone: "ok" | "warn" | "bad" | "idle" } {
@@ -25,6 +27,7 @@ export default async function StatusPage() {
   await connection();
   const statuses = await getSourceStatuses();
   const spend = await getSpend();
+  const alerts = await getAlerts();
   const usd = (n: number) => `$${n.toFixed(2)}`;
 
   return (
@@ -34,6 +37,7 @@ export default async function StatusPage() {
         Last successful fetch per source, its latest error and the share of runs that succeeded in the last 24 hours.
         A stale list is labeled here instead of being silently wrong.
       </p>
+      <FailureBanner alerts={alerts} linkToStatus={false} />
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>

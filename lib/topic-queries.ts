@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, lte, ne } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, lte, max, ne } from "drizzle-orm";
 import { getSource, pageRegion, platformSlug, SOURCES, type SourceId } from "@/collectors/registry";
 import { confirmOnly, DEFAULT_VIEW, FRESH_LIST_HOURS, inView, type View } from "@/config/ranking";
 import { rankings, topicItems, topics, trendItems } from "@/db/schema";
@@ -180,6 +180,21 @@ export async function combinedTop(db: Db, region: View = DEFAULT_VIEW): Promise<
       };
     }),
   };
+}
+
+// Topics that were in a combined top 10 (either view) since `since`, newest
+// first, for sitemap.xml.
+export async function recentTopTopics(db: Db, since: Date, limit = 2000): Promise<{ slug: string; lastRankedAt: string }[]> {
+  const last = max(rankings.computedAt);
+  const rows = await db
+    .select({ slug: topics.slug, last })
+    .from(rankings)
+    .innerJoin(topics, eq(topics.id, rankings.topicId))
+    .where(and(eq(rankings.list, "combined"), gt(rankings.computedAt, since)))
+    .groupBy(topics.slug)
+    .orderBy(desc(last))
+    .limit(limit);
+  return rows.flatMap((row) => (row.last ? [{ slug: row.slug, lastRankedAt: row.last.toISOString() }] : []));
 }
 
 export interface TopicLink {
