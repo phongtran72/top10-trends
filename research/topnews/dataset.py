@@ -40,7 +40,9 @@ Missing runs are gaps, not quiet hours (three so far: 2026-10-05 20:07 and
 21:07 UTC, and 2026-10-07 15:07 UTC). A label is known only when every hourly
 run it looks at exists: a 6-hour label whose window crosses a gap is unknown,
 and a top-10 stay that reaches a gap is censored there, like a stay at the end
-of the data.
+of the data. An hour whose run came late (a catch-up run, up to half past the
+usual minute) isn't a gap: runs up to 1.75 hours apart follow each other, and
+"k hours earlier" is the run within 40 minutes of that time.
 
 Rows are split by time: the latest 2 weeks are the test set (the latest 30%
 while there's less than 6 weeks), and the 6 hours before it are an embargo,
@@ -65,9 +67,11 @@ SPREAD_PLATFORMS = 2
 TOP_N = 10
 GAP_HOURS = 2
 LAGS = (1, 3, 6)
-RUN_TOLERANCE = pd.to_timedelta(30, unit="min")
+RUN_TOLERANCE = pd.to_timedelta(40, unit="min")  # a catch-up run is up to 30 minutes off the hour
 END_TOLERANCE = pd.to_timedelta(15, unit="min")
-MAX_RUN_GAP = pd.to_timedelta(1.5, unit="h")  # runs are hourly; further apart than this, runs are missing
+# Runs are hourly, and an hour whose run failed can run up to 30 minutes late (the Worker's catch-up
+# trigger), 1.5 hours after the run before it. Further apart than this, a run is missing.
+MAX_RUN_GAP = pd.to_timedelta(1.75, unit="h")
 TEST_DAYS = 14
 EMBARGO_HOURS = HORIZON_HOURS
 KEY = ["region", "topic_id", "taken_at"]
@@ -118,7 +122,7 @@ def _rank_columns(frame: pd.DataFrame) -> list[str]:
 
 
 def _lag_times(snaps: pd.DataFrame, hours: float) -> pd.Series:
-    """For each row, the time of its region's run nearest to `hours` earlier (within 30 minutes), or NaT."""
+    """For each row, the time of its region's run nearest to `hours` earlier (within 40 minutes), or NaT."""
     runs = snaps[["region", "taken_at"]].drop_duplicates().sort_values("taken_at").rename(columns={"taken_at": "lag_time"})
     targets = snaps[["region", "taken_at"]].assign(target=snaps["taken_at"] - pd.to_timedelta(hours, unit="h"))
     targets = targets.reset_index().sort_values("target")

@@ -28,7 +28,7 @@ import pandas as pd
 from . import rhythms
 
 DEPTH = rhythms.DEPTH
-MAX_GAP_HOURS = rhythms.MAX_GAP_HOURS
+MAX_GAP_HOURS = 1.75  # as dataset.MAX_RUN_GAP: a catch-up fetch 1.5 hours after the last one isn't a gap
 SURVIVAL_HOURS = (1, 2, 3, 6, 12)
 
 
