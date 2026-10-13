@@ -31,8 +31,9 @@ jobs:
       - run: npm test
       # No secrets: the build must never query the database.
       - run: npm run build
-      - name: Typecheck the Worker
+      - name: Typecheck and test the Worker
         working-directory: worker
         run: |
           npm ci
           npm run typecheck
+          npm test

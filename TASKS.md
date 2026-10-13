@@ -170,6 +170,7 @@ Passed on 2026-10-05 and confirmed by the owner. At 03:23 UTC `/status` projecte
 - [x] **4.4 Analytics.** Add privacy-friendly page analytics: Vercel Web Analytics (`@vercel/analytics`, cookieless) in the root layout, with a line in the footer saying so. **[You]** turn it on for the project in Vercel (SETUP.md §7).
 - [x] **4.5 README.** What the site is, screenshots (`docs/screenshots/`), architecture, how the combined list is made, how to run locally, and attribution for every data source, the embedding model and the word list.
 - [x] **[You]** Check the site on a phone and a desktop, then share the link.
+- [x] **4.6 Catch-up trigger** (after launch, from the review of 2026-10-12). Three hours were never run in the first two weeks, all during GitHub outages: one start GitHub refused and two runs it created but never ran. The Worker gets two more crons, at minutes 17 and 27. Each reads GitHub's list of `collect` runs and starts one only when the clock hour has none that succeeded and none under 8 minutes old still going (`hourCovered` in `worker/src/index.ts`); if the list can't be read it starts nothing. Both tries land before half past, so a caught-up run still belongs to its hour for Trend Forecaster. `npm test` in `worker/` runs plain Node tests, and CI runs them.
 
 **Gate 4.** Launch.
 
