@@ -409,12 +409,36 @@ Outside items are linked to topics with the same embedding model. Each source is
 - **Starting targets, to revise once there are a few thousand labels:** where it answers, it matches the checked label on at least 85% of a held-out, time-split set, and it answers at least half of the topics; and adding category improves the task 5.6 models on the held-out weeks.
 - **A second source of labels (2026-10-05):** when Claude names a topic that reaches a combined top 10 (task 3.6), the same call also returns one of the 14 categories, stored in `topics.category`. It covers only top-10 topics with some context, so it doesn't replace the classifier, which must answer at a topic's first sighting. Research uses it as drafts from a stronger model: joined to the member trends through `topic_items`, checked by sample against the same rules, added to the training labels and never to the scored ones. It's off until the owner sets the API key.
 - **Open choices:**
-  - where the category is stored. A nullable `topics.category` column is the natural place, with the model's version beside it. It needs a migration, announced to Trend Forecaster first;
+  - where the category is stored: see *Proposed: who writes a topic's category* below, which waits for the owner;
   - whether to merge the 14 labels into fewer. 8 coarser ones scored 56% in a first try, so that alone doesn't fix it;
   - the news flag stays out: the local model's flag wasn't checked, and `news_count` already says whether headlines exist.
 - **Not doing yet,** by the owner's decision:
   - no fine-tuning of a language model on this data. A month holds a few thousand topics and about a hundred breakouts, which a model with billions of weights would memorize;
   - no fine-tuning of the embedding model on same-story pairs until there are thousands of checked pairs, not 238.
+
+**Proposed: who writes a topic's category** (2026-10-13). A proposal that waits for the owner's yes. Nothing in it is built; the data model table and CLAUDE.md's invariants stay as they are until then.
+- **The problem.** `topics.category` exists (migration 0006) and belongs to Claude's naming call (task 3.6), which is off until the API key is set, so the column is empty. The classifier of task 5.14 would write a category too. With two writers and one column, one wins silently.
+- **How much each would cover** (r6, 2026-10-05 03:08 to 2026-10-13 14:08 UTC; 3,905 topics first seen):
+  - *The classifier:* 77% of topics have a member with a stored text (a Google headline or a Bluesky description), and for 99% of those the text is there in the topic's first run. The classifier answers about two in three of such trends and is right on 97% (`research/findings/category-model.md`). So about half of all topics would get a category, in their first run.
+  - *Claude's naming call:* only topics that reach a combined top 10 with something to summarize. 721 topics reached one, 18%, and the category arrives the hour they get there.
+- **The proposal: one column per writer, and neither overwrites the other.**
+  - `topics.category` stays Claude's, as it is today.
+  - The classifier gets two new nullable columns on `topics`: its category, and the version of the model that wrote it. Working names: `model_category` and `model_category_version`.
+- **Why not one column with a source beside it.** Claude's category arrives only when a topic reaches the top 10. In a shared column it would either replace the classifier's, and then the forecast feature would say "this topic reached the top 10", which is the thing being forecast; or be dropped wherever the classifier had answered, which throws away a free check of the classifier against a stronger model on the topics people see.
+- **Why not one writer only.** Without Claude's, that check and its draft labels are lost. Without the classifier's, four topics in five have no category, and the rest get one only once they are in a top 10, too late to forecast whether they'll get there.
+- **When the classifier writes.** Once, in the topic's first run, from the topic's first member that has a stored text. Never rewritten.
+  - First run only, so the category is known from the topic's first snapshot and needs no timestamp column. The cost is the 1% of topics whose text comes later (33 of 3,020).
+  - No YouTube item has a stored text, so no YouTube data goes in, and the columns can be permanent.
+  - It is never used in matching, like Claude's.
+- **When it declines.** It writes no category, only its version. So "looked and wasn't sure" (a version and no category) can be told from "nothing to look at" (both empty). Never "other" or "unknown" as a stand-in: a wrong category is worse for a model than none.
+- **What readers do with it.**
+  - *The training table and the forecast models:* the classifier's column only, as a feature. Claude's is never a feature; research uses it as draft labels and to measure how often the two agree.
+  - *The site's pages:* nothing at first. If a page ever shows a category, Claude's where there is one and the classifier's otherwise. That is a later decision of the web-app session's.
+  - *Trend Forecaster:* reads `topics` by that same rule, in place of borrowing the label file. `research/data/categories.csv` stays where it is; it holds the checked labels that train and score the classifier.
+- **A retrained classifier** writes new topics only. Old topics keep their category and its version, and a rebuild computes the columns again from the stored lists.
+- **It needs a migration:** two nullable columns on `topics`, no backfill and no new table, so no new policy or grant. It is announced to Trend Forecaster before it runs.
+- **It costs nothing to run:** the model is a small JSON file (a few thousand numbers), scored on vectors the pipeline already has. No API call and no new dependency.
+- **After a yes,** step 3 of task 5.14 starts. The predictions session ships the model file under `config/models/` and a small TypeScript scorer, tested to give the same answers as the Python one. The web-app session owns the migration and the pipeline step that writes the columns, in its own error handler so it can never fail a run. Step 4 then tests whether category improves the forecasts.
 
 **Evaluation.** Train on earlier weeks and test on later ones, never shuffled. Measure, for alerts, *precision* (how often a flagged topic does break out) and *lead time* (how many hours before it reached 3 platforms); for lifespan, the error in hours; and *calibration* (70% forecasts come true about 70% of the time). A public `/forecasts` page lists every forecast next to its outcome, so the accuracy is visible rather than claimed.
 
