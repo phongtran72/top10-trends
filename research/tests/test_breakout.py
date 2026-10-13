@@ -91,3 +91,20 @@ def test_rates_by_bucket():
     r = breakout.rates(breakout.buckets(table.assign(metric_vs_median=1.0, hour_local=12, words=2)), "entry").set_index("entry")
     assert (r.loc["1–3", "trends"], r.loc["1–3", "spread"], r.loc["1–3", "rate"]) == (2, 1, 0.5)
     assert r.loc["11+", "trends"] == 1  # deep entries on the 25-item lists are counted too
+
+
+def test_features_come_from_the_sighting_at_each_appearances_own_start():
+    import numpy as np
+    from topnews import echo
+
+    T0 = pd.Timestamp("2026-10-01T12:07", tz="UTC")
+
+    def row(run, hours, rank, metric):
+        return {"run_id": run, "source_id": "x", "region": "us", "rank": rank, "title": "Chiefs", "url": "u",
+                "metric_value": metric, "fetched_at": T0 + pd.to_timedelta(hours, unit="h")}
+
+    items = pd.DataFrame([row(1, 0, 8, 10.0), row(2, 1, 3, 20.0), row(3, 170, 2, 90.0), row(4, 171, 1, 95.0)])
+    appearances = echo.trends(items, episode_gap_hours=24)
+    table = breakout.features(appearances.assign(best_sim=np.nan), items)
+    assert table["entry_rank"].tolist() == [8, 2]  # the second appearance entered at rank 2, not at the first one's 8
+    assert table["metric_vs_median"].iloc[1] > table["metric_vs_median"].iloc[0]
