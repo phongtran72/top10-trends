@@ -193,7 +193,7 @@ Research on attention and forecasts for creators and marketers, built on one dat
     - RQ4 news-driven topics versus memes;
     - RQ5 hourly and weekday rhythms (seasons wait for Wikipedia pageviews);
     - RQ6 each platform's share of trends seen nowhere else.
-- [ ] **5.5 Baselines.** Rule-based breakout and lifespan forecasts, scored on the latest 2 weeks held out: precision, lead time, and lifespan error in hours.
+- [ ] **5.5 Baselines.** Rule-based breakout and lifespan forecasts, scored on the latest 2 weeks held out: precision, lead time, and lifespan error in hours. Scored on two weeks of lists and on the live table on 2026-10-13 (`research/findings/baselines.md`): the best simple breakout rule is right 27% of the time; left open until there are 2 held-out weeks under one set of rules.
 - [ ] **5.6 Models.** Logistic regression for breakouts, and gradient-boosted trees or a survival model for lifespan, trained offline. Each must beat its baseline on the held-out weeks. The model is committed under `config/models/` with its training window and scores.
 - [ ] **5.7 Forecasts in the pipeline.** A permanent `forecasts` table: `made_at`, `topic_id`, `horizon`, `value`, `model_version`, `outcome`, `resolved_at`; no YouTube inputs.
     - Each run scores current topics after the rank step, in its own try/catch, and fills in the outcomes of past forecasts whose horizon has passed.
