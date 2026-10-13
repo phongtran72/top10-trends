@@ -62,7 +62,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 
 ## Gotchas
 
-- Supabase: never use the direct host; it is IPv6-only without a paid add-on, and GitHub's hosted runners are IPv4-only. The pipeline and migrations use `SESSION_DATABASE_URL` (session pooler, port 5432). Only the Vercel site uses `DATABASE_URL` (transaction pooler, port 6543), with `postgres(url, { prepare: false, max: 1, ssl: 'require' })` and queries awaited one at a time.
+- Supabase: never use the direct host; it is IPv6-only without a paid add-on, and GitHub's hosted runners are IPv4-only. The pipeline and migrations use `SESSION_DATABASE_URL` (session pooler, port 5432). Only the Vercel site uses `DATABASE_URL` (transaction pooler, port 6543), with `postgres(url, { prepare: false, max: 1, ssl: 'require' })` and queries run one at a time: reads that overlap on that connection can stop answering for good. Every site read goes through `lib/cached.ts`, whose `read` helper queues it (`oneAtATime` in `lib/db.ts`); never call `getDb()` anywhere else.
 - `next build` runs in CI with no secrets, so never query the database at build time; database pages render per request (they read `?region=`) from data cached in `lib/cached.ts`.
 - Revalidate dynamic routes with a pattern and type, for example `revalidatePath('/p/[platform]', 'page')`. Cached HTML freezes relative times, so render "updated N min ago" in the browser from a timestamp.
 - `export const dynamic = 'force-dynamic'` sets `fetchCache` to `force-no-store`, which makes `unstable_cache` skip its cache. To render a static route per request with cached data, call `await connection()` instead (PLAN.md › Tech stack).
