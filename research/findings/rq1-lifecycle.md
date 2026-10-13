@@ -90,6 +90,31 @@ Median time in the top 10, and the share still listed later (Kaplan–Meier; a s
 
 This is the lists' own lifecycle. The lifecycle of a topic across platforms, which task 5.3 asks for, needs weeks of snapshots made under one set of ranking rules; the current rules date from 2026-10-05.
 
+## Re-run on two weeks (2026-10-13)
+
+Stored lists from 2026-09-30 11:32 to 2026-10-13 UTC: 13 local days and 300 hourly fetches. Three hours have no lists (the 20:07 and 21:07 UTC runs on 2026-10-05 and the 15:07 run on 2026-10-07); they're treated as gaps. 12,336 stays in a top 10.
+
+| List | Stays | Median | 1 h | 3 h | 6 h | 12 h |
+| --- | --- | --- | --- | --- | --- | --- |
+| Google Trends (US) | 2,676 | 1 h | 10% | 0% | 0% | 0% |
+| Google Trends (Canada) | 1,405 | 1 h | 23% | 6% | 1% | 0% |
+| Google Trends (UK) | 1,492 | 1 h | 27% | 2% | 0% | 0% |
+| Google Trends (Australia) | 1,068 | 1 h | 46% | 11% | 2% | 0% |
+| Bluesky | 1,278 | 1 h | 36% | 13% | 5% | 2% |
+| Bluesky, one missed fetch allowed | 993 | 1 h | 46% | 23% | 11% | 4% |
+| X, worldwide | 1,196 | 2 h | 60% | 20% | 3% | 0% |
+| Reddit | 860 | 2 h | 56% | 27% | 10% | 3% |
+| X, US | 918 | 2 h | 64% | 32% | 12% | 1% |
+| Hacker News | 640 | 3 h | 65% | 39% | 21% | 11% |
+| Twitch | 282 | 4 h | 79% | 51% | 42% | 22% |
+| Mastodon | 192 | 13 h | 81% | 71% | 64% | 53% |
+
+- **The five-day numbers held within a few points on three times the stays.** The order of the lists hasn't moved.
+- **Corrected:** Canada's and Australia's Google feeds looked slower on their first day (a median of 2 hours); over nine days their median is 1 hour like the others, though Australia's holds a trend longest (46% still listed after an hour).
+- **How each list moves is unchanged:** no Google stay climbs after entering; 32% of Hacker News stays do, 37% of Reddit's, 25–29% of X's, 15% of Bluesky's, and about 60% of Mastodon's and Twitch's. Bluesky's stays are returns 69% of the time and Twitch's 84%.
+
+**In the combined top 10** (the US view of the live snapshots, 188 hours under one set of rules, 562 topics that reached it): a topic stays a median of 2 hours, one in ten stays 5 or more, and the longest so far is 19. That's the first cross-platform figure. The curves by category that task 5.3 asks for need a category on every topic, which waits for the classifier or Claude's labels (task 5.14).
+
 ## What it means for the forecasts
 
 - **A day of one list's attention is rare.** On Bluesky, Google and Hacker News almost nothing stayed in the top 10 for 6 hours. So "hours left in the combined top 10" will come mostly from breadth, a topic kept alive by several platforms, and from Google's 3-hour window (task 2.12), not from long stays on one list.

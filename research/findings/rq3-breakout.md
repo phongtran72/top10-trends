@@ -75,6 +75,25 @@ What was known at a trend's first sighting:
 
 **Cautions.** "Also on another list" here is at any time within a day, not only after the first sighting, so it's breadth, not yet a forecast target; the training table's labels look forward (task 5.2). Matching on titles at 0.86 has some wrong pairs. And the live site would count fewer: its matcher currently splits same-name topics on Google and X (`findings/matching.md`).
 
+## Re-run on two weeks (2026-10-13)
+
+Every hourly list since X joined (2026-09-30 22:08 UTC to 2026-10-13), Google's US feed, titles at 0.86, each return of a name after 24 hours a new appearance with its own entry rank.
+
+**7,741 trends; 1,303 were also on another list (17%, 95% interval 16.0% to 17.7%); 198 on three or more (2.6%).** The four-day figures were 16% and 2.2%.
+
+| Known at first sighting | Groups | Also on another list | On four days |
+| --- | --- | --- | --- |
+| Its metric against its list's median | below half, near, over twice | 13%, 19%, **31%** | 14%, 20%, 37% |
+| Its entry rank | 1–3, 4–10, 11 or deeper | 21%, 19%, 14% | 20%, 20%, 12% |
+| Its title | 1–3 words, 4 or more | 21%, 10% | 22%, 8% |
+| The hour (US Eastern) | before noon, noon to 6 pm, after | 15%, 17%, 20% | 15% before 6 pm, 19% after |
+| Its list | Bluesky, Mastodon, X, Google, Twitch, Reddit, Hacker News | 23%, 21%, 21%, 21%, 10%, 7%, 5% | |
+| Its category (labeled trends) | sports, calendar, gaming, incident, entertainment, politics, tech | 29%, 19%, 18%, 17%, 15%, 14%, 4% | 29%, 27%, 11%, 18%, 15%, 14%, 2% |
+
+- **Every sign from the four-day run is still there, and now each is beyond chance.** In a logistic model on 6,671 trends, entering at over twice the list's usual metric doubles the odds of being on another list (odds ratio 1.97), a top-10 entry and an evening start each add about a quarter, a title of four or more words halves them, and Bluesky's trends are 2.5 times as likely as Google's.
+- **Put together they still explain little:** 4% of the variation. What a trend is about decides most of it, and sports is still the category that travels (29%).
+- **Size at entry weakened from 37% to 31%,** and calendar moments from 27% to 19%, as the sample grew; the four-day values were on the high side of their margins.
+
 ## What it means for the forecasts
 
 - **On the phase-1 lists alone, spreading is rare,** about 5% of trends with the new matcher. A model of spread for those lists would have to beat a "never spreads" rule that's right about 95% of the time. Precision and lead time, not accuracy, are the right scores (PLAN.md › Evaluation).

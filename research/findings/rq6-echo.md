@@ -156,6 +156,29 @@ Every list from 2026-10-01 12:08 UTC, when Reddit joined, to 2026-10-05 10:08 UT
 
 **A caution on the level, not the order.** Matching on titles at 0.86 has some wrong pairs, mostly shared surnames between Google and X, so their "on no other list" shares are a few points too low. The live site showed the opposite error until 2026-10-05: it split same-name topics, and counted fewer shared stories than there were (`matching.md`).
 
+## Re-run on eleven days with every list (2026-10-13)
+
+Every list from 2026-10-01 12:08 UTC to 2026-10-13 02:08 UTC: 8,103 trend appearances after the filters. Google's US feed; matched on titles at 0.86.
+
+**One change of method.** Over weeks a name trends more than once (a team each game day, a weekday tag each week). An item that returns after more than 24 hours off its platform's lists now counts as a new appearance, so a match compares sightings from the same days (`echo.trends(…, episode_gap_hours=24)`).
+
+| Platform | Appearances | On no other list | On three or more |
+| --- | --- | --- | --- |
+| Hacker News | 875 | 95% | 1% |
+| Reddit | 1,298 | 93% | 1% |
+| TikTok | 117 | 90% | 0% |
+| Twitch | 229 | 86% | 1% |
+| Google Trends (US) | 2,293 | 79% | 3% |
+| X | 2,168 | 78% | 4% |
+| Mastodon | 312 | 78% | 11% |
+| Bluesky | 601 | 76% | 8% |
+| Pinterest | 63 | 71% | 10% |
+| Instagram | 147 | 42% | 26% |
+
+- **The four-day picture held on three times the data.** Eight of the ten platforms are within five points of where they were; Instagram fell from 51% to 42% alone and Pinterest from 77% to 71%, both on small lists. Most trends stay home; Instagram is the exception; the sharing runs through Google and X.
+- **Hacker News came down from 99% to 95%:** with more days, a few of its stories also reached Bluesky and Reddit.
+- **Mastodon's tags reach three lists more often than anything but Instagram's** (11%): the calendar tags, which X and Instagram carry on the same day.
+
 ## What it means for the forecasts
 
 - **Breakouts are rare, so the labels will be very unbalanced.** Perhaps two stories a day reach 3 or more platforms. A 60% precision target has to be judged against that low base rate. "2 or more platforms" may be worth adding as an easier, more common label.

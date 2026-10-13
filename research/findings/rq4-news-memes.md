@@ -91,6 +91,20 @@ Comparing news-driven trends with the rest across all lists mostly compares Goog
 
 So for the question as asked: a news story is no longer-lived than a meme on any one list, and somewhat more likely to be on a second one.
 
+## Re-run on two weeks (2026-10-13)
+
+The hourly lists to 2026-10-13, Google's US feed, titles at 0.86, appearances split at 24 hours. The labels are the ones there are: the 3,231 trends labeled so far, which cover the first five days and a sample of the last two.
+
+| Platform | Stays: news, rest | Median time in the top 10: news, rest | Difference? |
+| --- | --- | --- | --- |
+| X | 99, 598 | 2 h, 2 h | no (p = 0.56) |
+| Hacker News | 117, 60 | 3 h, 3 h | no (p = 0.64) |
+| Reddit | 44, 154 | 3 h, 2 h | no (p = 0.38) |
+| Bluesky | 438, 44 | 1 h, 1 h | no (p = 0.21) |
+
+- **Both answers held.** News-driven trends stay no longer than the rest inside any platform, and they're somewhat more often on a second list: 19% of 1,187 against 15% of 1,389.
+- **By category the order is the same as on five days:** calendar tags and games stay longest (63% and 48% still listed after 3 hours), sports shortest (11%), and sports spreads most (29% on another list).
+
 ## What it means for the forecasts
 
 - **"News" needs subtypes.** On a playoff day, news-driven means sports. RQ4 should split news by kind (sports, politics, entertainment), for example by clustering topic centroids as RQ1 plans, before asking whether news lasts longer than memes.
