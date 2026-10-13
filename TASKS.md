@@ -165,9 +165,11 @@ Passed on 2026-10-05 and confirmed by the owner. At 03:23 UTC `/status` projecte
 - [x] **4.3 Failure alerts.** GitHub emails you about failed runs triggered with your token (**[You]** turn on Actions notifications for failed runs only: SETUP.md §6). `/status` and the home page show a banner when any source has failed for 6 hours or more, or when the hourly update itself hasn't finished for 6 hours (`lib/alerts.ts`).
 - [x] **4.4 Analytics.** Add privacy-friendly page analytics: Vercel Web Analytics (`@vercel/analytics`, cookieless) in the root layout, with a line in the footer saying so. **[You]** turn it on for the project in Vercel (SETUP.md §7).
 - [x] **4.5 README.** What the site is, screenshots (`docs/screenshots/`), architecture, how the combined list is made, how to run locally, and attribution for every data source, the embedding model and the word list.
-- [ ] **[You]** Check the site on a phone and a desktop, then share the link.
+- [x] **[You]** Check the site on a phone and a desktop, then share the link.
 
 **Gate 4.** Launch.
+
+Confirmed by the owner on 2026-10-05, after phase 4 was merged at 10:41 UTC (PR #29). At the merge the live site served the archive, the share images, `sitemap.xml` (432 pages) and `robots.txt`, and the hourly update was running. Two switches are the owner's and aren't visible from the code: GitHub's email for failed runs (SETUP.md §6) and Vercel Web Analytics (SETUP.md §7). Still open from earlier phases: Gate 1's 7-day soak and Gate 2's eval, both at the review around 2026-10-07.
 
 ## Phase 5 · Predictions and research (after 6–8 weeks of topic snapshots)
 
