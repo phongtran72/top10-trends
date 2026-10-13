@@ -113,6 +113,8 @@ order by success_pct;
 
 Waived for phase 2 by the owner on 2026-10-01, after a day of soak: every phase 1 source had succeeded in every run (25 of 25 in the last 24 hours), and phase 2 was ready. The 7-day check still runs, around 2026-10-07, before the lists are called stable.
 
+Confirmed by the owner on 2026-10-13, from the review of 2026-10-12 (`docs/review-2026-10-12.md`): over the 7 days to the review every source succeeded in 100% of its runs (167 runs each; Google Trends and YouTube 668, X 334). Three hours were never started (2026-10-05 20:07 and 21:07 UTC, 2026-10-07 15:07 UTC), all during GitHub outages; task 4.6 adds a catch-up trigger.
+
 ## Phase 2 · Combined top 10 (weeks 4–5)
 
 - [x] **[You]** Choose the embedding model now (chose the local model on 2026-09-30): the local model (free; allow `huggingface.co` in the cloud environment, SETUP.md §1) or OpenAI `text-embedding-3-small` (about $0.06 a month, needs `OPENAI_API_KEY`). Switching later means re-embedding topic centroids and re-tuning the threshold.
@@ -140,6 +142,8 @@ Waived for phase 2 by the owner on 2026-10-01, after a day of soak: every phase 
 - [x] **2.22 Match by name first.** Live matching split the same name into two topics when one side carried headlines (Google's "bahrain gp" with its news against X's bare "Bahrain GP"), so 11 of 64 combined top 10s in 48 hours showed a name twice. Before comparing vectors, join an item to the topic that has exactly its name (`nameKey`: letters and digits only), using each topic's label and its members' names from the 48-hour window; the older topic wins when two share a name. `npm run replay -- tune` counts top 10s with a name twice and takes `--no-name-match` to compare. Bump `RANKING_VERSION` to `r6`; no rebuild before the review.
 
 **Gate 2.** Run the eval for 5 hours. In each hour, at least 8 of the 10 topics make sense and none is a duplicate. First look on 2026-10-01, from a replay of four sample hours: 8 or 9 of 10 made sense with no duplicates; the owner took phase 2 live on that basis. Confirm on live hours with `npm run eval -- --hours 5`.
+
+Not passed at the review of 2026-10-12 (`docs/review-2026-10-12.md` §3): of five live hours under `r6`, three passed, one had 7 of 10 and one showed a story twice. The cause is topics that never end (§4). The owner's decision of 2026-10-13: re-check on five new hours once task 2.23 is live.
 
 ## Phase 3 · Paid and approved sources (week 6)
 
