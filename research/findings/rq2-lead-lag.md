@@ -65,6 +65,26 @@ Stored lists from 2026-09-30 11:32 to 2026-10-04 21:08 UTC, Google's US feed onl
 
 **Cautions.** Fetches are hourly, so a 1-hour lead is one fetch. X joined 10 hours after Google, which the censoring rule covers. Matching on titles at 0.86 has a few wrong pairs (two different players sharing a surname), which add noise in both directions.
 
+## Re-run on two weeks: the Google lead holds (2026-10-13)
+
+Stored lists from 2026-09-30 11:32 to 2026-10-13 UTC, Google's US feed, titles at 0.86, and with each return of a name after 24 hours counted as a new appearance (`findings/rq6-echo.md`). Without that last step a team that played twice had its first game's sighting compared with its second's.
+
+**538 stories on two or more lists, 683 usable pairs of platforms.**
+
+| Pair | Stories | First | Tie | Other first | Median lead |
+| --- | --- | --- | --- | --- | --- |
+| Google and X | 323 | Google 51% | 30% | X 20% | Google by 1 h |
+| Bluesky and Google | 70 | Google 50% | 10% | Bluesky 40% | Google by half an hour |
+| Bluesky and X | 59 | X 54% | 19% | Bluesky 27% | X by 1 h |
+| Mastodon and X | 45 | X 56% | 13% | Mastodon 31% | X by 1 h |
+| Bluesky and Reddit | 26 | Bluesky 54% | 8% | Reddit 38% | Bluesky by 3.5 h |
+| Google and Mastodon | 21 | Google 67% | 5% | Mastodon 29% | Google by 2 h |
+
+- **The four-day result stands on nearly three times the stories:** Google lists a name before X about half the time, X is first a fifth of the time, and the median lead is one hour. Half the leads fall between a tie and 3 hours for Google.
+- **It held on 12 of 13 days** (Google first in 43% to 74% of each day's stories, X in 0% to 29%). The last day, with 10 stories and its evening still to come, went the other way.
+- **An order is appearing:** Google, then X, then Bluesky and Mastodon, each step about an hour. Over all its pairs Google is first in 51% and later in 24%; X is first in 29% and later in 45%; Bluesky, Mastodon, Reddit and Hacker News are later more often than first.
+- **Among stories that reach both within 6 hours** (244), Google is first in 49%, they tie in 39% and X is first in 12%.
+
 ## What it means for the forecasts
 
 Nothing yet. Some expectations to test as the data grows:

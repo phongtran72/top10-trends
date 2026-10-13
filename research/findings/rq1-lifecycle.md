@@ -1,6 +1,6 @@
 # RQ1 · Lifecycle
 
-**Status: preliminary (2026-09-30; numbers corrected 2026-10-01).** An item still listed at the end of the data and seen only once had been counted as having lasted an hour, which raised the "after N hours" shares; it now counts as 0, the only thing known. This covers each platform's own lists over one day: 12 hours of the phase-1 lists and 2 runs of X.
+**Status: per-list lifecycles on five days (2026-10-05, below); the cross-platform lifecycle waits for snapshots. As first written (2026-09-30; numbers corrected 2026-10-01):** An item still listed at the end of the data and seen only once had been counted as having lasted an hour, which raised the "after N hours" shares; it now counts as 0, the only thing known. This covers each platform's own lists over one day: 12 hours of the phase-1 lists and 2 runs of X.
 - **The full answer comes later.** Lifecycles across platforms and in the combined top 10, by topic category, need topic snapshots (after phase 2). Gate 5's RQ1 write-up is that version.
 - **What's known already:** three facts about how each list behaves, and the shape of Hacker News's rise and fall.
 - **Next:** re-run `notebooks/01_rq1_lifecycle.ipynb` weekly.
@@ -44,6 +44,76 @@ Median time in the top 10 (the half-life), and the share still listed after 1, 2
    - *Bluesky flickers.* 47% of its spells are returns, and 55% even in its full 25-item list. Most come back after missing one hourly fetch (38 of 65 returns), and 78% within two. Bluesky's trending list is re-cut every hour, and a topic near the edge drops in and out.
 2. **Mastodon and Twitch barely move.** Most of their top 10 stays all day (more than half of the entries were still listed after 12 hours). Their trends are long-running tags and games, not moments.
 3. **On the fast lists, most trends are brief.** 79% of Bluesky's entries and 72% of Google's were gone at the next hourly fetch. The longest finished stays were 6 to 7 hours: Hacker News stories, and Bluesky's "Canada marks Truth and Reconciliation Day".
+
+## Re-run on five days (2026-10-05)
+
+Stored lists from 2026-09-30 11:32 to 2026-10-05 10:08 UTC: 119 hours over six local days, 3,643 stays in a top 10. X's two lists and Reddit are in now, and Google's UK, Canada and Australia feeds since October 4.
+
+Median time in the top 10, and the share still listed later (Kaplan–Meier; a stay ends at the first missed fetch):
+
+| List | Stays | Median | 1 h | 3 h | 6 h | 12 h |
+| --- | --- | --- | --- | --- | --- | --- |
+| Google Trends (US) | 1,004 | 1 h | 15% | 0% | 0% | 0% |
+| Google Trends (UK) | 195 | 1 h | 31% | 3% | 0% | 0% |
+| Bluesky | 554 | 1 h | 36% | 14% | 3% | 1% |
+| Bluesky, one missed fetch allowed | 417 | 1 h | 47% | 25% | 12% | 4% |
+| X, worldwide | 460 | 2 h | 57% | 19% | 4% | 0% |
+| Reddit | 325 | 2 h | 53% | 24% | 8% | 3% |
+| X, US | 357 | 2 h | 64% | 31% | 11% | 1% |
+| Google Trends (Canada) | 103 | 2 h | 65% | 19% | 6% | 0% |
+| Google Trends (Australia) | 100 | 2 h | 61% | 34% | 4% | 0% |
+| Hacker News | 249 | 3 h | 67% | 40% | 22% | 12% |
+| Twitch | 109 | 4 h | 83% | 51% | 44% | 21% |
+| Mastodon | 77 | 14 h | 80% | 73% | 65% | 55% |
+
+- **The first day's picture holds, with better numbers.** Google's US feed is still a queue (no stay climbed after entering, 6% came back); Hacker News has a rise and fall (38% climbed); Bluesky flickers (69% of its stays are returns); Mastodon and Twitch barely move.
+- **Google's US feed is faster than the first day showed:** 15% still listed after an hour, not 28%, and none after three. The smaller countries' feeds turn over more slowly (a median of 2 hours in Canada and Australia), because fewer new trends push the old ones out.
+- **The new lists sit in the middle.** A trend on X or Reddit lasts a median of 2 hours in the top 10; X's US list holds one a little longer than its worldwide list.
+- **Most stays on most lists peak when they enter.** The share that climbed afterwards: Mastodon 68%, Twitch 58%, Hacker News 38%, Reddit 34%, X 22–27%, Bluesky 16%, Google 0–2%.
+
+**By category,** for the trends that have a label (about two-thirds of them; about 30% of the labels are unchecked drafts), on the hourly lists, one missed fetch allowed:
+
+| Category | Stays | Median | Still listed after 3 h |
+| --- | --- | --- | --- |
+| calendar | 40 | 6 h | 62% |
+| gaming | 137 | 2 h | 40% |
+| science | 24 | 3 h | 38% |
+| tech | 157 | 2 h | 36% |
+| meme | 77 | 2 h | 30% |
+| politics | 314 | 1 h | 19% |
+| incident | 94 | 1 h | 19% |
+| entertainment | 253 | 1 h | 17% |
+| business | 72 | 1 h | 17% |
+| sports | 604 | 1 h | 12% |
+
+- **Half-life by category mostly restates where each category lives.** Calendar tags and games last because they're on Mastodon and Twitch; sports and politics are short because they're on Google's queue and Bluesky. Inside one platform the difference mostly goes away (`rq4-news-memes.md`).
+
+This is the lists' own lifecycle. The lifecycle of a topic across platforms, which task 5.3 asks for, needs weeks of snapshots made under one set of ranking rules; the current rules date from 2026-10-05.
+
+## Re-run on two weeks (2026-10-13)
+
+Stored lists from 2026-09-30 11:32 to 2026-10-13 UTC: 13 local days and 300 hourly fetches. Three hours have no lists (the 20:07 and 21:07 UTC runs on 2026-10-05 and the 15:07 run on 2026-10-07); they're treated as gaps. 12,336 stays in a top 10.
+
+| List | Stays | Median | 1 h | 3 h | 6 h | 12 h |
+| --- | --- | --- | --- | --- | --- | --- |
+| Google Trends (US) | 2,676 | 1 h | 10% | 0% | 0% | 0% |
+| Google Trends (Canada) | 1,405 | 1 h | 23% | 6% | 1% | 0% |
+| Google Trends (UK) | 1,492 | 1 h | 27% | 2% | 0% | 0% |
+| Google Trends (Australia) | 1,068 | 1 h | 46% | 11% | 2% | 0% |
+| Bluesky | 1,278 | 1 h | 36% | 13% | 5% | 2% |
+| Bluesky, one missed fetch allowed | 993 | 1 h | 46% | 23% | 11% | 4% |
+| X, worldwide | 1,196 | 2 h | 60% | 20% | 3% | 0% |
+| Reddit | 860 | 2 h | 56% | 27% | 10% | 3% |
+| X, US | 918 | 2 h | 64% | 32% | 12% | 1% |
+| Hacker News | 640 | 3 h | 65% | 39% | 21% | 11% |
+| Twitch | 282 | 4 h | 79% | 51% | 42% | 22% |
+| Mastodon | 192 | 13 h | 81% | 71% | 64% | 53% |
+
+- **The five-day numbers held within a few points on three times the stays.** The order of the lists hasn't moved.
+- **Corrected:** Canada's and Australia's Google feeds looked slower on their first day (a median of 2 hours); over nine days their median is 1 hour like the others, though Australia's holds a trend longest (46% still listed after an hour).
+- **How each list moves is unchanged:** no Google stay climbs after entering; 32% of Hacker News stays do, 37% of Reddit's, 25–29% of X's, 15% of Bluesky's, and about 60% of Mastodon's and Twitch's. Bluesky's stays are returns 69% of the time and Twitch's 84%.
+
+**In the combined top 10** (the US view of the live snapshots, 188 hours under one set of rules, 562 topics that reached it): a topic stays a median of 2 hours, one in ten stays 5 or more, and the longest so far is 19. That's the first cross-platform figure. The curves by category that task 5.3 asks for need a category on every topic, which waits for the classifier or Claude's labels (task 5.14).
 
 ## What it means for the forecasts
 

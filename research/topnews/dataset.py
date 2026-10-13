@@ -36,6 +36,14 @@ rankings table's order includes YouTube, which can't feed a permanent model
 2-hour grace (2.14) are part of what the site shows, so they're part of the
 labels too.
 
+Missing runs are gaps, not quiet hours (three so far: 2026-10-05 20:07 and
+21:07 UTC, and 2026-10-07 15:07 UTC). A label is known only when every hourly
+run it looks at exists: a 6-hour label whose window crosses a gap is unknown,
+and a top-10 stay that reaches a gap is censored there, like a stay at the end
+of the data. An hour whose run came late (a catch-up run, up to half past the
+usual minute) isn't a gap: runs up to 1.75 hours apart follow each other, and
+"k hours earlier" is the run within 40 minutes of that time.
+
 Rows are split by time: the latest 2 weeks are the test set (the latest 30%
 while there's less than 6 weeks), and the 6 hours before it are an embargo,
 left out of training because their labels look into the test period.
@@ -59,8 +67,11 @@ SPREAD_PLATFORMS = 2
 TOP_N = 10
 GAP_HOURS = 2
 LAGS = (1, 3, 6)
-RUN_TOLERANCE = pd.to_timedelta(30, unit="min")
+RUN_TOLERANCE = pd.to_timedelta(40, unit="min")  # a catch-up run is up to 30 minutes off the hour
 END_TOLERANCE = pd.to_timedelta(15, unit="min")
+# Runs are hourly, and an hour whose run failed can run up to 30 minutes late (the Worker's catch-up
+# trigger), 1.5 hours after the run before it. Further apart than this, a run is missing.
+MAX_RUN_GAP = pd.to_timedelta(1.75, unit="h")
 TEST_DAYS = 14
 EMBARGO_HOURS = HORIZON_HOURS
 KEY = ["region", "topic_id", "taken_at"]
@@ -111,7 +122,7 @@ def _rank_columns(frame: pd.DataFrame) -> list[str]:
 
 
 def _lag_times(snaps: pd.DataFrame, hours: float) -> pd.Series:
-    """For each row, the time of its region's run nearest to `hours` earlier (within 30 minutes), or NaT."""
+    """For each row, the time of its region's run nearest to `hours` earlier (within 40 minutes), or NaT."""
     runs = snaps[["region", "taken_at"]].drop_duplicates().sort_values("taken_at").rename(columns={"taken_at": "lag_time"})
     targets = snaps[["region", "taken_at"]].assign(target=snaps["taken_at"] - pd.to_timedelta(hours, unit="h"))
     targets = targets.reset_index().sort_values("target")
@@ -155,22 +166,36 @@ def _first_platforms(snaps: pd.DataFrame, ranks: list[str]) -> pd.Series:
     return listed.apply(lambda row: row.index[row][0][5:] if row.sum() == 1 else "several", axis=1)
 
 
+def stretch_ends(run_times) -> dict:
+    """For each run time, the last run of its unbroken stretch: the runs that follow it hour by hour, up to
+    the next missing run or the end of the data. What happened after that run wasn't observed."""
+    times = sorted(pd.Series(run_times).drop_duplicates())
+    ends = {}
+    end = None
+    for i in range(len(times) - 1, -1, -1):
+        if end is None or times[i + 1] - times[i] > MAX_RUN_GAP:
+            end = times[i]
+        ends[times[i]] = end
+    return ends
+
+
 def labels(snaps: pd.DataFrame, horizon_hours: float = HORIZON_HOURS, gap_hours: float = GAP_HOURS) -> pd.DataFrame:
     """The label columns for every snapshot row (see the module notes), keyed by region, topic and time."""
     horizon, gap = pd.to_timedelta(horizon_hours, unit="h"), pd.to_timedelta(gap_hours, unit="h")
     rows = []
     for region, by_region in snaps.groupby("region"):
-        data_end = by_region["taken_at"].max()
+        seen_until = stretch_ends(by_region["taken_at"])
         for topic_id, group in by_region.sort_values("taken_at").groupby("topic_id"):
             times = group["taken_at"].to_numpy()
             counts = group["platform_count"].to_numpy()
             position = group["position"].to_numpy(dtype=float)
             broken = (counts >= BREAKOUT_PLATFORMS) | (position <= BREAKOUT_POSITION)
             in_top = position <= TOP_N
-            left, lower, censored = _hours_left(times, in_top, data_end, gap)
+            until = [seen_until[t] for t in group["taken_at"]]
+            left, lower, censored = _hours_left(times, in_top, until, gap)
             for i, at in enumerate(times):
                 window = (times > at) & (times <= at + horizon)
-                known = pd.Timestamp(at) + horizon <= data_end + END_TOLERANCE
+                known = pd.Timestamp(at) + horizon <= until[i] + END_TOLERANCE  # every run in the window exists
                 breakout = np.nan if broken[i] or not known else float(broken[window].any())
                 spread = np.nan if counts[i] != 1 or not known else float((counts[window] >= SPREAD_PLATFORMS).any())
                 rows.append(
@@ -184,9 +209,11 @@ def labels(snaps: pd.DataFrame, horizon_hours: float = HORIZON_HOURS, gap_hours:
     return pd.DataFrame(rows)
 
 
-def _hours_left(times: np.ndarray, in_top: np.ndarray, data_end: pd.Timestamp, gap: pd.Timedelta):
+def _hours_left(times: np.ndarray, in_top: np.ndarray, seen_until: list, gap: pd.Timedelta):
     """For each row in the top 10: whole hours until the last top-10 appearance of its run of appearances
-    (gaps up to `gap` allowed), counting the current hour; censored when the run could still go on."""
+    (gaps up to `gap` allowed), counting the current hour; censored when the run could still go on, which
+    is when fewer than `gap` hours were observed after its last appearance (`seen_until`: the last run of
+    each row's unbroken stretch of runs)."""
     n = len(times)
     left, lower, censored = np.full(n, np.nan), np.full(n, np.nan), np.full(n, False)
     top = np.flatnonzero(in_top)
@@ -195,7 +222,7 @@ def _hours_left(times: np.ndarray, in_top: np.ndarray, data_end: pd.Timestamp, g
     breaks = np.flatnonzero(np.diff(times[top]) > np.timedelta64(gap)) + 1
     for run in np.split(top, breaks):
         last = times[run[-1]]
-        open_ended = pd.Timestamp(last) + gap >= data_end - END_TOLERANCE
+        open_ended = pd.Timestamp(last) + gap >= seen_until[run[-1]] - END_TOLERANCE
         for i in run:
             hours = float(round((last - times[i]) / np.timedelta64(1, "h")) + 1)
             lower[i], censored[i] = hours, open_ended

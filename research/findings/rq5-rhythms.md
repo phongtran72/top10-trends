@@ -84,6 +84,31 @@ Stored lists from 2026-09-30 11:32 to 2026-10-04 21:08 UTC: 106 hours, five loca
 
 Still one of each weekday, so weekday effects can't be told from that day's events, and a football Saturday and Sunday are in the evening figures.
 
+## Re-run on two weeks: the hour-of-day result holds, and every list has one (2026-10-13)
+
+Stored lists from 2026-09-30 11:32 to 2026-10-13 UTC: 13 local days and 300 hourly fetches. Three hours have no lists (the 20:07 and 21:07 UTC runs on 2026-10-05 and the 15:07 run on 2026-10-07); they're treated as gaps. Each weekday now has two days except Tuesday, with one. Google's UK, Canada and Australia feeds have 9 days. Hours are US Eastern.
+
+**Is the hour-of-day result trustworthy now? Yes.** With 13 days the test of hour against day finds an hour effect on every list (p of 0.005 or less for all eleven), and the peak hours of the US lists are the ones the four-day run found.
+
+| List | New in the top 10 each hour | Fastest hour | Slowest hour | Swing between them |
+| --- | --- | --- | --- | --- |
+| Google Trends (US) | 90% | 10 pm | 4 am | 34 points |
+| Google Trends (UK) | 72% | 3 pm | midnight | 66 |
+| Google Trends (Canada) | 68% | 8 pm | 4 am | 74 |
+| Google Trends (Australia) | 52% | 6 am | 1 pm | 61 |
+| Bluesky | 43% | 6 pm | 11 pm | 19 |
+| X, worldwide | 42% | 9 am | 6 pm | 29 |
+| Reddit | 32% | 10 am | 5 am | 27 |
+| X, US | 32% | 9 pm | 5 am | 47 |
+| Hacker News | 22% | 3 pm | 3 am | 25 |
+| Twitch | 9% | 8 pm | 9 am | 12 |
+| Mastodon | 6% | 8 am | midnight | 13 |
+
+- **One correction to the four-day run.** It said the worldwide lists (X worldwide, Bluesky) and Reddit showed no daily rhythm. They do; it's smaller, and four days couldn't see it. X's worldwide list is busiest at 9 am Eastern, when Europe's afternoon and Asia's evening overlap, and quietest at 6 pm.
+- **Each country's Google feed follows its own evening:** the UK's peaks at 3 pm Eastern (8 pm in London), Canada's at 8 pm, Australia's at 6 am Eastern (9 pm in Sydney), and each is slowest in its own small hours.
+- **Activity on the listed topics** peaks around midday Eastern: Bluesky's posts at 1 pm, Hacker News's points at noon, Mastodon's uses at 11 am, and all three are lowest between 2 am and 6 am.
+- **Weekdays still can't be told apart from events:** two of each isn't enough.
+
 ## What it means for the forecasts
 
 - **Google's rank means age, not size.** In the combined score, `weight / log2(rank + 1)` gave Google's newest trend the most weight, not its biggest. And a Google trend leaves the feed when 10 newer ones start, which on a busy afternoon takes under an hour, so its time on the feed isn't its lifespan.

@@ -84,11 +84,22 @@ def since_all_present(items: pd.DataFrame) -> pd.DataFrame:
     return items[items["fetched_at"] >= start]
 
 
-def trends(items: pd.DataFrame) -> pd.DataFrame:
+def trends(items: pd.DataFrame, episode_gap_hours: float | None = None) -> pd.DataFrame:
     """One row per platform and distinct item: its latest title, sightings, best rank and fetches seen in,
-    and its latest stored match text (None where the lists kept none)."""
+    and its latest stored match text (None where the lists kept none).
+
+    With `episode_gap_hours`, an item that comes back after being off its platform's lists for longer than
+    that is a new row (`episode` 1, 2, …): "Chiefs" on one Sunday and the next are two appearances, each
+    with its own first sighting. Without it there is one row per item, which is what a label is keyed by.
+    """
     df = rhythms.keyed(items).sort_values("fetched_at")
-    grouped = df.groupby(["source_id", "key"], sort=False)
+    pair = [df["source_id"], df["key"]]
+    if episode_gap_hours is None:
+        df = df.assign(episode=0)
+    else:
+        came_back = df.groupby(pair, sort=False)["fetched_at"].diff() > pd.to_timedelta(episode_gap_hours, unit="h")
+        df = df.assign(episode=came_back.groupby(pair, sort=False).cumsum().astype(int))
+    grouped = df.groupby(["source_id", "key", "episode"], sort=False)
     out = grouped.agg(
         title=("title", "last"),
         first_seen=("fetched_at", "min"),
@@ -99,9 +110,9 @@ def trends(items: pd.DataFrame) -> pd.DataFrame:
     out.insert(0, "trend_id", [f"t{i}" for i in range(len(out))])
     out["match_text"] = None
     if "match_text" in df:
-        stored = df[df["match_text"].map(has_text)].drop_duplicates(["source_id", "key"], keep="last")
-        latest = dict(zip(zip(stored["source_id"], stored["key"]), stored["match_text"]))
-        out["match_text"] = [latest.get(pair) for pair in zip(out["source_id"], out["key"])]
+        stored = df[df["match_text"].map(has_text)].drop_duplicates(["source_id", "key", "episode"], keep="last")
+        latest = dict(zip(zip(stored["source_id"], stored["key"], stored["episode"]), stored["match_text"]))
+        out["match_text"] = [latest.get(row) for row in zip(out["source_id"], out["key"], out["episode"])]
     return out
 
 
@@ -174,16 +185,21 @@ def kept_trends(trend_table: pd.DataFrame, filtered: pd.DataFrame, vectors: np.n
 
 
 def analyze(
-    items: pd.DataFrame, name: str, slack_hours: float = SLACK_HOURS, segment: bool = True, use_text: bool = False
+    items: pd.DataFrame, name: str, slack_hours: float = SLACK_HOURS, segment: bool = True, use_text: bool = False,
+    episode_gap_hours: float | None = SLACK_HOURS,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Trends → the pipeline's filters and model → cross-platform matches. Returns the matches and the dropped
     trends.
+
+    A trend here is one appearance: an item that returns after more than `episode_gap_hours` off its
+    platform's lists counts again (see `trends`). Over weeks a team or a weekday tag trends many times, and
+    without this its first sighting would be weeks before the story it's matched with.
 
     Titles alone by default. That treats the days before and after the lists stored match text
     (2026-10-02 18:07 UTC) alike, and it's what the threshold was tuned on. With `use_text=True` a Google
     or Bluesky trend is embedded with its text, as the live pipeline does, and a bare name on another
     platform then falls below the threshold (findings/matching.md): Google–X matches drop from 101 to 5."""
-    table = trends(items)
+    table = trends(items, episode_gap_hours)
     filtered, vectors = embed(table, name, segment, items, use_text)
     kept, kept_vectors = kept_trends(table, filtered, vectors)
     dropped = filtered[~filtered["kept"]].merge(table, left_on="id", right_on="trend_id")

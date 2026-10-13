@@ -228,3 +228,18 @@ def test_embed_input_sends_match_text_with_rows_and_groups_unless_told_not_to():
     titles_only = echo.embed_input(t, items, use_text=False)
     assert all("matchText" not in row for row in titles_only["rows"])
     assert all("matchText" not in g for g in titles_only["groups"]["2026-10-01T12"])
+
+
+def test_an_item_that_comes_back_after_the_gap_is_a_new_appearance():
+    def row(run, hours, rank, text=None):
+        return {"run_id": run, "source_id": "x", "region": "us", "rank": rank, "title": "Chiefs", "url": "u",
+                "fetched_at": T0 + pd.to_timedelta(hours, unit="h"), "match_text": text}
+
+    items = pd.DataFrame([row(1, 0, 5), row(2, 1, 2), row(3, 20, 9), row(4, 170, 1), row(5, 171, 3)])
+    one = echo.trends(items)
+    assert len(one) == 1 and one.loc[0, "fetches"] == 5 and one.loc[0, "episode"] == 0
+    split = echo.trends(items, episode_gap_hours=24)
+    assert split["episode"].tolist() == [0, 1] and len(set(split["trend_id"])) == 2  # 20 h away is the same appearance
+    assert split["first_seen"].tolist() == [T0, T0 + pd.to_timedelta(170, unit="h")]
+    assert split["best_rank"].tolist() == [2, 1] and split["fetches"].tolist() == [3, 2]
+    assert split["key"].nunique() == 1  # still one item, so one label covers both
