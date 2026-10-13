@@ -98,7 +98,15 @@ export async function loadSlots(db: Db, since?: Date): Promise<Slot[]> {
 export async function replaySlots(
   db: Db,
   slots: readonly Slot[],
-  options: { threshold: number; embedder: Embedder; blocklist: ReadonlySet<string>; nameMatch?: boolean; onSlot?: (index: number) => void },
+  options: {
+    threshold: number;
+    embedder: Embedder;
+    blocklist: ReadonlySet<string>;
+    nameMatch?: boolean;
+    freezeCentroid?: boolean;
+    maxTopicAgeHours?: number;
+    onSlot?: (index: number) => void;
+  },
 ): Promise<{ created: number }> {
   let created = 0;
   for (const [index, slot] of slots.entries()) {
@@ -111,6 +119,8 @@ export async function replaySlots(
       blocklist: options.blocklist,
       threshold: options.threshold,
       nameMatch: options.nameMatch,
+      freezeCentroid: options.freezeCentroid,
+      maxTopicAgeHours: options.maxTopicAgeHours,
       replay: true,
     });
     created += outcome.created;
@@ -224,13 +234,19 @@ export interface TuneStats {
   multiPlatformEntries: number; // combined top-10 entries on 2+ platforms' top 10s that hour
   hours: number; // hourly combined top 10s
   duplicateHours: number; // of those, how many held the same name twice
+  // Signs of catch-all topics: top-10 entries whose topic was over 48 hours old,
+  // entries whose label is none of the names the topic's members had in the
+  // three hours before, and topics that gathered 10 or more different names.
+  oldEntries: number;
+  staleLabelEntries: number;
+  bigTopics: number;
   crossPlatform: CrossPlatformTopic[];
 }
 
 export async function tuneStats(db: Db, threshold: number): Promise<TuneStats> {
-  const topicRows = await db.select({ id: topics.id, label: topics.label }).from(topics);
+  const topicRows = await db.select({ id: topics.id, label: topics.label, firstSeen: topics.firstSeen }).from(topics);
   const members = await db
-    .select({ topicId: topicItems.topicId, sourceId: trendItems.sourceId, title: trendItems.title })
+    .select({ topicId: topicItems.topicId, sourceId: trendItems.sourceId, title: trendItems.title, fetchedAt: trendItems.fetchedAt })
     .from(topicItems)
     .innerJoin(trendItems, eq(trendItems.id, topicItems.itemId));
   const ranked = await db
@@ -270,7 +286,32 @@ export async function tuneStats(db: Db, threshold: number): Promise<TuneStats> {
   for (const row of combined) namesAt.set(row.at.getTime(), [...(namesAt.get(row.at.getTime()) ?? []), nameKey(labelOf.get(row.topicId!) ?? "")]);
   const duplicateHours = [...namesAt.values()].filter((names) => new Set(names).size < names.length).length;
 
-  return { threshold, topics: topicRows.length, top10Entries: combined.length, multiPlatformEntries, hours: namesAt.size, duplicateHours, crossPlatform };
+  const firstSeenOf = new Map(topicRows.map((t) => [t.id, t.firstSeen.getTime()]));
+  const sightings = new Map<number, { at: number; name: string }[]>();
+  for (const m of members) sightings.set(m.topicId, [...(sightings.get(m.topicId) ?? []), { at: m.fetchedAt.getTime(), name: nameKey(m.title) }]);
+  let oldEntries = 0;
+  let staleLabelEntries = 0;
+  for (const row of combined) {
+    const at = row.at.getTime();
+    if (at - (firstSeenOf.get(row.topicId!) ?? at) > 48 * HOUR) oldEntries += 1;
+    const label = nameKey(labelOf.get(row.topicId!) ?? "");
+    const current = (sightings.get(row.topicId!) ?? []).filter((s) => s.at > at - 3 * HOUR && s.at < at + HOUR / 4);
+    if (!current.some((s) => s.name === label)) staleLabelEntries += 1;
+  }
+  const bigTopics = [...sightings.values()].filter((list) => new Set(list.map((s) => s.name)).size >= 10).length;
+
+  return {
+    threshold,
+    topics: topicRows.length,
+    top10Entries: combined.length,
+    multiPlatformEntries,
+    hours: namesAt.size,
+    duplicateHours,
+    oldEntries,
+    staleLabelEntries,
+    bigTopics,
+    crossPlatform,
+  };
 }
 
 export function formatTuneStats(stats: TuneStats, limit = 25): string[] {
@@ -279,7 +320,9 @@ export function formatTuneStats(stats: TuneStats, limit = 25): string[] {
     `## Threshold ${stats.threshold.toFixed(2)}`,
     `${stats.topics} topics; ${stats.crossPlatform.length} matched across 2+ platforms; ` +
       `${share}% of combined top-10 entries were on 2+ platforms' top 10s that hour; ` +
-      `${stats.duplicateHours} of ${stats.hours} hourly top 10s held the same name twice.`,
+      `${stats.duplicateHours} of ${stats.hours} hourly top 10s held the same name twice. ` +
+      `Of ${stats.top10Entries} top-10 entries, ${stats.oldEntries} were topics over 48 hours old and ${stats.staleLabelEntries} had a label none of their current members had; ` +
+      `${stats.bigTopics} topics gathered 10 or more names.`,
     "",
   ];
   for (const topic of stats.crossPlatform.slice(0, limit)) {

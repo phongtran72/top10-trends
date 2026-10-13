@@ -47,6 +47,11 @@ export interface MatchOptions {
   now: Date;
   // Off only to compare in a replay: join by name before comparing vectors.
   nameMatch?: boolean;
+  // Replay experiments (the 2026-10 review), off in live runs. A topic's
+  // centroid stays its first item's vector, so it can't drift toward whatever
+  // joins later; and a topic takes no new member once it is this old.
+  freezeCentroid?: boolean;
+  maxTopicAgeHours?: number;
   // Label and one-line context for a new topic, and context for a topic that
   // has none yet (task 2.6 fills these in).
   labelFor: (item: MatchItem) => string;
@@ -82,8 +87,10 @@ export function matchItems(items: readonly MatchItem[], existing: readonly Topic
     topic.names?.add(name);
     if (!byName.has(name)) byName.set(name, topic);
   };
+  const oldest = options.maxTopicAgeHours === undefined ? -Infinity : options.now.getTime() - options.maxTopicAgeHours * 60 * 60 * 1000;
+  const open = (topic: Topic) => topic.firstSeen.getTime() >= oldest;
   const oldestFirst = [...topics].sort((a, b) => a.firstSeen.getTime() - b.firstSeen.getTime() || (a.id ?? Infinity) - (b.id ?? Infinity));
-  for (const topic of oldestFirst) for (const name of [...(topic.names ?? [])]) claim(name, topic);
+  for (const topic of oldestFirst) if (open(topic)) for (const name of [...(topic.names ?? [])]) claim(name, topic);
 
   for (const item of matchOrder(items)) {
     const name = nameKey(item.title);
@@ -91,6 +98,7 @@ export function matchItems(items: readonly MatchItem[], existing: readonly Topic
     let best: Topic | null = null;
     let bestSimilarity = -Infinity;
     for (const topic of topics) {
+      if (!open(topic)) continue;
       const similarity = dot(item.vector, topic.centroid);
       if (similarity > bestSimilarity) {
         best = topic;
@@ -103,7 +111,7 @@ export function matchItems(items: readonly MatchItem[], existing: readonly Topic
     if (joined) {
       claim(name, joined);
       // Running mean of the member vectors, re-normalized.
-      joined.centroid = unitVector(joined.centroid.map((c, i) => c * joined.count + item.vector[i]));
+      if (!options.freezeCentroid) joined.centroid = unitVector(joined.centroid.map((c, i) => c * joined.count + item.vector[i]));
       joined.count += 1;
       joined.lastSeen = options.now;
       joined.changed = true;

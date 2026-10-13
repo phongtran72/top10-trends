@@ -50,6 +50,10 @@ async function tune(argv: readonly string[]) {
   const thresholds = (option(argv, "thresholds") ?? "0.55,0.6,0.65,0.7,0.75,0.8").split(",").map(parseThreshold);
   const segment = !argv.includes("--no-segment");
   const nameMatch = !argv.includes("--no-name-match");
+  // Experiments for the 2026-10 review (pipeline/match.ts); never on in live runs.
+  const freezeCentroid = argv.includes("--freeze-centroid");
+  const maxAge = option(argv, "max-topic-age");
+  const maxTopicAgeHours = maxAge === undefined ? undefined : Number(maxAge);
   setSegmentation(segment);
   const env = pipelineEnv({ dryRun: false });
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -68,12 +72,13 @@ async function tune(argv: readonly string[]) {
       "",
       `${slots.length} hourly slots, ${items} stored items. Replay reads what was stored at the time: Bluesky's status from 2026-10-01 15:07 UTC, headlines and descriptions from 2026-10-02 18:07 UTC; earlier hours match on titles only.`,
       `One-word lowercase hashtags ${segment ? "are split into words" : "are left unsplit (--no-segment)"}. Items ${nameMatch ? "join a topic with exactly their name" : "are matched by vectors alone (--no-name-match)"}.`,
+      `Experiments: centroid ${freezeCentroid ? "frozen at the first item" : "a running mean (as live)"}; topic age ${maxTopicAgeHours === undefined ? "unlimited (as live)" : `capped at ${maxTopicAgeHours} hours`}.`,
       "Look for wrong merges: the highest threshold with none is the one to pick.",
       "",
     ];
     for (const threshold of thresholds) {
       await resetDerived(scratch.db);
-      await replaySlots(scratch.db, slots, { threshold, embedder, blocklist, nameMatch });
+      await replaySlots(scratch.db, slots, { threshold, embedder, blocklist, nameMatch, freezeCentroid, maxTopicAgeHours });
       const lines = formatTuneStats(await tuneStats(scratch.db, threshold), 400);
       report.push(...lines);
       console.log(lines.slice(0, 2).join(" "));
