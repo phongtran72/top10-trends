@@ -1,6 +1,6 @@
 # RQ6 · Echo chambers
 
-**Status: preliminary (2026-09-30).** One day of the phase-1 lists, and two hourly runs with every list. The pattern is already strong: almost every trend stays on its own platform.
+**Status: four days with every list (2026-10-05, below). As first written (2026-09-30):** One day of the phase-1 lists, and two hourly runs with every list. The pattern is already strong: almost every trend stays on its own platform.
 - Re-run `notebooks/06_rq6_echo.ipynb` weekly.
 - Once topic snapshots exist (after phase 2), repeat it on them: a topic's `platform_count` answers the same question with the pipeline's own matching.
 - The numbers below use the pipeline as of phase-2 377374f: hashtag splitting (task 2.13) and embeddings one title at a time.
@@ -130,6 +130,54 @@ Measured on the stored lists to 2026-10-01 12:08 UTC (718 trends over 26 hours),
 - **TikTok with Pinterest stays:** "#firstdayoffall" and "#floresamarillas", with 7 of Pinterest's 25 searches.
 - **The shares barely move:** TikTok's trends found nowhere else go from 87% to 90%, Twitch's from 93% to 95%, and no other list changes.
 - **Still wrong:** X's "Flores" now pairs with Pinterest's "flores amarillas" searches at 0.865. That's the short-name problem, not the lag, so the rule doesn't touch it.
+
+## Re-run on four days with every list (2026-10-05)
+
+Every list from 2026-10-01 12:08 UTC, when Reddit joined, to 2026-10-05 10:08 UTC: 94 hours and 2,840 trends after the filters. Google's US feed only; matched on titles at 0.86; TikTok compared only with Pinterest.
+
+| Platform | Trends | On no other list | On three or more |
+| --- | --- | --- | --- |
+| Hacker News | 295 | 99% | 1% |
+| Reddit | 460 | 93% | 1% |
+| TikTok | 67 | 91% | 0% |
+| Twitch | 95 | 87% | 1% |
+| Mastodon | 119 | 82% | 6% |
+| X | 777 | 78% | 2% |
+| Bluesky | 217 | 77% | 5% |
+| Pinterest | 47 | 77% | 9% |
+| Google Trends (US) | 718 | 74% | 4% |
+| Instagram | 45 | 51% | 22% |
+
+- **Most trends still stay on their own platform,** between three in four and nearly all of them, on every list but Instagram.
+- **The sharing runs through Google and X:** 21% of Google's trends were also on X and 18% of X's on Google. Instagram's short list echoes both (29% of its trends were on X, 22% on Google), which is why half of it appears elsewhere.
+- **Reddit joined as a loner.** 93% of its posts match nothing: its titles are sentences about a clip or a joke, and what they share with another list is rarely in the words.
+- **Hacker News is the purest echo chamber** at 99%, as on the first day.
+- **Against the first runs:** with two hours of every list, X was at 73% alone and Google at 79%; over four days they're 78% and 74%. On the five all-day lists over five days, Bluesky is 86% alone, Mastodon 91%, Twitch 92%, Google 94% and Hacker News 99%.
+
+**A caution on the level, not the order.** Matching on titles at 0.86 has some wrong pairs, mostly shared surnames between Google and X, so their "on no other list" shares are a few points too low. The live site showed the opposite error until 2026-10-05: it split same-name topics, and counted fewer shared stories than there were (`matching.md`).
+
+## Re-run on eleven days with every list (2026-10-13)
+
+Every list from 2026-10-01 12:08 UTC to 2026-10-13 02:08 UTC: 8,103 trend appearances after the filters. Google's US feed; matched on titles at 0.86.
+
+**One change of method.** Over weeks a name trends more than once (a team each game day, a weekday tag each week). An item that returns after more than 24 hours off its platform's lists now counts as a new appearance, so a match compares sightings from the same days (`echo.trends(…, episode_gap_hours=24)`).
+
+| Platform | Appearances | On no other list | On three or more |
+| --- | --- | --- | --- |
+| Hacker News | 875 | 95% | 1% |
+| Reddit | 1,298 | 93% | 1% |
+| TikTok | 117 | 90% | 0% |
+| Twitch | 229 | 86% | 1% |
+| Google Trends (US) | 2,293 | 79% | 3% |
+| X | 2,168 | 78% | 4% |
+| Mastodon | 312 | 78% | 11% |
+| Bluesky | 601 | 76% | 8% |
+| Pinterest | 63 | 71% | 10% |
+| Instagram | 147 | 42% | 26% |
+
+- **The four-day picture held on three times the data.** Eight of the ten platforms are within five points of where they were; Instagram fell from 51% to 42% alone and Pinterest from 77% to 71%, both on small lists. Most trends stay home; Instagram is the exception; the sharing runs through Google and X.
+- **Hacker News came down from 99% to 95%:** with more days, a few of its stories also reached Bluesky and Reddit.
+- **Mastodon's tags reach three lists more often than anything but Instagram's** (11%): the calendar tags, which X and Instagram carry on the same day.
 
 ## What it means for the forecasts
 

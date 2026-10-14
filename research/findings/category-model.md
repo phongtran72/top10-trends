@@ -1,6 +1,6 @@
 # Category as a live feature (task 5.14)
 
-**Status: with the stored match text the targets are met on Google and Bluesky trends, on two and a half days of them; not shipped (2026-10-04).** The classifier isn't shipped to the pipeline. It needs more labeled trends, which come as the stored lists grow.
+**Status: both targets met on a fresh sample a week past the labels (57% answered, 90% right), carried by trends with a stored text; not shipped (2026-10-13).** The classifier isn't shipped to the pipeline. It needs more labeled trends, which come as the stored lists grow.
 - Re-run `notebooks/09_category_model.ipynb` after each new batch of labels, and compare runs on its rolling score, not on the single split.
 - Ship it (task 5.14, step 3) only once it meets the targets below.
 
@@ -158,6 +158,31 @@ On the 341 scored trends that have a text (248 Google, 93 Bluesky):
 - It's 341 trends from two and a half days, 45% of them sports (a Nations League round and a college football Saturday).
 - The check of this batch covered Google and Bluesky only.
 - Rule changes are held until the review around 2026-10-07; a week of trends with text will be in by then. Re-run on that week before step 3.
+
+## A week later: the targets are met overall, and only because of the trends with text (2026-10-13)
+
+Two checks, neither with any new training labels.
+
+**1. The same checked labels, two weeks of lists.** More of the old Google and Bluesky trends carry a stored text now (those still listed after 2026-10-02 18:07 UTC), 462 of the checked ones. On the rolling score over 1,529 checked trends, at a confidence of 0.7 the classifier answers 52% and is right on 86%. On 2026-10-04 it was 50% and 85%.
+
+**2. A fresh sample from a week later, which is the real test.** 330 trends drawn at random from those first seen on 2026-10-11 and 2026-10-12, drafted by the local model and checked one by one (53 corrected, 84% agreed). The classifier was trained only on trends first seen by 2026-10-04, and its options and threshold (0.7) were chosen inside that training period. 299 of the sample pass the pipeline's filters.
+
+| On the fresh sample | Trends | Answered | Right, of those |
+| --- | --- | --- | --- |
+| All | 299 | **57%** | **90%** |
+| With a stored text (Google and Bluesky) | 172 | 67% | 97% |
+| Without one | 127 | 43% | 73% |
+| Target | | 50% | 85% |
+
+For comparison on the same 299: each platform's most common category is right 53% of the time, the nearest labeled trend 60%, the classifier when it always answers 69%, and the local model's draft 85%.
+
+- **Both targets are met a week past the labels, the accuracy not by much:** on 171 answers, 90% has a margin of about 5 points either way.
+- **The trends with text carry it.** Google's are answered 75% of the time and right on 96%. Without a text the answers aren't good enough: X's bare names are right half the time when answered (43 trends), Reddit's the same (34).
+- **So the rule to ship is narrower than the model:** give a category only from an item that has a stored text. A topic that Google or Bluesky lists would get one about two times in three, right 97% of the time on this sample; a topic only on X or Mastodon would get none. That's better than answering them badly.
+- **The sample leans on Google** (155 of the 299), because Google's four country feeds produce half of all new trends. That's also what the live pipeline sees.
+- **Category by category,** at 0.7: sports is answered 81% of the time and right on 92% (108 trends), tech 77% and 100%, politics 68% and 100%, entertainment 57% and 68%. Entertainment is the weak named category: celebrity news is easily taken for sports or politics.
+
+**Where that leaves task 5.14.** Step 2's targets are met. Step 3, the pipeline writing a topic's category, needs the owner's yes to the schema use (`topics.category` exists since migration 0006, written today only by Claude's naming call, which is off) and a decision on how the two sources share the column. Step 4 then tests whether category improves the forecast models, which need weeks of snapshots first. Nothing ships before that yes.
 
 ## What it means
 

@@ -134,8 +134,14 @@ def trend_items(eng: Engine, days: float | None = 7, include_youtube: bool = Fal
 
 
 def topics(eng: Engine) -> pd.DataFrame:
-    """Every topic: slug, label, summary, first and last seen (centroids left out; see topic_centroids)."""
-    return query(eng, "select id, slug, label, summary, first_seen, last_seen from topics order by first_seen")
+    """Every topic: slug, label, summary, first and last seen (centroids left out; see topic_centroids),
+    and the three columns Claude fills for a topic that reaches a combined top 10 with some context (task
+    3.6, migration 0006): `name`, `reason` and `category`. They're empty for every other topic, and for all
+    of them until the owner sets the API key. `label` and `summary` stay the platforms' own words; `name`
+    and `reason` are display text, never a feature. `category` is a draft by a language model, one of
+    topnews.llm.CATEGORIES."""
+    named = "name, reason, category" if has_column(eng, "topics", "category") else "null::text as name, null::text as reason, null::text as category"
+    return query(eng, f"select id, slug, label, summary, {named}, first_seen, last_seen from topics order by first_seen")
 
 
 def topic_centroids(eng: Engine) -> pd.DataFrame:

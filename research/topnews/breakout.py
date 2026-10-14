@@ -39,12 +39,15 @@ def features(cp: pd.DataFrame, items: pd.DataFrame) -> pd.DataFrame:
     """Adds what was known at each trend's first sighting: entry rank, the metric against its list's
     median, the hour (US Eastern) and the title's shape."""
     keyed = rhythms.keyed(items)
-    first = keyed.sort_values(["fetched_at", "rank"]).drop_duplicates(["source_id", "key"])
     medians = keyed.groupby("source_id")["metric_value"].median()
+    # The sighting at each trend's own first_seen: for an item that came back, that's its return, not its first ever.
+    first = keyed.sort_values(["fetched_at", "rank"]).drop_duplicates(["source_id", "key", "fetched_at"])
     first = first.assign(metric_vs_median=first["metric_value"] / first["source_id"].map(medians).replace(0, np.nan))
     joined = cp.merge(
-        first[["source_id", "key", "rank", "metric_vs_median"]].rename(columns={"rank": "entry_rank"}),
-        on=["source_id", "key"],
+        first[["source_id", "key", "fetched_at", "rank", "metric_vs_median"]].rename(
+            columns={"rank": "entry_rank", "fetched_at": "first_seen"}
+        ),
+        on=["source_id", "key", "first_seen"],
         how="left",
     )
     words = joined["title"].map(rhythms.title_key).str.split()

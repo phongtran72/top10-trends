@@ -130,3 +130,36 @@ def test_one_view_is_built_and_the_us_view_is_the_default_when_there_are_two():
     assert set(table["region"]) == {"global"} and table["position"].tolist() == [1, 2]
     with pytest.raises(ValueError):
         dataset.build(one, TOPICS, view="us")
+
+
+def test_stretch_ends_stop_at_a_missing_run():
+    ends = dataset.stretch_ends([at(0), at(1), at(2), at(5), at(6)])  # hours 3 and 4 are missing
+    assert [ends[at(h)] for h in (0, 1, 2, 5, 6)] == [at(2), at(2), at(2), at(6), at(6)]
+
+
+def test_a_catch_up_run_half_an_hour_late_is_not_a_missing_run():
+    # Hour 2's run failed and ran 30 minutes late (the Worker's catch-up trigger); hour 3 ran on time.
+    hours = (0, 1, 2.5, 3, 4)
+    ends = dataset.stretch_ends([at(h) for h in hours])
+    assert all(ends[at(h)] == at(4) for h in hours)
+    t = build([(h, 1, 5, float(h), {"x": 1}, 0) for h in hours])
+    assert t.loc[(1, at(2.5)), "d1_score"] == pytest.approx(1.5)  # against hour 1's run, 1.5 hours earlier
+    assert t.loc[(1, at(3)), "d1_score"] == pytest.approx(0.5)  # against the late run, the only one for hour 2
+    assert t.loc[(1, at(4)), "d1_score"] == pytest.approx(1.0)
+    assert np.isnan(build([(h, 1, 5, float(h), {"x": 1}, 0) for h in (0, 1, 3)]).loc[(1, at(3)), "d1_score"])  # no run at all
+
+
+def test_labels_are_unknown_where_a_missing_run_hides_the_answer():
+    # Topic 1 holds the top 10 through hour 2; hours 3 and 4 have no run at all; it's back at hour 5.
+    # Topic 2 only keeps the hourly runs going on both sides of the hole.
+    rows = [(h, 1, 1 if h < 3 else 20, 1.0, {"x": 1}, 0) for h in (0, 1, 2, 5)]
+    rows += [(h, 2, 30, 0.1, {"bluesky": 9}, 0) for h in (0, 1, 2, 5, 6, 7, 8, 9, 10, 11, 12)]
+    table, _ = dataset.build(snaps(rows), TOPICS)
+    t = table.set_index(["topic_id", "taken_at"])
+    # The stay could have gone on into the missing hours, so it's censored at the hole, not ended.
+    assert np.isnan(t.loc[(1, at(2)), "hours_left_top10"]) and t.loc[(1, at(2)), "hours_left_censored"]
+    assert t.loc[(1, at(0)), "hours_left_lower"] == 3.0
+    # A 6-hour label that looks across the hole is unknown; one wholly after it is known.
+    assert np.isnan(t.loc[(2, at(0)), "spread_6h"]) and np.isnan(t.loc[(2, at(2)), "breakout_6h"])
+    assert t.loc[(2, at(5)), "spread_6h"] == 0.0 and t.loc[(2, at(6)), "breakout_6h"] == 0.0
+    assert np.isnan(t.loc[(2, at(7)), "spread_6h"])  # hour 13 would be needed, and the data ends at 12

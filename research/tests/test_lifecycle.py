@@ -76,6 +76,13 @@ def test_a_gap_in_the_lists_fetches_censors_both_sides():
     assert s[("a", 2)].left_censored and not s[("a", 2)].right_censored
 
 
+def test_a_catch_up_fetch_half_an_hour_late_is_not_a_gap():
+    items = lists([["x"], ["x", "a"], ["x", "a"], ["x"], ["x"]], offsets=[0, 1, 2.5, 3, 4])  # hour 2 fetched late
+    s = by_title(lifecycle.spells(items))
+    assert ("a", 2) not in s  # one stay, through the late fetch
+    assert not s[("a", 1)].right_censored and s[("a", 1)].fetches == 2
+
+
 def test_survival_gives_the_half_life_and_treats_ongoing_spells_as_ongoing():
     spells = pd.DataFrame(
         {
