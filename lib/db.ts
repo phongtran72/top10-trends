@@ -16,3 +16,16 @@ export function getDb(): PostgresJsDatabase<typeof schema> {
   }
   return db;
 }
+
+// Runs the site's database reads one after another. The layout's banner and
+// the page fill their caches at the same moment after each hourly refresh,
+// and reads that overlap on the one pooled connection can stop answering for
+// good (seen on 2026-10-13: the source statuses beside a platform's list;
+// PLAN.md › Tech stack). A read that fails doesn't hold up the next one.
+let queue: Promise<unknown> = Promise.resolve();
+
+export function oneAtATime<T>(read: () => Promise<T>): Promise<T> {
+  const result = queue.then(read);
+  queue = result.catch(() => undefined);
+  return result;
+}
