@@ -28,6 +28,7 @@ export interface RankInput {
   threshold?: number;
   replay?: boolean; // rebuilding from stored lists: no headlines or flags
   nameMatch?: boolean; // off only to compare in a replay
+  maxTopicAgeHours?: number; // Infinity only to compare in a replay
 }
 
 export interface RankedTopic {
@@ -125,6 +126,7 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
   const match = matchItems(items, existing, {
     threshold: input.threshold,
     nameMatch: input.nameMatch,
+    maxTopicAgeHours: input.maxTopicAgeHours,
     now: input.now,
     labelFor,
     contextFor,

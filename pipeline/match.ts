@@ -1,5 +1,5 @@
 import type { SourceId, SourceRole } from "@/collectors/registry";
-import { MATCH_THRESHOLD } from "@/config/ranking";
+import { MATCH_THRESHOLD, MAX_TOPIC_AGE_HOURS } from "@/config/ranking";
 import { dot, unitVector } from "@/lib/embed";
 import { nameKey } from "@/lib/text";
 
@@ -9,6 +9,11 @@ import { nameKey } from "@/lib/text";
 // threshold; otherwise a lead item starts a new topic and a corroborating
 // item joins nothing. Vectors are compared with topic centroids, never with
 // each other, so unrelated items can't chain together.
+//
+// A topic is open to new members for 48 hours from its first sighting
+// (MAX_TOPIC_AGE_HOURS), under both rules. After that an item that would
+// have joined it starts a new topic, so a subject that trends every day
+// can't keep one topic alive for weeks.
 //
 // The name rule exists because a Google trend's vector includes its
 // headlines and an X trend's is a bare name: "Bahrain GP" against
@@ -47,6 +52,9 @@ export interface MatchOptions {
   now: Date;
   // Off only to compare in a replay: join by name before comparing vectors.
   nameMatch?: boolean;
+  // Infinity only to compare in a replay: the age at which a topic stops
+  // taking members.
+  maxTopicAgeHours?: number;
   // Label and one-line context for a new topic, and context for a topic that
   // has none yet (task 2.6 fills these in).
   labelFor: (item: MatchItem) => string;
@@ -82,8 +90,10 @@ export function matchItems(items: readonly MatchItem[], existing: readonly Topic
     topic.names?.add(name);
     if (!byName.has(name)) byName.set(name, topic);
   };
+  const oldest = options.now.getTime() - (options.maxTopicAgeHours ?? MAX_TOPIC_AGE_HOURS) * 60 * 60 * 1000;
+  const open = (topic: Topic) => topic.firstSeen.getTime() >= oldest;
   const oldestFirst = [...topics].sort((a, b) => a.firstSeen.getTime() - b.firstSeen.getTime() || (a.id ?? Infinity) - (b.id ?? Infinity));
-  for (const topic of oldestFirst) for (const name of [...(topic.names ?? [])]) claim(name, topic);
+  for (const topic of oldestFirst) if (open(topic)) for (const name of [...(topic.names ?? [])]) claim(name, topic);
 
   for (const item of matchOrder(items)) {
     const name = nameKey(item.title);
@@ -91,6 +101,7 @@ export function matchItems(items: readonly MatchItem[], existing: readonly Topic
     let best: Topic | null = null;
     let bestSimilarity = -Infinity;
     for (const topic of topics) {
+      if (!open(topic)) continue;
       const similarity = dot(item.vector, topic.centroid);
       if (similarity > bestSimilarity) {
         best = topic;

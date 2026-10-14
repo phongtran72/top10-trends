@@ -23,13 +23,20 @@ export const WEIGHTS = {
 // week of data with `npm run replay -- tune`.
 export const MATCH_THRESHOLD = 0.86;
 export const TOPIC_WINDOW_HOURS = 48;
+// A topic takes no new member once this many hours have passed since it was
+// first seen; what arrives next starts a new topic with its own label.
+// Without the limit a subject that trends every day (baseball, tennis,
+// Ukraine) never went 48 hours without a match, so its topic never ended and
+// its centroid drifted from one story to the whole subject under the first
+// day's label (docs/review-2026-10-12.md, section 4).
+export const MAX_TOPIC_AGE_HOURS = 48;
 
 // Only lists fetched within the last 3 hours count toward the combined score.
 export const FRESH_LIST_HOURS = 3;
 // Sources left out of topic matching and the combined score; their own pages
 // still show their lists. TikTok's Creative Center ranking covers a 7-day
-// window that runs several days behind (its curves on 2026-10-01 ended on
-// 2026-09-27), so it would lend last week's weight to today's topics.
+// window that ends two days back (four on 2026-10-01), so it would lend a
+// week's weight to today's topics.
 export const UNSCORED_SOURCES: ReadonlySet<string> = new Set(["tiktok"]);
 
 // Lists that only back up other lists, written as `source:region`. X's
@@ -87,5 +94,6 @@ export const FETCH_RUN_RETENTION_DAYS = 90;
 // the US list has the topic. r5: two views, Global and US; Google Trends and
 // YouTube add UK, Canada and Australia feeds, which count in Global only.
 // r6: an item joins a topic that has exactly its name, before vectors are
-// compared (pipeline/match.ts).
-export const RANKING_VERSION = "r6";
+// compared (pipeline/match.ts). r7: a topic takes no new member once it is
+// 48 hours old (MAX_TOPIC_AGE_HOURS).
+export const RANKING_VERSION = "r7";

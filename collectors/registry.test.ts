@@ -37,7 +37,7 @@ describe("registry", () => {
 describe("page notes", () => {
   it("labels the sources whose lists need a word of explanation", () => {
     expect(PLATFORMS.filter((s) => s.note).map((s) => s.id)).toEqual(["x", "tiktok", "instagram", "pinterest"]);
-    expect(PLATFORMS.find((s) => s.id === "tiktok")?.note).toContain("last week's hashtags");
+    expect(PLATFORMS.find((s) => s.id === "tiktok")?.note).toContain("the 7 days to two days ago");
   });
 });
 
