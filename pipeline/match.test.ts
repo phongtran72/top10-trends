@@ -149,3 +149,52 @@ describe("matching by name", () => {
     expect(result.topics).toHaveLength(2);
   });
 });
+
+describe("the age limit", () => {
+  // `now` is 12:07 on the 8th, so a topic first seen at 12:07 on the 6th is exactly 48 hours old.
+  const aged = (id: number, vector: number[], firstSeen: string): Topic => ({ ...topic(id, vector), firstSeen: new Date(firstSeen) });
+
+  it("starts a new topic when the nearest topic is over 48 hours old", () => {
+    const old = aged(1, X, "2026-10-06T11:07:00Z");
+    const lead = item("google_trends", "lead", 1, NEAR_X, "wild card game 3");
+    const result = matchItems([lead], [old], options);
+    expect(result.assignments.get(lead.key)?.isNew).toBe(true);
+    expect(result.assignments.get(lead.key)?.label).toBe("wild card game 3");
+    expect(result.topics.find((t) => t.id === 1)?.changed).toBe(false);
+  });
+
+  it("keeps a topic open through its 48th hour", () => {
+    const old = aged(1, X, "2026-10-06T12:07:00Z");
+    const lead = item("google_trends", "lead", 1, NEAR_X);
+    expect(matchItems([lead], [old], options).assignments.get(lead.key)?.id).toBe(1);
+  });
+
+  it("does not join an old topic by name either, and the new topic takes the name", () => {
+    const old: Topic = { ...aged(1, X, "2026-10-05T12:07:00Z"), label: "weather today" };
+    const google = item("google_trends", "lead", 1, X, "weather today");
+    const x = item("x", "lead", 2, Y, "Weather Today");
+    const result = matchItems([google, x], [old], options);
+    const fresh = result.assignments.get(google.key);
+    expect(fresh?.isNew).toBe(true);
+    expect(result.assignments.get(x.key)).toBe(fresh);
+  });
+
+  it("leaves a corroborating item without a topic when only an old topic is near", () => {
+    const old = aged(1, X, "2026-10-05T12:07:00Z");
+    const video = item("youtube", "corroborating", 1, X);
+    expect(matchItems([video], [old], options).assignments.has(video.key)).toBe(false);
+  });
+
+  it("joins an open topic even when an old one is nearer", () => {
+    const old = aged(1, X, "2026-10-05T12:07:00Z");
+    const open = topic(2, NEAR_X);
+    const lead = item("bluesky", "lead", 1, X);
+    expect(matchItems([lead], [old, open], options).assignments.get(lead.key)?.id).toBe(2);
+  });
+
+  it("can be lifted, to compare in a replay", () => {
+    const old = aged(1, X, "2026-10-05T12:07:00Z");
+    const lead = item("google_trends", "lead", 1, NEAR_X);
+    expect(matchItems([lead], [old], { ...options, maxTopicAgeHours: Infinity }).assignments.get(lead.key)?.id).toBe(1);
+  });
+});

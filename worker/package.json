@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test test/index.test.mjs",
     "dev": "wrangler dev --test-scheduled",
     "deploy": "wrangler deploy"
   },

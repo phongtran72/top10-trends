@@ -32,7 +32,7 @@ flowchart LR
   V -- cached pages --> U["Visitors"]
 ```
 
-- A **Cloudflare Worker** (`worker/`) fires at minute 7 of every hour and starts the `collect` workflow through GitHub's workflow-dispatch API.
+- A **Cloudflare Worker** (`worker/`) fires at minute 7 of every hour and starts the `collect` workflow through GitHub's workflow-dispatch API. At minutes 17 and 27 it checks that the hour's run worked and starts another if not.
 - The **pipeline** (`pipeline/run.ts`, run by `.github/workflows/collect.yml`) fetches every enabled source in parallel, filters the lists, matches items to topics, ranks them, writes to **Postgres on Supabase** and asks the site to refresh its cached pages. One failing source never fails a run.
 - The **website** (Next.js on Vercel) reads the precomputed rows. Page views never call a platform API.
 

@@ -93,8 +93,8 @@ describe("rankRun", () => {
     const snaps = await t.db.select().from(topicSnapshots);
     expect(snaps.map((s) => s.region)).toEqual(["global", "global", "us", "us"]);
     expect(snaps.filter((s) => s.region === "global").map((s) => [s.position, s.platformCount, s.ranks, s.newsCount, s.algoVersion])).toEqual([
-      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.q8.384/t0.80/r6"],
-      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.q8.384/t0.80/r6"],
+      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.q8.384/t0.80/r7"],
+      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.q8.384/t0.80/r7"],
     ]);
     expect(formatRankOutcome(outcome)[2]).toBe("   1. world series · 2.12 · google_trends #1, youtube #1, bluesky #2 · new");
   });
@@ -262,6 +262,26 @@ describe("Bluesky grace and filters", () => {
     await runOnce(at(18), [google(18), list("bluesky", "global", at(18), [{ title: "Foxtrot rally", flags: { status: "trending" } }])]);
     const later = await runOnce(at(19), [google(19), list("bluesky", "global", at(19), [{ title: "Foxtrot rally", flags: { status: "stale" } }])]);
     expect(later.combined.find((c) => c.label === "foxtrot rally")?.platforms).toEqual([{ sourceId: "google_trends", rank: 1 }]);
+  });
+});
+
+describe("topic age limit", () => {
+  it("starts a new topic, with its own page, once a name's topic is over 48 hours old", async () => {
+    const day = (d: number, h: number) => new Date(Date.UTC(2026, 9, d, h, 7));
+    const run = (at: Date) => runOnce(at, [list("google_trends", "us", at, [{ title: "tango forecast" }])]);
+    expect((await run(day(14, 12))).created).toBe(1);
+    expect((await run(day(15, 12))).created).toBe(0);
+    expect((await run(day(16, 12))).created).toBe(0); // exactly 48 hours old: still open
+    const later = await run(day(16, 13));
+    expect(later.created).toBe(1);
+    // The old topic has no current list any more, so the name is in the top 10 once.
+    expect(later.combined.filter((c) => c.label === "tango forecast")).toHaveLength(1);
+
+    const rows = (await t.db.select().from(topics)).filter((topic) => topic.label === "tango forecast").sort((a, b) => a.id - b.id);
+    expect(rows.map((topic) => [topic.slug, topic.lastSeen.toISOString()])).toEqual([
+      ["tango-forecast-20261014", day(16, 12).toISOString()],
+      ["tango-forecast-20261016", day(16, 13).toISOString()],
+    ]);
   });
 });
 

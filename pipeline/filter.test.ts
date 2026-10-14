@@ -96,4 +96,11 @@ describe("helpers", () => {
     expect(blocked("Good Friday")).toBe(false);
     expect(blocked("Happy New Year")).toBe(false);
   });
+
+  it("blocks the weekday phrases X trends every week (the review of 2026-10-12)", () => {
+    const terms = loadBlocklist();
+    const blocked = (title: string) => checkItem(item(title), terms)?.reason === "blocklist";
+    expect(["Taco Tuesday", "Hump Day", "#HumpDay", "Happy Friyay"].every(blocked)).toBe(true);
+    expect(blocked("Taco Bell")).toBe(false);
+  });
 });
