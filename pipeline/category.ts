@@ -1,5 +1,9 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import type { SourceId } from "@/collectors/registry";
 import { TOPIC_CATEGORIES } from "@/config/naming";
+import { categorize, loadCategoryModel } from "@/lib/category-model";
+import { describeError } from "@/lib/errors";
 import { storedMatchText } from "./collect";
 import { matchOrder, type MatchItem, type MatchResult } from "./match";
 
@@ -19,6 +23,24 @@ export interface CategoryOutcome {
 }
 
 const VERSION_MAX = 40;
+
+// The model in config/models/category.json as the rank step's function, or
+// undefined when it can't be used: no file, a malformed file, or a model
+// trained on other vectors than the pipeline now makes. The step is then off
+// and the run goes on.
+export function loadCategorizer(
+  log: (line: string) => void,
+  file = path.join(process.cwd(), "config", "models", "category.json"),
+): Categorizer | undefined {
+  if (!existsSync(file)) return undefined;
+  try {
+    const model = loadCategoryModel(file);
+    return (item, vector) => categorize(model, item, vector);
+  } catch (error) {
+    log(`categories: off: ${describeError(error)}`);
+    return undefined;
+  }
+}
 
 // Asks the model about each topic created in this run, from the topic's first
 // member with a stored text in match order (a Google Trends query with its

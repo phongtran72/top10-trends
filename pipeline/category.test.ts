@@ -1,7 +1,10 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { SourceId, SourceRole } from "@/collectors/registry";
-import { unitVector } from "@/lib/embed";
-import { categorizeNewTopics, type Categorizer } from "./category";
+import { EMBEDDING_DIMENSIONS, unitVector } from "@/lib/embed";
+import { categorizeNewTopics, loadCategorizer, type Categorizer } from "./category";
 import { matchItems, type MatchItem, type Topic } from "./match";
 
 const now = new Date("2026-10-14T12:07:00Z");
@@ -89,5 +92,38 @@ describe("categorizeNewTopics", () => {
     const match = matchItems(items, [], options);
     expect(categorizeNewTopics(items, match, () => null)).toEqual({ asked: 0, answered: 0 });
     expect(match.topics[0].modelCategoryVersion).toBeUndefined();
+  });
+});
+
+describe("loadCategorizer", () => {
+  const capture = () => {
+    const lines: string[] = [];
+    return { lines, log: (line: string) => lines.push(line) };
+  };
+
+  it("loads the model that ships and answers for an item with a text", () => {
+    const out = capture();
+    const categorize = loadCategorizer(out.log);
+    expect(categorize).toBeDefined();
+    expect(out.lines).toEqual([]);
+    const vector = unitVector(Array.from({ length: EMBEDDING_DIMENSIONS }, (_, i) => Math.sin(i + 1)));
+    const answer = categorize!({ source: "google_trends", matchText: ["A made-up headline"] }, vector);
+    expect(answer?.version).toMatch(/^c\d+$/);
+    expect(categorize!({ source: "x" }, vector)).toBeNull();
+  });
+
+  it("is off, without a word, when there is no model file", () => {
+    const out = capture();
+    expect(loadCategorizer(out.log, path.join(tmpdir(), "no-such-category-model.json"))).toBeUndefined();
+    expect(out.lines).toEqual([]);
+  });
+
+  it("is off, and says why, when the file can't be used", () => {
+    const out = capture();
+    const file = path.join(mkdtempSync(path.join(tmpdir(), "category-model-")), "category.json");
+    writeFileSync(file, JSON.stringify({ version: "c0" }));
+    expect(loadCategorizer(out.log, file)).toBeUndefined();
+    expect(out.lines).toHaveLength(1);
+    expect(out.lines[0]).toMatch(/^categories: off: /);
   });
 });
