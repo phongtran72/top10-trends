@@ -285,6 +285,73 @@ describe("topic age limit", () => {
   });
 });
 
+describe("category model", () => {
+  const at = (h: number) => new Date(Date.UTC(2026, 9, 20, h, 7));
+  const lists = (h: number) => [
+    list("google_trends", "us", at(h), [{ title: "vesper regatta", matchText: ["Crews line up for the harbour race"] }]),
+    list("x", "us", at(h), [{ title: "Umbra" }]),
+  ];
+  const stored = async () =>
+    (await t.db.select().from(topics))
+      .filter((topic) => ["vesper regatta", "Umbra"].includes(topic.label))
+      .sort((a, b) => a.label.localeCompare(b.label))
+      .map((topic) => [topic.label, topic.modelCategory, topic.modelCategoryVersion]);
+
+  it("writes the model's answer with a new topic, once, and nothing for a topic without a text", async () => {
+    const run = async (h: number, version: string) => {
+      const results = lists(h);
+      return rankRun({
+        db: t.db,
+        results,
+        itemIds: await writeResults(t.db, results),
+        now: at(h),
+        embedder: wordEmbedder,
+        blocklist,
+        threshold: WORD_EMBEDDER_THRESHOLD,
+        categorize: () => ({ category: "sports", version }),
+      });
+    };
+    const first = await run(9, "c1");
+    expect(first.categories).toEqual({ asked: 1, answered: 1 });
+    expect(formatRankOutcome(first)).toContain("categories: 1 of 1 new topics with a text got one");
+    expect(await stored()).toEqual([
+      ["Umbra", null, null],
+      ["vesper regatta", "sports", "c1"],
+    ]);
+
+    // An hour later the topics exist: nothing is asked and nothing is rewritten.
+    expect((await run(10, "c2")).categories).toEqual({ asked: 0, answered: 0 });
+    expect((await stored())[1]).toEqual(["vesper regatta", "sports", "c1"]);
+  });
+
+  it("keeps the run when the model fails, and says so", async () => {
+    const day = new Date(Date.UTC(2026, 9, 21, 9, 7));
+    const results = [list("google_trends", "us", day, [{ title: "zephyr marathon", matchText: ["Runners cross the old bridge"] }])];
+    const outcome = await rankRun({
+      db: t.db,
+      results,
+      itemIds: await writeResults(t.db, results),
+      now: day,
+      embedder: wordEmbedder,
+      blocklist,
+      threshold: WORD_EMBEDDER_THRESHOLD,
+      categorize: () => {
+        throw new Error("model file is malformed");
+      },
+    });
+    expect(outcome.created).toBe(1);
+    expect(outcome.categories).toEqual({ error: "model file is malformed" });
+    expect(outcome.combined.map((c) => c.label)).toContain("zephyr marathon");
+  });
+
+  it("says nothing without a model", async () => {
+    const day = new Date(Date.UTC(2026, 9, 22, 9, 7));
+    const outcome = await runOnce(day, [list("google_trends", "us", day, [{ title: "willow parade" }])]);
+    expect(outcome.categories).toBeUndefined();
+    expect(formatRankOutcome(outcome).some((line) => line.startsWith("categories"))).toBe(false);
+  });
+});
+
 describe("labels and context", () => {
   it("names a topic from its item's display form", () => {
     expect(labelFor({ title: "#WorldSeries2026" })).toBe("World Series 2026");

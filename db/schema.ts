@@ -81,6 +81,12 @@ export const topics = pgTable("topics", {
   name: text("name"),
   reason: text("reason"),
   category: text("category"),
+  // The category model's answer (task 5.14), written once in the run that
+  // creates the topic, from its first member with a stored text. The version
+  // alone means the model looked and wasn't sure; both null means the topic
+  // had no text to look at. Claude's `category` above is never copied here.
+  modelCategory: text("model_category"),
+  modelCategoryVersion: text("model_category_version"),
   centroid: real("centroid").array(384).notNull(),
   firstSeen: timestamptz("first_seen").notNull(),
   lastSeen: timestamptz("last_seen").notNull(),

@@ -45,6 +45,10 @@ export interface Topic {
   // Name keys (lib/text.ts nameKey) of its label and of its members from the
   // topic window; not stored, rebuilt from the items when topics are loaded.
   names?: Set<string>;
+  // The category model's answer for a new topic (pipeline/category.ts),
+  // saved with it and never changed.
+  modelCategory?: string | null;
+  modelCategoryVersion?: string | null;
 }
 
 export interface MatchOptions {
