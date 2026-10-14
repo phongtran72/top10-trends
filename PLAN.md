@@ -409,19 +409,19 @@ Outside items are linked to topics with the same embedding model. Each source is
 - **Starting targets, to revise once there are a few thousand labels:** where it answers, it matches the checked label on at least 85% of a held-out, time-split set, and it answers at least half of the topics; and adding category improves the task 5.6 models on the held-out weeks.
 - **A second source of labels (2026-10-05):** when Claude names a topic that reaches a combined top 10 (task 3.6), the same call also returns one of the 14 categories, stored in `topics.category`. It covers only top-10 topics with some context, so it doesn't replace the classifier, which must answer at a topic's first sighting. Research uses it as drafts from a stronger model: joined to the member trends through `topic_items`, checked by sample against the same rules, added to the training labels and never to the scored ones. It's off until the owner sets the API key.
 - **Open choices:**
-  - where the category is stored: see *Proposed: who writes a topic's category* below, which waits for the owner;
+  - where the category is stored: decided, see *Who writes a topic's category* below;
   - whether to merge the 14 labels into fewer. 8 coarser ones scored 56% in a first try, so that alone doesn't fix it;
   - the news flag stays out: the local model's flag wasn't checked, and `news_count` already says whether headlines exist.
 - **Not doing yet,** by the owner's decision:
   - no fine-tuning of a language model on this data. A month holds a few thousand topics and about a hundred breakouts, which a model with billions of weights would memorize;
   - no fine-tuning of the embedding model on same-story pairs until there are thousands of checked pairs, not 238.
 
-**Proposed: who writes a topic's category** (2026-10-13). A proposal that waits for the owner's yes, agreed between the predictions and web-app sessions. Nothing in it is built; the data model table and CLAUDE.md's invariants stay as they are until then.
+**Who writes a topic's category** (the owner said yes on 2026-10-14 at 02:15 UTC, the evening of 13 October in New York). Proposed by the predictions session on 2026-10-13 and agreed with the web-app session. Step 3 of task 5.14 builds it; the data model table and CLAUDE.md's invariant 9 change in the pull request that adds the columns.
 - **The problem.** `topics.category` exists (migration 0006) and belongs to Claude's naming call (task 3.6), which is off until the API key is set, so the column is empty. The classifier of task 5.14 would write a category too. With two writers and one column, one wins silently.
 - **How much each would cover** (r6, 2026-10-05 03:08 to 2026-10-13 14:08 UTC; 3,905 topics first seen):
   - *The classifier:* 77% of topics have a member with a stored text (a Google headline or a Bluesky description), and for 99% of those the text is there in the topic's first run. The classifier answers about two in three of such trends and is right on 97% (`research/findings/category-model.md`). So about half of all topics would get a category, in their first run.
   - *Claude's naming call:* only topics that reach a combined top 10 with something to summarize. 721 topics reached one, 18%, and the category arrives the hour they get there.
-- **The proposal: one column per writer, and neither overwrites the other.**
+- **The rule: one column per writer, and neither overwrites the other.**
   - `topics.category` stays Claude's, as it is today.
   - The classifier gets two new nullable columns on `topics`: its category, and the version of the model that wrote it. Their names: `model_category` and `model_category_version`, both text.
 - **Why not one column with a source beside it.** Claude's category arrives only when a topic reaches the top 10. In a shared column it would either replace the classifier's, and then the forecast feature would say "this topic reached the top 10", which is the thing being forecast; or be dropped wherever the classifier had answered, which throws away a free check of the classifier against a stronger model on the topics people see.
@@ -443,7 +443,7 @@ Outside items are linked to topics with the same embedding model. Each source is
   - The web-app session will ask the owner separately about a "continues from" column, which links a topic to the one it continues under r7. With a yes to both, one migration (0007) carries all three columns: one announcement and one production apply.
   - It should land before the rebuild planned for late October, so the rebuilt history has categories from 2026-10-02 18:07 UTC, when the lists began to store the text.
 - **It costs nothing to run:** the model is a small JSON file (a few thousand numbers), scored on vectors the pipeline already has. No API call and no new dependency.
-- **After a yes,** step 3 of task 5.14 starts. The predictions session ships the model file under `config/models/` and a small TypeScript scorer, tested to give the same answers as the Python one. The web-app session owns the migration and the pipeline step that writes the columns, in its own error handler so it can never fail a run. Step 4 then tests whether category improves the forecasts.
+- **Who builds what.** The predictions session ships the model file under `config/models/` and a small TypeScript scorer, tested to give the same answers as the Python one. The web-app session owns the migration and the pipeline step that writes the columns, in its own error handler so it can never fail a run. Step 4 then tests whether category improves the forecasts.
 
 **Evaluation.** Train on earlier weeks and test on later ones, never shuffled. Measure, for alerts, *precision* (how often a flagged topic does break out) and *lead time* (how many hours before it reached 3 platforms); for lifespan, the error in hours; and *calibration* (70% forecasts come true about 70% of the time). A public `/forecasts` page lists every forecast next to its outcome, so the accuracy is visible rather than claimed.
 
