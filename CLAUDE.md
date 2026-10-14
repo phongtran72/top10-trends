@@ -14,7 +14,7 @@ A personal, non-commercial website that shows the top 10 trending topics on each
 - Website: Next.js App Router, deployed on Vercel Hobby (personal, non-commercial use only).
 - Database: Postgres on Supabase Free, accessed with Drizzle ORM and the `postgres` (postgres-js) driver.
 - Pipeline: `pipeline/run.ts`, executed by GitHub Actions in `.github/workflows/collect.yml`, which has a `workflow_dispatch` trigger only (with a `dry_run` input).
-- Scheduler: a Cloudflare Workers Free cron in `worker/` calls GitHub's workflow-dispatch API once an hour. Never add a `schedule:` trigger to the workflow (GitHub delays or drops scheduled runs at busy times) and never use Vercel cron (Hobby runs crons at most once a day).
+- Scheduler: a Cloudflare Workers Free cron in `worker/` calls GitHub's workflow-dispatch API once an hour, at minute 7; at minutes 17 and 27 it starts a catch-up run only when the hour has no good run. Never add a `schedule:` trigger to the workflow (GitHub delays or drops scheduled runs at busy times) and never use Vercel cron (Hobby runs crons at most once a day).
 - Embeddings: `@huggingface/transformers` running `nomic-ai/nomic-embed-text-v1.5` (8-bit, "clustering: " prefix, cut to 384 dimensions, English) inside the pipeline, one text at a time.
 - Tests: Vitest. TypeScript scripts run with tsx.
 - Research (phase 5): Python notebooks in `research/` (pandas, lifelines, statsmodels, LightGBM) for analysis and training only. They read Supabase through a read-only Postgres role. Production never runs Python: a trained model ships as a small JSON or ONNX file that the TypeScript pipeline loads. Exclude `research/` from the root tsconfig, ESLint and Vitest.
