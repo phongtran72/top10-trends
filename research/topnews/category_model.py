@@ -16,19 +16,32 @@ Rules that keep its scores honest:
   by a model trained only on earlier blocks), never on the test set.
 
 `probabilities` is plain numpy on the stored weights, the same arithmetic the
-pipeline would run, and a test holds it equal to scikit-learn's.
+pipeline runs (lib/category-model.ts), and a test holds it equal to
+scikit-learn's.
+
+    python -m topnews.category_model          # train the model to ship and write it (reads production, read-only)
+
+That writes `config/models/category.json`, which the pipeline loads, and
+`config/models/category.parity.json`: a few made-up inputs with this module's
+answers, which the TypeScript scorer's test must reproduce. The pipeline gives
+a category only from an item with a stored text (PLAN.md › Who writes a topic's
+category); the model itself is trained on every labeled trend, as it was when
+it was tested.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
+import re
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
-from . import categories, echo
+from . import categories, db, echo, llm
 
 UNKNOWN = "unknown"
 TARGET_ACCURACY = 0.85  # where it answers (TASKS.md 5.14's starting targets)
@@ -37,6 +50,10 @@ TEST_SHARE = 0.3
 FOLDS = 5
 THRESHOLDS = tuple(round(0.05 * i, 2) for i in range(20))  # 0.00 … 0.95
 OPTIONS = tuple({"c": c, "use_platform": platform} for platform in (False, True) for c in (3.0, 10.0, 30.0, 100.0))
+VERSION = "c1"  # goes in topics.model_category_version; a retrained model takes the next one
+MODEL_FILE = db.REPO_ROOT / "config" / "models" / "category.json"
+PARITY_FILE = db.REPO_ROOT / "config" / "models" / "category.parity.json"
+TOP_LEVEL = ("version", "embedding")  # meta keys the pipeline reads, written beside the weights
 
 
 @dataclass(frozen=True)
@@ -50,16 +67,20 @@ class Model:
 
 
 def training_set(
-    items: pd.DataFrame, store=categories.STORE, name: str = "category_model", use_text: bool = True
+    items: pd.DataFrame, store=categories.STORE, name: str = "category_model", use_text: bool = True,
+    only_labeled: bool = False,
 ) -> tuple[pd.DataFrame, np.ndarray]:
     """The labeled trends that the pipeline's filters keep, oldest first, with their vectors in row order.
     Columns: source_id, key, title, first_seen, category, llm_category, checked, has_text. A vector is made
     from the title and the trend's stored match text, as the pipeline's is; `use_text=False` uses the title
-    alone. The filters read the text too, so the two settings can keep slightly different trends."""
+    alone. The filters read the text too, so the two settings can keep slightly different trends.
+    `only_labeled` embeds the labeled trends alone, which is all a fit needs and a third of the work."""
     trends = echo.trends(items)
+    labels = categories.final(categories.read(store))[["source_id", "key", "category", "llm_category", "checked"]]
+    if only_labeled:
+        trends = trends.merge(labels[["source_id", "key"]], on=["source_id", "key"])
     filtered, vectors = echo.embed(trends, name, True, items, use_text)
     kept, kept_vectors = echo.kept_trends(trends, filtered, vectors)
-    labels = categories.final(categories.read(store))[["source_id", "key", "category", "llm_category", "checked"]]
     table = kept.merge(labels, on=["source_id", "key"], how="left")
     labeled = table["category"].notna().to_numpy()
     order = np.argsort(table.loc[labeled, "first_seen"].to_numpy(), kind="stable")
@@ -245,23 +266,136 @@ def learning_curve(train_vectors, train_sources, train_labels, test_vectors, tes
 
 
 def to_json(model: Model, decimals: int = 4) -> str:
-    """The model as the JSON the pipeline would load: classes, platforms, weights, bias, threshold, meta."""
+    """The model as the JSON the pipeline loads: classes, platforms, weights, bias, threshold, meta, and
+    the meta keys the pipeline reads (`version`, `embedding`) beside them."""
     return json.dumps(
         {
+            **{key: model.meta[key] for key in TOP_LEVEL if key in model.meta},
             "classes": list(model.classes),
             "platforms": list(model.platforms),
             "dimensions": int(model.weights.shape[1] - len(model.platforms)),
             "threshold": model.threshold,
             "weights": np.round(model.weights, decimals).tolist(),
             "bias": np.round(model.bias, decimals).tolist(),
-            "meta": model.meta,
+            "meta": {key: value for key, value in model.meta.items() if key not in TOP_LEVEL},
         }
     )
 
 
 def from_json(text: str) -> Model:
     data = json.loads(text)
+    meta = {**{key: data[key] for key in TOP_LEVEL if key in data}, **data.get("meta", {})}
     return Model(
         tuple(data["classes"]), tuple(data["platforms"]), np.array(data["weights"], dtype=np.float64),
-        np.array(data["bias"], dtype=np.float64), float(data["threshold"]), data.get("meta", {}),
+        np.array(data["bias"], dtype=np.float64), float(data["threshold"]), meta,
     )
+
+
+def pipeline_embedding(source: Path = db.REPO_ROOT / "lib" / "embed.ts") -> dict:
+    """The embedding the pipeline makes its vectors with, read from lib/embed.ts. A classifier belongs to
+    the vectors it was trained on, so the model file records this and the pipeline refuses a mismatch."""
+    text = source.read_text(encoding="utf-8")
+
+    def constant(name: str) -> str:
+        match = re.search(rf"export const {name} = ([^;]+);", text)
+        if not match:
+            raise ValueError(f"{name} not found in {source}")
+        return match.group(1).strip()
+
+    return {
+        "model": json.loads(constant("EMBEDDING_MODEL")),
+        "dtype": json.loads(constant("EMBEDDING_DTYPE")),
+        "dimensions": int(constant("EMBEDDING_DIMENSIONS")),
+        "prefix": json.loads(constant("EMBEDDING_PREFIX")),
+    }
+
+
+def shipped(table: pd.DataFrame, vectors: np.ndarray, version: str = VERSION, options=OPTIONS) -> Model:
+    """The model to ship, from every labeled trend (`training_set`'s table and vectors): `choose` picks the
+    options and the threshold from forward-chaining folds over them, then fits on all of them. `meta`
+    records what it was made from."""
+    model = choose(vectors, table["source_id"].to_numpy(), table["category"].to_numpy(), options)
+    return with_threshold(
+        model, model.threshold, version=version, embedding=pipeline_embedding(),
+        checked_trends=int(table["checked"].sum()), trends_with_text=int(table["has_text"].sum()),
+        first_seen_from=table["first_seen"].min().strftime("%Y-%m-%dT%H:%MZ"),
+        first_seen_to=table["first_seen"].max().strftime("%Y-%m-%dT%H:%MZ"),
+    )
+
+
+def parity_cases(model: Model, seed: int = 0, decimals: int = 6) -> list[dict]:
+    """Five made-up inputs with the model's answers, for the TypeScript scorer's test. No stored trend is
+    in them: two point along a category's own weights (so the model is sure), one lies between two
+    categories, and one is random, scored once for a platform the model knows and once for one it doesn't."""
+    width = model.weights.shape[1] - len(model.platforms)
+    directions = model.weights[:, :width] - model.weights[:, :width].mean(axis=0)
+    strongest = np.argsort(-np.linalg.norm(directions, axis=1))
+    random = np.random.default_rng(seed).normal(size=width)
+    known = model.platforms[0] if model.platforms else "google_trends"
+    made = [
+        (known, directions[strongest[0]]),
+        ("bluesky", directions[strongest[1]]),
+        (known, directions[strongest[0]] / np.linalg.norm(directions[strongest[0]])
+         + directions[strongest[1]] / np.linalg.norm(directions[strongest[1]])),
+        (known, random),
+        ("a-platform-it-never-saw", random),
+    ]
+    cases = []
+    for source, vector in made:
+        vector = np.round(vector / np.linalg.norm(vector), decimals)
+        answers, confidence = predict(model, vector[None, :], [source])
+        cases.append(
+            {
+                "source": source,
+                "vector": vector.tolist(),
+                "probabilities": probabilities(model, vector[None, :], [source])[0].tolist(),
+                "category": None if answers[0] == UNKNOWN else str(answers[0]),
+                "confidence": float(confidence[0]),
+            }
+        )
+    return cases
+
+
+def write(model: Model, model_file: Path = MODEL_FILE, parity_file: Path = PARITY_FILE) -> Model:
+    """Writes the model file and its parity cases. The cases are scored by the model as the file holds it
+    (rounded weights), which is the model the pipeline runs; returns that model."""
+    model_file.parent.mkdir(parents=True, exist_ok=True)
+    model_file.write_text(to_json(model) + "\n", encoding="utf-8", newline="\n")
+    stored = from_json(model_file.read_text(encoding="utf-8"))
+    parity = {"version": stored.meta.get("version"), "cases": parity_cases(stored)}
+    parity_file.write_text(json.dumps(parity) + "\n", encoding="utf-8", newline="\n")
+    return stored
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Train the category model the pipeline loads and write it.")
+    parser.add_argument("--days", type=float, default=28, help="how far back to read stored lists")
+    parser.add_argument("--version", default=VERSION)
+    parser.add_argument("--name", default="category_ship", help="name of the vector files under research/data/")
+    args = parser.parse_args()
+    items = db.trend_items(db.engine(), days=args.days)
+    table, vectors = training_set(items, name=args.name, only_labeled=True)
+    unknown = set(table["category"]) - set(llm.CATEGORIES)
+    if unknown:
+        raise ValueError(f"labels outside the research categories: {sorted(unknown)}")
+    stored = write(shipped(table, vectors, args.version))
+    sources, labels = table["source_id"].to_numpy(), table["category"].to_numpy()
+    checked, has_text = table["checked"].to_numpy(), table["has_text"].to_numpy()
+    print(f"{len(table)} labeled trends ({int(checked.sum())} checked, {int(has_text.sum())} with a stored text)")
+    print("model:", {key: value for key, value in stored.meta.items() if key != "embedding"}, "threshold", stored.threshold)
+    print("platforms:", list(stored.platforms), "classes:", len(stored.classes))
+    fit_options = {"c": stored.meta["c"], "use_platform": stored.meta["use_platform"]}
+    for name, scored in (("checked", checked), ("checked, with a stored text", checked & has_text)):
+        by_threshold, _ = rolling(vectors, sources, labels, thresholds=(0.0, stored.threshold), scored=scored, **fit_options)
+        print(f"rolling score, {name}:")
+        print(by_threshold.round(3).to_string(index=False))
+    print("parity cases:", [(case["source"], case["category"], round(case["confidence"], 3)) for case in stored_cases()])
+    print(f"wrote {MODEL_FILE.relative_to(db.REPO_ROOT)} and {PARITY_FILE.relative_to(db.REPO_ROOT)}")
+
+
+def stored_cases(parity_file: Path = PARITY_FILE) -> list[dict]:
+    return json.loads(parity_file.read_text(encoding="utf-8"))["cases"]
+
+
+if __name__ == "__main__":
+    main()

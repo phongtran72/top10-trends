@@ -68,6 +68,8 @@ research/
   topnews/categories.py a category and news flag per trend (model drafts, a person's check; data/categories.csv)
   topnews/category_model.py 5.14: a small classifier from the pipeline's title vectors to the category,
                      split by time and scored on checked labels; it may answer "unknown"
+                     (python -m topnews.category_model trains the one the pipeline loads and
+                     writes config/models/category.json and its parity cases)
   topnews/wiki.py    5.8: Wikipedia links and daily pageviews (no key; cached in data/wiki/)
   topnews/baselines.py 5.5: rule-based lifespan and breakout forecasts, scored by time split
   topnews/news.py    RQ4: google, calendar, news-linked or other, with lifespans and spread

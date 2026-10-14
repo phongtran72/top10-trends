@@ -1,9 +1,12 @@
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
 from sklearn.linear_model import LogisticRegression
 
 from topnews import category_model as cm
+from topnews import llm
 
 T0 = pd.Timestamp("2026-10-01T12:07", tz="UTC")
 CENTERS = {"sports": (1, 0, 0), "politics": (0, 1, 0), "tech": (0, 0, 1)}
@@ -130,6 +133,65 @@ def test_the_json_round_trip_scores_the_same():
     assert again.meta == {"trained_to": "2026-10-01"}
     assert cm.probabilities(again, vectors, sources) == pytest.approx(cm.probabilities(model, vectors, sources), abs=1e-4)
     assert '"dimensions": 3' in cm.to_json(model)
+
+
+def test_the_json_puts_what_the_pipeline_reads_beside_the_weights():
+    vectors, sources, labels = clusters()
+    model = cm.with_threshold(cm.fit(vectors, sources, labels), 0.6, version="c9", embedding={"model": "m"}, c=10.0)
+    data = json.loads(cm.to_json(model))
+    assert data["version"] == "c9" and data["embedding"] == {"model": "m"} and data["meta"] == {"c": 10.0}
+    assert cm.from_json(cm.to_json(model)).meta == model.meta
+
+
+def test_pipeline_embedding_reads_the_constants_of_lib_embed(tmp_path):
+    source = tmp_path / "embed.ts"
+    source.write_text(
+        'export const EMBEDDING_MODEL = "some/model";\nexport const EMBEDDING_DTYPE = "q8"; // a note\n'
+        'export const EMBEDDING_DIMENSIONS = 384;\nexport const EMBEDDING_PREFIX = "clustering: ";\n', encoding="utf-8",
+    )
+    assert cm.pipeline_embedding(source) == {"model": "some/model", "dtype": "q8", "dimensions": 384, "prefix": "clustering: "}
+    assert cm.pipeline_embedding()["dimensions"] == 384  # the real file parses too
+    source.write_text("export const EMBEDDING_MODEL = 'x';", encoding="utf-8")
+    with pytest.raises(ValueError):
+        cm.pipeline_embedding(source)
+
+
+def test_shipped_model_records_what_it_was_made_from_and_write_scores_the_stored_weights(tmp_path):
+    vectors, sources, labels = clusters(noise=0.4)
+    table = pd.DataFrame(
+        {
+            "source_id": sources, "category": labels, "checked": [True, False] * 45, "has_text": [True] * 30 + [False] * 60,
+            "first_seen": [T0 + pd.to_timedelta(h, unit="h") for h in range(90)],
+        }
+    )
+    model = cm.shipped(table, vectors, version="c7", options=({"c": 10.0, "use_platform": True},))
+    assert model.meta["version"] == "c7" and model.meta["embedding"] == cm.pipeline_embedding()
+    assert (model.meta["checked_trends"], model.meta["trends_with_text"], model.meta["training_trends"]) == (45, 30, 90)
+    assert (model.meta["first_seen_from"], model.meta["first_seen_to"]) == ("2026-10-01T12:07Z", "2026-10-05T05:07Z")
+    stored = cm.write(model, tmp_path / "models" / "category.json", tmp_path / "models" / "category.parity.json")
+    parity = json.loads((tmp_path / "models" / "category.parity.json").read_text(encoding="utf-8"))
+    assert parity["version"] == "c7" and len(parity["cases"]) == 5
+    for case in parity["cases"]:
+        vector = np.array([case["vector"]])
+        assert np.linalg.norm(vector) == pytest.approx(1, abs=1e-5)
+        assert cm.probabilities(stored, vector, [case["source"]])[0] == pytest.approx(case["probabilities"], abs=1e-12)
+        answer, confidence = cm.predict(stored, vector, [case["source"]])
+        assert case["category"] == (None if answer[0] == cm.UNKNOWN else answer[0]) and case["confidence"] == pytest.approx(confidence[0])
+    assert parity["cases"][3]["vector"] == parity["cases"][4]["vector"]  # one input, for a known and an unknown platform
+    assert parity["cases"][4]["source"] not in stored.platforms
+
+
+def test_the_model_the_pipeline_loads_matches_its_parity_cases_and_the_pipeline_s_embedding():
+    if not cm.MODEL_FILE.exists():
+        pytest.skip("no model shipped yet")
+    model = cm.from_json(cm.MODEL_FILE.read_text(encoding="utf-8"))
+    assert set(model.classes) <= set(llm.CATEGORIES)
+    assert model.meta["embedding"] == cm.pipeline_embedding()  # a new embedding model needs a retrained classifier
+    parity = json.loads(cm.PARITY_FILE.read_text(encoding="utf-8"))
+    assert parity["version"] == model.meta["version"]
+    for case in parity["cases"]:
+        proba = cm.probabilities(model, np.array([case["vector"]]), [case["source"]])[0]
+        assert proba == pytest.approx(case["probabilities"], abs=1e-12)  # the files were written together
 
 
 def test_rolling_scores_only_the_rows_it_is_told_to():
