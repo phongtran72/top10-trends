@@ -1,8 +1,8 @@
 # Category as a live feature (task 5.14)
 
-**Status: both targets met on a fresh sample a week past the labels (57% answered, 90% right), carried by trends with a stored text; not shipped (2026-10-13).** The classifier isn't shipped to the pipeline. It needs more labeled trends, which come as the stored lists grow.
-- Re-run `notebooks/09_category_model.ipynb` after each new batch of labels, and compare runs on its rolling score, not on the single split.
-- Ship it (task 5.14, step 3) only once it meets the targets below.
+**Status: the first model to ship, c1, is trained and in `config/models/category.json`; the pipeline doesn't run it yet (2026-10-14).** The owner said yes to its columns on 2026-10-14. The pipeline step and the migration are the web-app session's, and they come after this.
+- The sections below are in the order the work happened; the last two dated sections hold the test it passed and the model that ships.
+- To retrain: `python -m topnews.category_model --version c2` from `research/`, then commit the two files it writes under `config/models/`. Compare runs on the rolling score, not on a single split.
 
 ## Question
 
@@ -184,9 +184,38 @@ For comparison on the same 299: each platform's most common category is right 53
 
 **Where that leaves task 5.14.** Step 2's targets are met. Step 3, the pipeline writing a topic's category, needs the owner's yes to the schema use (`topics.category` exists since migration 0006, written today only by Claude's naming call, which is off) and a decision on how the two sources share the column. Step 4 then tests whether category improves the forecast models, which need weeks of snapshots first. Nothing ships before that yes.
 
+## The model that ships: c1 (2026-10-14)
+
+The owner said yes to the classifier's own columns on 2026-10-14 (PLAN.md › *Who writes a topic's category*). This is the model the pipeline will load.
+
+**How it was made.** The same recipe as the model tested a week past its labels, on every labeled trend instead of the older ones: `python -m topnews.category_model`.
+- 2,728 labeled trends that pass the pipeline's filters, first seen from 2026-09-30 11:32 to 2026-10-13 02:08 UTC. 2,070 are checked; 641 have a stored text.
+- The options and the threshold were chosen by forward-chaining folds over those trends, as before, and came out the same as the tested model's: a logistic regression with C = 10 on the vector and the platform, answering at a confidence of 0.7 or more.
+- Then one fit on all 2,728.
+
+**How good it should be.** A model fitted on every label has no trends left to test it on, so these are rolling scores: each tenth of the trends, in time order, predicted by a model trained on the tenths before it.
+
+| Rolling score at 0.7, checked trends | Trends | Answered | Right, of those |
+| --- | --- | --- | --- |
+| With a stored text, which is all the pipeline will ask about | 599 | 67% | 96% |
+| All | 1,797 | 45% | 90% |
+
+- **It agrees with the fresh-sample test** (67% answered and 97% right on trends with a text), which was run on trends the model had never seen.
+- When it always answers, it's right on 83% of the trends with a text and 66% of all of them.
+
+**What ships.**
+- `config/models/category.json`, 47 KB: 14 categories, 384 weights for the vector and 10 for the platforms, the threshold, the version (`c1`) and the embedding it was trained on.
+- `lib/category-model.ts`: loads the file and scores an item. It gives nothing for an item without a stored text; otherwise the version, and a category when it's sure.
+- **It refuses another embedding.** The file records the embedding model, its 8-bit weights, the 384 numbers and the prefix. If the pipeline's ever differ, the loader throws and a test fails, so a change of embedding model can't write wrong categories quietly.
+- **The two scorers agree.** `config/models/category.parity.json` holds five made-up inputs with the Python scorer's probabilities. The TypeScript scorer reproduces them to nine decimal places, and a Python test checks that the two files were written together.
+
+**What it will do live** (from the counts in PLAN.md): about three topics in four have a member with a stored text in their first run, and it answers two in three of those, so about half of all topics get a category when they first appear.
+
+**Still to do.** The web-app session's migration and pipeline step. Then step 4: add the category to the training table and keep it only if the forecasts improve.
+
 ## What it means
 
-- **Not ready to ship.** It misses both targets, by 2 points on accuracy and 13 on coverage.
+- **As first written (2026-10-01), before the stored text:** not ready to ship. It misses both targets, by 2 points on accuracy and 13 on coverage. The sections dated 2026-10-04 to 2026-10-14 above overtake this list.
 - **The cheap fix is more labels.** The stored lists add about 300 new trends a day, the local model drafts them at about one a second, and each batch gets checked. A re-run at about 2,000 and 3,000 labels will show whether the curve gets there.
 - **If it flattens below the targets,** the options are:
   - give the classifier what the local model sees. Live, the pipeline's vector for a Google trend already includes its headlines; here, stored lists keep only titles, so Google's vectors in this test are poorer than the live ones would be;
