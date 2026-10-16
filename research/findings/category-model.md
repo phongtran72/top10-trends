@@ -3,6 +3,7 @@
 **Status: the first model to ship, c1, is trained and in `config/models/category.json`; the pipeline doesn't run it yet (2026-10-14).** The owner said yes to its columns on 2026-10-14. The pipeline step and the migration are the web-app session's, and they come after this.
 - The sections below are in the order the work happened; the last two dated sections hold the test it passed and the model that ships.
 - To retrain: `python -m topnews.category_model --version c2` from `research/`, then commit the two files it writes under `config/models/`. Compare runs on the rolling score, not on a single split.
+- The stored lists are deleted after 28 days, from 2026-10-28 on, and most labels are on trends first seen from 30 September to 4 October. So every run keeps each labeled trend's title, stored text and vector in `research/data/category_archive.*` (not in git; no YouTube), and training adds the archived trends that the lists no longer hold, with their current labels. `--archive-only` refreshes the archive without training. An archive made with another embedding is left out.
 
 ## Question
 

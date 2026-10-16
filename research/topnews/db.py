@@ -139,9 +139,20 @@ def topics(eng: Engine) -> pd.DataFrame:
     3.6, migration 0006): `name`, `reason` and `category`. They're empty for every other topic, and for all
     of them until the owner sets the API key. `label` and `summary` stay the platforms' own words; `name`
     and `reason` are display text, never a feature. `category` is a draft by a language model, one of
-    topnews.llm.CATEGORIES."""
+    topnews.llm.CATEGORIES.
+    Migration 0007 (written from the 2026-10-16 02:07 UTC run on, null for older topics):
+    - `model_category` and `model_category_version`: the classifier's category (task 5.14), set once in a
+      topic's first run from a member with a stored text. A version with no category means it looked and
+      wasn't sure. This one, not Claude's, is the forecast feature.
+    - `continues_topic_id`: the older topic a new one continues, when the 48-hour age limit (r7) stopped an
+      item joining it; a long story is a chain of these."""
     named = "name, reason, category" if has_column(eng, "topics", "category") else "null::text as name, null::text as reason, null::text as category"
-    return query(eng, f"select id, slug, label, summary, {named}, first_seen, last_seen from topics order by first_seen")
+    later = (
+        "model_category, model_category_version, continues_topic_id"
+        if has_column(eng, "topics", "continues_topic_id")
+        else "null::text as model_category, null::text as model_category_version, null::bigint as continues_topic_id"
+    )
+    return query(eng, f"select id, slug, label, summary, {named}, {later}, first_seen, last_seen from topics order by first_seen")
 
 
 def topic_centroids(eng: Engine) -> pd.DataFrame:

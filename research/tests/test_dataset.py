@@ -149,6 +149,50 @@ def test_a_catch_up_run_half_an_hour_late_is_not_a_missing_run():
     assert np.isnan(build([(h, 1, 5, float(h), {"x": 1}, 0) for h in (0, 1, 3)]).loc[(1, at(3)), "d1_score"])  # no run at all
 
 
+R7 = pd.Timestamp("2026-10-15T00:07", tz="UTC")  # inside r7, before continues_topic_id was written
+
+
+def story_topics(rows):
+    """rows: (id, label, first_seen, last_seen, continues_topic_id, model_category)."""
+    return pd.DataFrame(rows, columns=["id", "label", "first_seen", "last_seen", "continues_topic_id", "model_category"])
+
+
+def test_story_roots_follow_the_chain_and_infer_a_link_by_name_before_the_column():
+    h = lambda hours: R7 + pd.to_timedelta(hours, unit="h")  # noqa: E731
+    topics = story_topics([
+        (1, "World Series", h(-60), h(-1), None, None),  # aged out by hour 0 and seen in the last 48 hours
+        (2, "#WorldSeries", h(0), h(30), None, None),  # same name, before the column: inferred from 1
+        (3, "world series", h(49), h(60), 2, None),  # recorded by the pipeline
+        (4, "Flood watch", h(-10), h(5), None, None),  # 10 hours old: not aged out
+        (5, "flood watch", h(0), h(3), None, None),  # a new topic with its name, not a successor
+        (6, "Old story", h(-200), h(-150), None, None),  # aged out, but not seen in the last 48 hours
+        (7, "old story", h(0), h(1), None, None),
+    ])
+    roots = dataset.story_roots(topics)
+    assert roots.to_dict() == {1: 1, 2: 1, 3: 1, 4: 4, 5: 5, 6: 6, 7: 7}
+    before_r7 = topics.assign(first_seen=topics["first_seen"] - pd.to_timedelta(30, unit="D"))
+    assert dataset.story_roots(before_r7)[2] == 2  # no inference outside r7's first two days
+
+
+def test_a_story_is_one_series_through_the_age_limit():
+    t0 = at(0)
+    topics = story_topics([
+        (1, "World Series", t0 - pd.to_timedelta(46, unit="h"), at(3), None, None),
+        (2, "World Series", at(2), at(5), 1, "sports"),
+    ])
+    rows = [(h, 1, 3, 1.0, {"x": 2}, 0) for h in (0, 1, 2, 3)]  # topic 1 ages out at hour 2 and fades
+    rows += [(h, 2, 2 if h == 2 else 1, 2.0, {"x": 1, "google_trends": 1} if h > 2 else {"google_trends": 4}, 0) for h in (2, 3, 4, 5)]
+    table, _ = dataset.build(snaps(rows, "m/t0.86/r7"), topics)
+    t = table.set_index(["topic_id", "taken_at"])
+    assert set(table["topic_id"]) == {1} and len(table) == 6  # one story, one row an hour
+    both = t.loc[(1, at(2))]
+    assert both["position"] == 2 and both["rank_x"] == 2 and both["rank_google_trends"] == 4
+    assert both["platform_count"] == 2  # x from the first topic, Google from the successor
+    assert both["d1_platform_count"] == 1  # the successor added a platform; it didn't appear from nothing
+    assert t.loc[(1, at(0)), "hours_since_first_seen"] == pytest.approx(46)  # the story's age, not the successor's
+    assert pd.isna(t.loc[(1, at(1)), "model_category"]) and t.loc[(1, at(2)), "model_category"] == "sports"
+
+
 def test_labels_are_unknown_where_a_missing_run_hides_the_answer():
     # Topic 1 holds the top 10 through hour 2; hours 3 and 4 have no run at all; it's back at hour 5.
     # Topic 2 only keeps the hourly runs going on both sides of the hole.

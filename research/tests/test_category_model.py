@@ -194,6 +194,51 @@ def test_the_model_the_pipeline_loads_matches_its_parity_cases_and_the_pipeline_
         assert proba == pytest.approx(case["probabilities"], abs=1e-12)  # the files were written together
 
 
+def archived_rows(keys, hours, texts=None):
+    return pd.DataFrame(
+        {
+            "source_id": ["google_trends"] * len(keys), "key": keys, "title": keys,
+            "first_seen": [T0 + pd.to_timedelta(h, unit="h") for h in hours],
+            "match_text": texts or [["a headline"]] * len(keys), "has_text": [True] * len(keys),
+        }
+    )
+
+
+def test_the_archive_keeps_trends_past_the_purge_and_the_newer_row_wins(tmp_path):
+    archive = tmp_path / "category_archive"
+    assert cm.load_archive(archive) is None
+    assert cm.save_archive(archived_rows(["a", "b"], [0, 1]), np.eye(384, dtype="<f4")[:2], archive) == 2
+    newer = archived_rows(["b", "c"], [1, 2], [["b again"], None]).assign(has_text=[True, False])
+    assert cm.save_archive(newer, np.eye(384, dtype="<f4")[[5, 6]], archive) == 3
+    rows, vectors = cm.load_archive(archive)
+    assert rows["key"].tolist() == ["a", "b", "c"] and vectors.shape == (3, 384)
+    assert vectors[1].argmax() == 5 and rows.loc[1, "match_text"] == ["b again"]  # b's newer row
+    assert rows.loc[2, "match_text"] is None and str(rows["first_seen"].dt.tz) == "UTC"
+
+
+def test_an_archive_from_another_embedding_is_left_out(tmp_path, monkeypatch):
+    archive = tmp_path / "category_archive"
+    cm.save_archive(archived_rows(["a"], [0]), np.eye(384, dtype="<f4")[:1], archive)
+    monkeypatch.setattr(cm, "pipeline_embedding", lambda: {"model": "another", "dimensions": 384})
+    assert cm.load_archive(archive) is None
+
+
+def test_with_archive_adds_labeled_trends_the_lists_no_longer_hold(tmp_path):
+    archive = tmp_path / "category_archive"
+    cm.save_archive(archived_rows(["old", "now", "unlabeled"], [0, 5, 1]), np.eye(384, dtype="<f4")[:3], archive)
+    labels = pd.DataFrame(
+        {"source_id": ["google_trends"] * 2, "key": ["old", "now"], "category": ["sports", "politics"],
+         "llm_category": ["sports", "sports"], "checked": [True, False]}
+    )
+    table = archived_rows(["now"], [5]).assign(category="politics", llm_category="sports", checked=False)
+    table = table[["source_id", "key", "title", "first_seen", "match_text", "category", "llm_category", "checked", "has_text"]]
+    current = np.eye(384, dtype="<f4")[[9]]
+    out, vectors = cm.with_archive(table, current, labels, archive)
+    assert out["key"].tolist() == ["old", "now"]  # oldest first; the unlabeled one is left out
+    assert out["category"].tolist() == ["sports", "politics"] and out["checked"].tolist() == [True, False]
+    assert vectors[0].argmax() == 0 and vectors[1].argmax() == 9  # "now" keeps the vector from the lists
+
+
 def test_rolling_scores_only_the_rows_it_is_told_to():
     vectors, sources, labels = clusters(noise=0.5)
     scored = np.zeros(len(labels), dtype=bool)
