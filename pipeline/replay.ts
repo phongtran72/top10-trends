@@ -5,6 +5,7 @@ import { DEFAULT_VIEW } from "@/config/ranking";
 import { fetchRuns, rankings, sources, topicItems, topicSnapshots, topics, trendItems } from "@/db/schema";
 import type { Embedder } from "@/lib/embed";
 import { nameKey } from "@/lib/text";
+import type { Categorizer } from "./category";
 import type { ListResult } from "./collect";
 import type { Db } from "./db";
 import { rankRun } from "./rank";
@@ -104,6 +105,7 @@ export async function replaySlots(
     blocklist: ReadonlySet<string>;
     nameMatch?: boolean;
     maxTopicAgeHours?: number;
+    categorize?: Categorizer;
     onSlot?: (index: number) => void;
   },
 ): Promise<{ created: number }> {
@@ -119,6 +121,7 @@ export async function replaySlots(
       threshold: options.threshold,
       nameMatch: options.nameMatch,
       maxTopicAgeHours: options.maxTopicAgeHours,
+      categorize: options.categorize,
       replay: true,
     });
     created += outcome.created;

@@ -11,6 +11,7 @@ import { collect, formatResults, writeResults, type ListResult } from "./collect
 import { keepCurves } from "./curves";
 import type { Db } from "./db";
 import { loadBlocklist } from "./filter";
+import { loadCategorizer, type Categorizer } from "./category";
 import { formatNaming, nameTopics, type TopicNamer } from "./naming";
 import { purge } from "./purge";
 import { formatRankOutcome, rankRun } from "./rank";
@@ -27,6 +28,7 @@ export interface RunDeps {
   createEmbedder?: () => Promise<Embedder>;
   blocklist?: ReadonlySet<string>;
   createNamer?: (apiKey: string) => TopicNamer;
+  loadCategorizer?: (log: (line: string) => void) => Categorizer | undefined;
 }
 
 export function parseArgs(argv: readonly string[]): { dryRun: boolean; includePaid: boolean } {
@@ -100,7 +102,16 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
   const rank = async (results: ListResult[], db: Db | null, itemIds: Map<TrendItem, number> | null) => {
     try {
       const embedder = await (deps.createEmbedder ?? createEmbedder)();
-      const outcome = await rankRun({ db, results, itemIds, now: startedAt, embedder, blocklist: deps.blocklist ?? loadBlocklist() });
+      const outcome = await rankRun({
+        db,
+        results,
+        itemIds,
+        now: startedAt,
+        embedder,
+        blocklist: deps.blocklist ?? loadBlocklist(),
+        // The category model (task 5.14); off when its file is missing or unusable.
+        categorize: (deps.loadCategorizer ?? loadCategorizer)(deps.log),
+      });
       for (const line of formatRankOutcome(outcome)) deps.log(line);
       return outcome.topTopicIds;
     } catch (error) {
