@@ -1,5 +1,5 @@
 {
-  "id": "1a4e8ff9-0768-4a46-b540-eb266bf704af",
+  "id": "e6ac9ae6-cdfc-42fb-8490-0124d122759c",
   "prevId": "013391f0-581a-4eab-828f-22c4661e130e",
   "version": "7",
   "dialect": "postgresql",
@@ -534,6 +534,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "continues_topic_id": {
+          "name": "continues_topic_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
         "centroid": {
           "name": "centroid",
           "type": "real[384]",
@@ -554,7 +560,21 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "topics_continues_topic_id_topics_id_fk": {
+          "name": "topics_continues_topic_id_topics_id_fk",
+          "tableFrom": "topics",
+          "tableTo": "topics",
+          "columnsFrom": [
+            "continues_topic_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "topics_slug_unique": {

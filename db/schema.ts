@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   bigint,
   bigserial,
   boolean,
@@ -87,6 +88,10 @@ export const topics = pgTable("topics", {
   // had no text to look at. Claude's `category` above is never copied here.
   modelCategory: text("model_category"),
   modelCategoryVersion: text("model_category_version"),
+  // The aged-out topic this one continues (task 2.24): set in the topic's
+  // first run when its first item would have joined that topic had it not
+  // passed the 48-hour age limit; never rewritten. Null for every other topic.
+  continuesTopicId: bigint("continues_topic_id", { mode: "number" }).references((): AnyPgColumn => topics.id, { onDelete: "set null" }),
   centroid: real("centroid").array(384).notNull(),
   firstSeen: timestamptz("first_seen").notNull(),
   lastSeen: timestamptz("last_seen").notNull(),

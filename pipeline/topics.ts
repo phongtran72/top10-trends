@@ -80,6 +80,7 @@ async function insertTopic(db: Db, topic: Topic): Promise<number> {
         summary: topic.summary,
         modelCategory: topic.modelCategory ?? null,
         modelCategoryVersion: topic.modelCategoryVersion ?? null,
+        continuesTopicId: topic.continuesId ?? null,
         centroid: topic.centroid,
         firstSeen: topic.firstSeen,
         lastSeen: topic.lastSeen,

@@ -282,6 +282,8 @@ describe("topic age limit", () => {
       ["tango-forecast-20261014", day(16, 12).toISOString()],
       ["tango-forecast-20261016", day(16, 13).toISOString()],
     ]);
+    // The second topic records the one it continues.
+    expect(rows.map((topic) => topic.continuesTopicId)).toEqual([null, rows[0].id]);
   });
 });
 
