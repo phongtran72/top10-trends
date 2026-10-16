@@ -27,6 +27,13 @@ answers, which the TypeScript scorer's test must reproduce. The pipeline gives
 a category only from an item with a stored text (PLAN.md › Who writes a topic's
 category); the model itself is trained on every labeled trend, as it was when
 it was tested.
+
+The stored lists are deleted after 28 days, and most labels are on trends from
+the first days. So each run also keeps every labeled trend's title, stored text
+and vector in `research/data/category_archive.*` (git ignores data/; YouTube is
+never in it), and training adds the archived trends the lists no longer hold.
+
+    python -m topnews.category_model --archive-only   # refresh the archive, train nothing
 """
 
 from __future__ import annotations
@@ -54,6 +61,8 @@ VERSION = "c1"  # goes in topics.model_category_version; a retrained model takes
 MODEL_FILE = db.REPO_ROOT / "config" / "models" / "category.json"
 PARITY_FILE = db.REPO_ROOT / "config" / "models" / "category.parity.json"
 TOP_LEVEL = ("version", "embedding")  # meta keys the pipeline reads, written beside the weights
+ARCHIVE = echo.DATA_DIR / "category_archive"  # .json (rows and the embedding) and .f32 (vectors)
+ARCHIVED = ["source_id", "key", "title", "first_seen", "match_text", "has_text"]
 
 
 @dataclass(frozen=True)
@@ -68,13 +77,14 @@ class Model:
 
 def training_set(
     items: pd.DataFrame, store=categories.STORE, name: str = "category_model", use_text: bool = True,
-    only_labeled: bool = False,
+    only_labeled: bool = False, archive: Path | None = None,
 ) -> tuple[pd.DataFrame, np.ndarray]:
     """The labeled trends that the pipeline's filters keep, oldest first, with their vectors in row order.
-    Columns: source_id, key, title, first_seen, category, llm_category, checked, has_text. A vector is made
-    from the title and the trend's stored match text, as the pipeline's is; `use_text=False` uses the title
-    alone. The filters read the text too, so the two settings can keep slightly different trends.
-    `only_labeled` embeds the labeled trends alone, which is all a fit needs and a third of the work."""
+    Columns: source_id, key, title, first_seen, match_text, category, llm_category, checked, has_text. A
+    vector is made from the title and the trend's stored match text, as the pipeline's is; `use_text=False`
+    uses the title alone. The filters read the text too, so the two settings can keep slightly different
+    trends. `only_labeled` embeds the labeled trends alone, which is all a fit needs and a third of the work.
+    With an `archive` (title and text vectors only), labeled trends whose lists were purged come from it."""
     trends = echo.trends(items)
     labels = categories.final(categories.read(store))[["source_id", "key", "category", "llm_category", "checked"]]
     if only_labeled:
@@ -85,9 +95,73 @@ def training_set(
     labeled = table["category"].notna().to_numpy()
     order = np.argsort(table.loc[labeled, "first_seen"].to_numpy(), kind="stable")
     table["has_text"] = table["match_text"].map(echo.has_text)
-    columns = ["source_id", "key", "title", "first_seen", "category", "llm_category", "checked", "has_text"]
+    columns = ["source_id", "key", "title", "first_seen", "match_text", "category", "llm_category", "checked", "has_text"]
     out = table.loc[labeled, columns].iloc[order].reset_index(drop=True)
-    return out.assign(checked=out["checked"].astype(bool)), kept_vectors[labeled][order]
+    out, out_vectors = out.assign(checked=out["checked"].astype(bool)), kept_vectors[labeled][order]
+    if archive is not None and use_text:
+        out, out_vectors = with_archive(out, out_vectors, labels, archive)
+    return out, out_vectors
+
+
+def save_archive(table: pd.DataFrame, vectors: np.ndarray, archive: Path = ARCHIVE) -> int:
+    """Keeps labeled trends' inputs and vectors past the 28-day purge: what the archive held, plus `table`
+    (`training_set`'s rows; a trend in both takes the newer row). Labels aren't kept here: they're joined
+    from the label store when read, so corrections still apply. Returns the number of trends archived."""
+    held = load_archive(archive)
+    rows = table[ARCHIVED].reset_index(drop=True)
+    if held is not None:
+        old_rows, old_vectors = held
+        rows = pd.concat([old_rows, rows], ignore_index=True)
+        vectors = np.vstack([old_vectors, vectors])
+    keep = ~rows.duplicated(["source_id", "key"], keep="last").to_numpy()
+    rows, vectors = rows[keep].reset_index(drop=True), np.asarray(vectors, dtype="<f4")[keep]
+    records = [
+        {
+            "source_id": r.source_id, "key": r.key, "title": r.title, "first_seen": pd.Timestamp(r.first_seen).isoformat(),
+            "match_text": [str(t) for t in r.match_text] if echo.has_text(r.match_text) else None, "has_text": bool(r.has_text),
+        }
+        for r in rows.itertuples(index=False)
+    ]
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    Path(f"{archive}.json").write_text(json.dumps({"embedding": pipeline_embedding(), "rows": records}), encoding="utf-8")
+    Path(f"{archive}.f32").write_bytes(np.ascontiguousarray(vectors, dtype="<f4").tobytes())
+    return len(rows)
+
+
+def load_archive(archive: Path = ARCHIVE) -> tuple[pd.DataFrame, np.ndarray] | None:
+    """The archived trends and their vectors, or None when there is no archive or its vectors were made with
+    another embedding than the pipeline's (then they're of no use to a model the pipeline runs)."""
+    meta_file = Path(f"{archive}.json")
+    if not meta_file.exists():
+        return None
+    meta = json.loads(meta_file.read_text(encoding="utf-8"))
+    if meta["embedding"] != pipeline_embedding():
+        print(f"{meta_file.name}: made with another embedding, left out")
+        return None
+    rows = pd.DataFrame(meta["rows"], columns=ARCHIVED)
+    rows["first_seen"] = pd.to_datetime(rows["first_seen"], utc=True)
+    vectors = np.fromfile(f"{archive}.f32", dtype="<f4").reshape(-1, meta["embedding"]["dimensions"])
+    return rows, vectors
+
+
+def with_archive(
+    table: pd.DataFrame, vectors: np.ndarray, labels: pd.DataFrame, archive: Path = ARCHIVE
+) -> tuple[pd.DataFrame, np.ndarray]:
+    """`training_set`'s rows plus the archived labeled trends that the stored lists no longer hold, with
+    their current labels, oldest first. An archived trend whose label was removed is left out."""
+    held = load_archive(archive)
+    if held is None:
+        return table, vectors
+    rows, archived_vectors = held
+    current = set(zip(table["source_id"], table["key"]))
+    missing = np.array([(s, k) not in current for s, k in zip(rows["source_id"], rows["key"])], dtype=bool)
+    extra = rows[missing].reset_index(drop=True).merge(labels, on=["source_id", "key"], how="left")
+    labeled = extra["category"].notna().to_numpy()
+    extra = extra[labeled].assign(checked=lambda f: f["checked"].astype(bool))
+    combined = pd.concat([table, extra[table.columns]], ignore_index=True)
+    combined_vectors = np.vstack([vectors, archived_vectors[missing][labeled]]) if labeled.any() else vectors
+    order = np.argsort(combined["first_seen"].to_numpy(), kind="stable")
+    return combined.iloc[order].reset_index(drop=True), combined_vectors[order]
 
 
 def time_split(table: pd.DataFrame, test_share: float = TEST_SHARE) -> np.ndarray:
@@ -372,9 +446,14 @@ def main() -> None:
     parser.add_argument("--days", type=float, default=28, help="how far back to read stored lists")
     parser.add_argument("--version", default=VERSION)
     parser.add_argument("--name", default="category_ship", help="name of the vector files under research/data/")
+    parser.add_argument("--archive-only", action="store_true", help="refresh the archive of labeled trends; train nothing")
     args = parser.parse_args()
     items = db.trend_items(db.engine(), days=args.days)
-    table, vectors = training_set(items, name=args.name, only_labeled=True)
+    table, vectors = training_set(items, name=args.name, only_labeled=True, archive=ARCHIVE)
+    archived = save_archive(table, vectors)
+    print(f"archive: {archived} labeled trends kept past the purge of the stored lists ({ARCHIVE.name}.*)")
+    if args.archive_only:
+        return
     unknown = set(table["category"]) - set(llm.CATEGORIES)
     if unknown:
         raise ValueError(f"labels outside the research categories: {sorted(unknown)}")
