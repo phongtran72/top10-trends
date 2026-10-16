@@ -18,7 +18,10 @@ Features, all known at the row's hour:
   count a climb as positive). A topic missing from an earlier run counts as on
   no platform, with no score; a missing run leaves the change unknown;
 - hours since the topic was first seen, the first platform it was seen on,
-  hour of day and weekday (US Eastern), `news_count`.
+  hour of day and weekday (US Eastern), `news_count`;
+- `model_category`: the classifier's category (task 5.14), from the first topic
+  of the story that has one, once that topic exists. Never Claude's
+  `topics.category`, which arrives only when a topic reaches a top 10.
 
 Labels, unknown (NaN) wherever the data can't answer yet:
 - `breakout_6h`: reaches 3 or more platforms, or the top 3, within 6 hours.
@@ -44,6 +47,16 @@ of the data. An hour whose run came late (a catch-up run, up to half past the
 usual minute) isn't a gap: runs up to 1.75 hours apart follow each other, and
 "k hours earlier" is the run within 40 minutes of that time.
 
+From r7 on (the 2026-10-14 03:07 UTC run), a topic takes no new member once
+it is 48 hours old, and what arrives next starts a new topic that records the
+one it continues (`topics.continues_topic_id`, from the 2026-10-16 02:07 UTC
+run; before that, inferred from the same name). The table follows the chain:
+a row is a story (`topic_id` is its first topic), and in an hour where two of
+its topics are listed, the row takes the better position, the better rank on
+each platform and the higher score. So a successor's arrival is neither a new
+topic nor a breakout, and a story's stay doesn't end at the age limit. Before
+r7 every story is one topic.
+
 Rows are split by time: the latest 2 weeks are the test set (the latest 30%
 while there's less than 6 weeks), and the 6 hours before it are an embargo,
 left out of training because their labels look into the test period.
@@ -54,6 +67,8 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+
+import re
 
 import numpy as np
 import pandas as pd
@@ -76,6 +91,9 @@ TEST_DAYS = 14
 EMBARGO_HOURS = HORIZON_HOURS
 KEY = ["region", "topic_id", "taken_at"]
 DEFAULT_VIEW = "us"
+R7_START = pd.Timestamp("2026-10-14T03:00Z")  # the first run with the 48-hour age limit (03:07 UTC)
+LINKS_FROM = pd.Timestamp("2026-10-16T02:00Z")  # the first run that wrote continues_topic_id (02:07 UTC)
+MAX_TOPIC_AGE = pd.to_timedelta(48, unit="h")  # config/ranking.ts MAX_TOPIC_AGE_HOURS
 
 
 def family(version: str) -> str:
@@ -115,6 +133,86 @@ def select_view(snaps: pd.DataFrame, view: str | None = None) -> tuple[pd.DataFr
     if chosen not in views:
         raise ValueError(f"no view {chosen!r} in these snapshots; they hold {views}")
     return snaps[snaps["region"] == chosen], chosen
+
+
+def name_key(text: str) -> str:
+    """Close to lib/text.ts nameKey: lowercase letters and digits only ("#WorldSeries" and "World Series"
+    give "worldseries")."""
+    return re.sub(r"[\W_]+", "", str(text).lower())
+
+
+def story_roots(topics: pd.DataFrame) -> pd.Series:
+    """For each topic id, the first topic of its story: follow `continues_topic_id` back to a topic that
+    continues none. For r7 topics first seen before the column was written, the link is inferred as the
+    pipeline makes it by name: the newest topic with the same name that was 48 hours old or more when the
+    new one started, and still seen in the 48 hours before. (The pipeline also links by centroid; research
+    infers by name only, for those two days.)"""
+    ids = topics["id"].to_numpy()
+    link = pd.Series(np.nan, index=ids, dtype="float64")
+    if "continues_topic_id" in topics:
+        link[:] = pd.to_numeric(topics["continues_topic_id"], errors="coerce").to_numpy()
+    first = pd.to_datetime(topics["first_seen"], utc=True).dt.tz_localize(None).to_numpy()  # UTC, as datetime64
+    last = pd.to_datetime(topics.get("last_seen", topics["first_seen"]), utc=True).dt.tz_localize(None).to_numpy()
+    keys = topics["label"].map(name_key).to_numpy() if "label" in topics else np.array([""] * len(topics))
+    window = (first >= R7_START.tz_localize(None).to_datetime64()) & (first < LINKS_FROM.tz_localize(None).to_datetime64())
+    window &= "label" in topics
+    by_key: dict[str, list[int]] = {}
+    for i in np.argsort(first, kind="stable"):
+        by_key.setdefault(keys[i], []).append(i)
+    for i in np.flatnonzero(window & np.isnan(link.to_numpy())):
+        start = first[i]
+        aged = [
+            j for j in by_key.get(keys[i], [])
+            if j != i and first[j] <= start - MAX_TOPIC_AGE.to_timedelta64() and last[j] >= start - MAX_TOPIC_AGE.to_timedelta64()
+        ]
+        if aged:
+            link.iloc[i] = ids[max(aged, key=lambda j: first[j])]
+    roots = {}
+    for topic in ids:
+        seen, current = set(), topic
+        while not np.isnan(link.get(current, np.nan)) and current not in seen:  # links go to earlier topics
+            seen.add(current)
+            current = int(link[current])
+        roots[topic] = current
+    return pd.Series(roots, name="story_id")
+
+
+def merge_stories(snaps: pd.DataFrame, roots: pd.Series) -> pd.DataFrame:
+    """Snapshot rows per story instead of per topic: `topic_id` becomes the story's first topic, and an hour
+    where two of its topics are listed becomes one row (best position and rank per platform, highest score,
+    platform count over the merged ranks)."""
+    ranks = _rank_columns(snaps)
+    out = snaps.assign(topic_id=snaps["topic_id"].map(roots).fillna(snaps["topic_id"]).astype(snaps["topic_id"].dtype))
+    shared = out.duplicated(KEY, keep=False)
+    if not shared.any():
+        return out
+    alone, together = out[~shared], out[shared]
+    how = {"position": "min", "score": "max", "news_count": "max", "platform_count": "max", "algo_version": "first",
+           "is_replay": "any", **{c: "min" for c in ranks}}
+    how.update({c: "max" for c in together.columns if c.startswith("metric_")})
+    how.update({c: "first" for c in together.columns if c not in how and c not in KEY})
+    merged = together.groupby(KEY, as_index=False).agg({c: f for c, f in how.items() if c in together.columns})
+    merged["platform_count"] = merged[ranks].notna().sum(axis=1) if ranks else merged["platform_count"]
+    return pd.concat([alone, merged[together.columns]], ignore_index=True).sort_values(["taken_at", "position"]).reset_index(drop=True)
+
+
+def story_categories(snaps: pd.DataFrame, topics: pd.DataFrame, roots: pd.Series) -> pd.Series:
+    """For each story row (after merge_stories), the classifier's category known at that hour: from the
+    earliest topic of the story that has one and was first seen by then. NaN where none is known."""
+    if "model_category" not in topics:
+        return pd.Series(np.nan, index=snaps.index, dtype=object)
+    known = topics[topics["model_category"].notna()].assign(story=lambda f: f["id"].map(roots))
+    known = known.assign(first_seen=pd.to_datetime(known["first_seen"], utc=True)).sort_values("first_seen")
+    out = pd.Series(np.nan, index=snaps.index, dtype=object)
+    for story, members in known.groupby("story"):
+        rows = snaps.index[snaps["topic_id"] == story]
+        if len(rows) == 0:
+            continue
+        at = snaps.loc[rows, "taken_at"].to_numpy()
+        which = np.searchsorted(members["first_seen"].to_numpy(), at, side="right") - 1
+        values = members["model_category"].to_numpy()
+        out.loc[rows] = np.where(which >= 0, values[np.maximum(which, 0)], np.nan)
+    return out
 
 
 def _rank_columns(frame: pd.DataFrame) -> list[str]:
@@ -248,10 +346,13 @@ def build(
     snaps: pd.DataFrame, topics: pd.DataFrame, family_name: str | None = None, view: str | None = None
 ) -> tuple[pd.DataFrame, str]:
     """The training table: features and labels for one algo_version family and one view, with a time split.
-    The table's `region` column says which view it was built from."""
+    The table's `region` column says which view it was built from; `topic_id` is a story's first topic."""
     picked, chosen = select_family(snaps, family_name)
     picked, _ = select_view(picked, view)
+    roots = story_roots(topics)
+    picked = merge_stories(picked, roots)
     table = features(picked, topics).merge(labels(picked), on=KEY, how="left")
+    table["model_category"] = story_categories(table, topics, roots).to_numpy()
     table = table.sort_values(["taken_at", "region", "topic_id"]).reset_index(drop=True)
     return table.assign(split=split(table)), chosen
 
