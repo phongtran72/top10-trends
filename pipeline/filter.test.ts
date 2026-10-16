@@ -101,6 +101,8 @@ describe("helpers", () => {
     const terms = loadBlocklist();
     const blocked = (title: string) => checkItem(item(title), terms)?.reason === "blocklist";
     expect(["Taco Tuesday", "Hump Day", "#HumpDay", "Happy Friyay"].every(blocked)).toBe(true);
+    // Seen on X since: the motivation and vibes tags for every weekday.
+    expect(["Tuesday Motivation", "#ThursdayMotivation", "#TuesdayVibes", "#SundayVibes"].every(blocked)).toBe(true);
     expect(blocked("Taco Bell")).toBe(false);
   });
 });
