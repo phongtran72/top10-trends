@@ -147,6 +147,12 @@ Confirmed by the owner on 2026-10-13, from the review of 2026-10-12 (`docs/revie
 
 Not passed at the review of 2026-10-12 (`docs/review-2026-10-12.md` §3): of five live hours under `r6`, three passed, one had 7 of 10 and one showed a story twice. The cause is topics that never end (§4). The owner's decision of 2026-10-13: re-check on five new hours once task 2.23 is live.
 
+Accepted by the owner on 2026-10-16 with known errors. Re-checked on five random `r7` hours (Global view, 2026-10-14 17:08 and 22:08, 2026-10-15 03:08, 10:08 and 16:08 UTC): 10, 9, 9, 7 and 9 of 10 made sense, and two hours each showed one story twice, so three of five passed, as under `r6`. The age limit did what it was for: no topic in those top 10s was more than two days old. What is left:
+- **One story as two topics:** a bare name beside a fuller one ("Uribe" and "abner uribe", the same pitcher), or two searches for the same draw ("powerball results" and "powerball tickets").
+- **A label that no longer fits:** a topic keeps its first label for good, and a later member can be another story under it ("Jake Paul" holding X's "Jake Bauers"; "man city vs psg" holding "sky news live"). Since `r7` began, 60 of 470 Global top-10 places (13%) showed a label that none of the topic's current entries had.
+- **Tried and not shipped:** a stricter similarity (0.90) for short bare names. Replayed over 7 days, it removed about 21 wrong joins ("Kyren Williams" with "Kyrie Irving", "McAvoy" with "McVay", "#DWCS" with "#dwts") but lost about 34 right ones, among them whole stories (X's "GTA VI" with the GTA 6 trailer, X's "September CPI" with the inflation story, "#SingaporeGP" with the F1 searches), and it cut the places with a stale label only from 356 to 348.
+- **What follows:** pages show a topic's current name when its label no longer fits (task 2.25). It hides the stale label but fixes neither the duplicates nor the wrong joins underneath, which stay as known errors for this personal site.
+
 ## Phase 3 · Paid and approved sources (week 6)
 
 - [x] **[You]** Buy X pay-per-use credits and add `X_BEARER_TOKEN` (SETUP.md §10). Add Apify and Anthropic keys only for the sources you want (SETUP.md §12, §13), and allow their API hosts in the cloud environment if a session needs to test them. Done on 2026-09-30: $25 of X credits with a $20 spending cap, and the Apify token; Claude topic names are not set up.
