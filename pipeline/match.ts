@@ -13,7 +13,9 @@ import { nameKey } from "@/lib/text";
 // A topic is open to new members for 48 hours from its first sighting
 // (MAX_TOPIC_AGE_HOURS), under both rules. After that an item that would
 // have joined it starts a new topic, so a subject that trends every day
-// can't keep one topic alive for weeks.
+// can't keep one topic alive for weeks. The new topic records the aged-out
+// one it continues: the newest one that has the item's name, otherwise the
+// nearest aged-out centroid at the threshold, so a long story is a chain.
 //
 // The name rule exists because a Google trend's vector includes its
 // headlines and an X trend's is a bare name: "Bahrain GP" against
@@ -45,6 +47,12 @@ export interface Topic {
   // Name keys (lib/text.ts nameKey) of its label and of its members from the
   // topic window; not stored, rebuilt from the items when topics are loaded.
   names?: Set<string>;
+  // The category model's answer for a new topic (pipeline/category.ts),
+  // saved with it and never changed.
+  modelCategory?: string | null;
+  modelCategoryVersion?: string | null;
+  // For a new topic: the id of the aged-out topic it continues, if any.
+  continuesId?: number | null;
 }
 
 export interface MatchOptions {
@@ -94,15 +102,29 @@ export function matchItems(items: readonly MatchItem[], existing: readonly Topic
   const open = (topic: Topic) => topic.firstSeen.getTime() >= oldest;
   const oldestFirst = [...topics].sort((a, b) => a.firstSeen.getTime() - b.firstSeen.getTime() || (a.id ?? Infinity) - (b.id ?? Infinity));
   for (const topic of oldestFirst) if (open(topic)) for (const name of [...(topic.names ?? [])]) claim(name, topic);
+  // Aged-out topics by name, newest first, for the link a new topic records.
+  const agedOutByName = new Map<string, Topic>();
+  for (const topic of [...oldestFirst].reverse()) {
+    if (open(topic) || topic.id === null) continue;
+    for (const name of topic.names ?? []) if (name && !agedOutByName.has(name)) agedOutByName.set(name, topic);
+  }
 
   for (const item of matchOrder(items)) {
     const name = nameKey(item.title);
     const named = options.nameMatch === false ? undefined : byName.get(name);
     let best: Topic | null = null;
     let bestSimilarity = -Infinity;
+    let agedOut: Topic | null = null;
+    let agedOutSimilarity = -Infinity;
     for (const topic of topics) {
-      if (!open(topic)) continue;
       const similarity = dot(item.vector, topic.centroid);
+      if (!open(topic)) {
+        if (topic.id !== null && similarity > agedOutSimilarity) {
+          agedOut = topic;
+          agedOutSimilarity = similarity;
+        }
+        continue;
+      }
       if (similarity > bestSimilarity) {
         best = topic;
         bestSimilarity = similarity;
@@ -132,6 +154,9 @@ export function matchItems(items: readonly MatchItem[], existing: readonly Topic
         isNew: true,
         changed: true,
         names: new Set<string>(),
+        continuesId:
+          (options.nameMatch === false ? undefined : agedOutByName.get(name))?.id ??
+          (agedOut && agedOutSimilarity >= threshold ? agedOut.id : null),
       };
       claim(nameKey(topic.label), topic);
       claim(name, topic);

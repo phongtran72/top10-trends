@@ -6,6 +6,7 @@ import { describeError } from "@/lib/errors";
 import { pipelineEnv } from "@/lib/env";
 import { loadLocalEnv } from "@/lib/local-env";
 import { setSegmentation } from "@/lib/segment";
+import { loadCategorizer } from "@/pipeline/category";
 import { createPipelineDb } from "@/pipeline/db";
 import { loadBlocklist } from "@/pipeline/filter";
 import {
@@ -116,6 +117,8 @@ async function rebuild(argv: readonly string[]) {
       threshold,
       embedder: memoEmbedder(await createEmbedder()),
       blocklist: loadBlocklist(),
+      // New topics get the category model's answer again, from the stored lists.
+      categorize: loadCategorizer(console.log),
       onSlot: (i) => {
         if ((i + 1) % 24 === 0) console.log(`rebuild: ${i + 1}/${slots.length} slots`);
       },

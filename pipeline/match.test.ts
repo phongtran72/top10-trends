@@ -192,6 +192,40 @@ describe("the age limit", () => {
     expect(matchItems([lead], [old, open], options).assignments.get(lead.key)?.id).toBe(2);
   });
 
+  it("links the new topic to the aged-out topic it continues, by name first", () => {
+    const old: Topic = { ...aged(1, Y, "2026-10-05T12:07:00Z"), label: "weather today" };
+    const google = item("google_trends", "lead", 1, X, "weather today");
+    const result = matchItems([google], [old], options);
+    expect(result.assignments.get(google.key)?.continuesId).toBe(1);
+  });
+
+  it("links by the nearest aged-out centroid at the threshold when no name matches", () => {
+    const near = aged(1, X, "2026-10-05T12:07:00Z");
+    const far = aged(2, HALF, "2026-10-05T12:07:00Z");
+    const lead = item("google_trends", "lead", 1, NEAR_X, "wild card game 3");
+    const unrelated = item("x", "lead", 2, Y, "Lima");
+    const result = matchItems([lead, unrelated], [far, near], options);
+    expect(result.assignments.get(lead.key)?.continuesId).toBe(1);
+    // HALF is about 0.71 from Y, under the threshold: a new story, no link.
+    expect(result.assignments.get(unrelated.key)?.continuesId).toBeNull();
+  });
+
+  it("links to the newest aged-out topic with the name, so a long story is a chain", () => {
+    const first: Topic = { ...aged(1, X, "2026-10-03T12:07:00Z"), label: "pneumonic plague" };
+    const second: Topic = { ...aged(2, X, "2026-10-05T12:07:00Z"), label: "pneumonic plague" };
+    const google = item("google_trends", "lead", 1, X, "pneumonic plague");
+    expect(matchItems([google], [first, second], options).assignments.get(google.key)?.continuesId).toBe(2);
+  });
+
+  it("leaves the link empty for a topic that continues nothing, and for an item that joins an open topic", () => {
+    const open = topic(2, X);
+    const joins = item("google_trends", "lead", 1, NEAR_X);
+    const fresh = item("x", "lead", 2, Y, "Lima");
+    const result = matchItems([joins, fresh], [open], options);
+    expect(result.assignments.get(joins.key)?.continuesId).toBeUndefined();
+    expect(result.assignments.get(fresh.key)?.continuesId).toBeNull();
+  });
+
   it("can be lifted, to compare in a replay", () => {
     const old = aged(1, X, "2026-10-05T12:07:00Z");
     const lead = item("google_trends", "lead", 1, NEAR_X);

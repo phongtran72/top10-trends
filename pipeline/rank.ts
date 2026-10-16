@@ -2,10 +2,12 @@ import { getSource, type SourceId } from "@/collectors/registry";
 import { confirmOnly, DEFAULT_VIEW, inView, MATCH_THRESHOLD, UNSCORED_SOURCES, VIEWS, type View } from "@/config/ranking";
 import type { TrendItem } from "@/collectors/types";
 import { embeddingText, type Embedder } from "@/lib/embed";
+import { describeError } from "@/lib/errors";
 import { plainWords, prettyLabel } from "@/lib/text";
 import { mergeWindows, rankWindow, WINDOWED_SOURCES, type MergedPlace } from "@/lib/window";
 import type { ListResult } from "./collect";
 import type { Db } from "./db";
+import { categorizeNewTopics, type CategoryOutcome, type Categorizer } from "./category";
 import { filterItems, type Dropped } from "./filter";
 import { matchItems, type MatchItem, type Topic } from "./match";
 import { currentEntries, scoreTopics, viewEntries, windowedItems, writeRankings, type PlatformRow, type ScoreEntry, type TopicScore } from "./score";
@@ -29,6 +31,7 @@ export interface RankInput {
   replay?: boolean; // rebuilding from stored lists: no headlines or flags
   nameMatch?: boolean; // off only to compare in a replay
   maxTopicAgeHours?: number; // Infinity only to compare in a replay
+  categorize?: Categorizer; // the category model, when its file is there (task 5.14)
 }
 
 export interface RankedTopic {
@@ -44,6 +47,7 @@ export interface RankOutcome {
   dropped: Dropped[];
   created: number;
   matched: number;
+  categories?: CategoryOutcome | { error: string }; // absent without a category model
   combined: RankedTopic[]; // the default (Global) view
   views: Record<View, RankedTopic[]>;
   topTopicIds: number[]; // saved topics in any view's top 10, best first
@@ -132,6 +136,16 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
     contextFor,
   });
   const created = match.topics.filter((t) => t.isNew).length;
+  // In its own error handler: a fault in the model leaves the columns empty
+  // and never costs the topics or the rankings.
+  let categories: RankOutcome["categories"];
+  if (input.categorize) {
+    try {
+      categories = categorizeNewTopics(items, match, input.categorize);
+    } catch (error) {
+      categories = { error: describeError(error) };
+    }
+  }
   if (input.db) await saveMatches(input.db, match);
   else match.topics.forEach((topic, index) => (topic.id ??= -(index + 1))); // temporary ids for a dry run
 
@@ -208,6 +222,7 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
     dropped,
     created,
     matched: match.assignments.size,
+    categories,
     combined: top(DEFAULT_VIEW),
     topTopicIds: input.db
       ? [...new Set(Array.from({ length: 10 }, (_, place) => VIEWS.flatMap((view) => scores.get(view)?.[place]?.topicId ?? [])).flat())]
@@ -225,6 +240,13 @@ export function formatRankOutcome(outcome: RankOutcome): string[] {
       `${outcome.matched} matched to topics, ${outcome.created} new topics` +
       (outcome.snapshots > 0 ? `, ${outcome.snapshots} topic snapshots` : ""),
   ];
+  if (outcome.categories) {
+    lines.push(
+      "error" in outcome.categories
+        ? `categories: failed: ${outcome.categories.error}`
+        : `categories: ${outcome.categories.answered} of ${outcome.categories.asked} new topics with a text got one`,
+    );
+  }
   for (const view of VIEWS) {
     lines.push(view === DEFAULT_VIEW ? "combined top 10:" : `combined top 10 (${view} view):`);
     outcome.views[view].forEach((topic, index) => {

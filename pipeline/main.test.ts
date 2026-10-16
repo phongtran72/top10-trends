@@ -9,7 +9,8 @@ import { parseArgs, runPipeline } from "./main";
 import { wordEmbedder } from "./test-embedder";
 
 // Tests never load the real model or touch the network.
-const offline = { createEmbedder: async () => wordEmbedder, blocklist: new Set<string>() };
+// No category model: the real one needs the real embedder's vectors.
+const offline = { createEmbedder: async () => wordEmbedder, blocklist: new Set<string>(), loadCategorizer: () => undefined };
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 
@@ -182,6 +183,46 @@ describe("runPipeline", () => {
       expect(lines).toContain("  Example Final → The Example Final [sports] · Fans are reacting to the final.");
       expect((await db.db.select().from(topics)).map((row) => [row.label, row.name, row.reason, row.category])).toEqual([
         ["Example Final", "The Example Final", "Fans are reacting to the final.", "sports"],
+      ]);
+    } finally {
+      await db.close();
+    }
+  });
+
+  it("writes the category model's answer with a new topic, beside Claude's column and never in it", async () => {
+    const db = await createTestDb();
+    try {
+      const collectors: ReadonlyMap<SourceId, Collector> = new Map<SourceId, Collector>([
+        [
+          "bluesky",
+          {
+            id: "bluesky",
+            fetch: async (region) => [
+              { source: "bluesky", region, rank: 1, title: "Example Final", url: "https://bsky.app/a", matchText: ["Fans react to the example final"] },
+              { source: "bluesky", region, rank: 2, title: "Test Launch", url: "https://bsky.app/b" },
+            ],
+          },
+        ],
+      ]);
+      const out = capture();
+      const asked: string[] = [];
+      await runPipeline([], { SESSION_DATABASE_URL: sessionUrl }, {
+        openDb: () => ({ db: db.db, close: async () => {} }),
+        log: out.log,
+        now: () => new Date("2026-10-21T12:07:00Z"),
+        collectors,
+        ...offline,
+        loadCategorizer: () => (item) => {
+          asked.push(item.source);
+          return { category: "sports", version: "c1" };
+        },
+      });
+      expect(asked).toEqual(["bluesky"]); // the trend without a text is never shown to the model
+      expect(out.lines).toContain("categories: 1 of 1 new topics with a text got one");
+      const rows = (await db.db.select().from(topics)).sort((a, b) => a.label.localeCompare(b.label));
+      expect(rows.map((row) => [row.label, row.modelCategory, row.modelCategoryVersion, row.category])).toEqual([
+        ["Example Final", "sports", "c1", null],
+        ["Test Launch", null, null, null],
       ]);
     } finally {
       await db.close();

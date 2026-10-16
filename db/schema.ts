@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   bigint,
   bigserial,
   boolean,
@@ -81,6 +82,16 @@ export const topics = pgTable("topics", {
   name: text("name"),
   reason: text("reason"),
   category: text("category"),
+  // The category model's answer (task 5.14), written once in the run that
+  // creates the topic, from its first member with a stored text. The version
+  // alone means the model looked and wasn't sure; both null means the topic
+  // had no text to look at. Claude's `category` above is never copied here.
+  modelCategory: text("model_category"),
+  modelCategoryVersion: text("model_category_version"),
+  // The aged-out topic this one continues (task 2.24): set in the topic's
+  // first run when its first item would have joined that topic had it not
+  // passed the 48-hour age limit; never rewritten. Null for every other topic.
+  continuesTopicId: bigint("continues_topic_id", { mode: "number" }).references((): AnyPgColumn => topics.id, { onDelete: "set null" }),
   centroid: real("centroid").array(384).notNull(),
   firstSeen: timestamptz("first_seen").notNull(),
   lastSeen: timestamptz("last_seen").notNull(),

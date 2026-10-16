@@ -3,7 +3,8 @@ import { getSource, pageRegion, platformSlug, SOURCES, type SourceId } from "@/c
 import { confirmOnly, DEFAULT_VIEW, FRESH_LIST_HOURS, inView, type View } from "@/config/ranking";
 import { rankings, topicItems, topics, trendItems } from "@/db/schema";
 import type { Db } from "@/db/types";
-import { bestEntries, currentEntries, PLATFORM_ROWS_REGION, viewEntries } from "@/pipeline/score";
+import { nameKey, prettyLabel } from "@/lib/text";
+import { bestEntries, currentEntries, PLATFORM_ROWS_REGION, viewEntries, type ScoreEntry } from "@/pipeline/score";
 
 // Queries behind the combined top 10 and the topic pages. Plain JSON results
 // (dates as ISO strings), so they can be cached.
@@ -42,10 +43,39 @@ export interface CombinedTop {
 
 const known = new Set<string>(SOURCES.map((s) => s.id));
 
+// The name a page shows in place of a label that no longer fits (task 2.25):
+// null while some current entry of the topic has the label's name, or when
+// none comes from a lead source; otherwise the best-ranked current lead
+// entry, in the platform's own wording. A topic keeps its first label for
+// good, and a later member can be another story under it ("Jake Paul"
+// holding X's "Jake Bauers"). `topics.label` itself never changes.
+export function currentName(label: string, current: readonly ScoreEntry[]): string | null {
+  const titled = current.filter((entry) => entry.title);
+  if (titled.length === 0 || titled.some((entry) => nameKey(entry.title!) === nameKey(label))) return null;
+  const [best] = titled
+    .filter((entry) => known.has(entry.sourceId) && getSource(entry.sourceId).role === "lead" && !confirmOnly(entry.sourceId, entry.region))
+    .sort((a, b) => a.rank - b.rank || getSource(b.sourceId).weight - getSource(a.sourceId).weight);
+  return best ? prettyLabel(best.title!) || best.title! : null;
+}
+
 // What a page shows for a topic: Claude's name and reason when it has them
-// (task 3.6), else the platform's own wording and the first headline.
-function displayText(topic: { label: string; summary: string | null; name: string | null; reason: string | null }) {
-  return { label: topic.name ?? topic.label, summary: topic.reason ?? topic.summary };
+// (task 3.6), else the platform's own wording and the first headline, or,
+// when that label no longer fits what the topic holds now, its current name
+// without the old headline. `firstLabel` is the stored label then.
+function displayText(
+  topic: { label: string; summary: string | null; name: string | null; reason: string | null },
+  current: readonly ScoreEntry[] = [],
+): { label: string; summary: string | null; firstLabel: string | null } {
+  if (topic.name) return { label: topic.name, summary: topic.reason ?? topic.summary, firstLabel: null };
+  const now = currentName(topic.label, current);
+  return now === null ? { label: topic.label, summary: topic.summary, firstLabel: null } : { label: now, summary: null, firstLabel: topic.label };
+}
+
+// Each topic's entries in the lists that count now, within the view.
+function entriesByTopic(entries: readonly ScoreEntry[], view: View): Map<number, ScoreEntry[]> {
+  const byTopic = new Map<number, ScoreEntry[]>();
+  for (const entry of viewEntries(entries, view)) byTopic.set(entry.topicId, [...(byTopic.get(entry.topicId) ?? []), entry]);
+  return byTopic;
 }
 
 function platformRank(list: string, rank: number, feed?: string): PlatformRank | null {
@@ -66,7 +96,7 @@ const byRankThenWeight = (a: PlatformRank, b: PlatformRank) =>
 // Bluesky topic in its grace hours (marked with when it was last listed).
 // A confirm-only list (X's Worldwide) gives a badge only that second way,
 // so X's badge matches X's page and the score.
-async function platformRanks(db: Db, topicIds: number[], at: Date, view: View): Promise<Map<number, PlatformRank[]>> {
+async function platformRanks(db: Db, topicIds: number[], at: Date, view: View, current?: ScoreEntry[]): Promise<Map<number, PlatformRank[]>> {
   const result = new Map<number, PlatformRank[]>();
   if (topicIds.length === 0) return result;
   const since = new Date(at.getTime() - FRESH_LIST_HOURS * HOUR);
@@ -101,7 +131,7 @@ async function platformRanks(db: Db, topicIds: number[], at: Date, view: View): 
   }
 
   const onPage = new Map([...result].map(([topicId, list]) => [topicId, new Set(list.map((p) => p.sourceId))]));
-  const scored = bestEntries(viewEntries(await currentEntries(db, at), view));
+  const scored = bestEntries(viewEntries(current ?? (await currentEntries(db, at)), view));
   for (const topicId of topicIds) {
     for (const [sourceId, counted] of scored.get(topicId) ?? []) {
       if (onPage.get(topicId)?.has(sourceId)) continue;
@@ -165,15 +195,19 @@ export async function combinedTop(db: Db, region: View = DEFAULT_VIEW): Promise<
     for (const p of prior) if (p.topicId !== null) previous.set(p.topicId, p.rank);
   }
 
-  const platforms = await platformRanks(db, rows.map((r) => r.topicId), at, region);
+  const current = await currentEntries(db, at);
+  const platforms = await platformRanks(db, rows.map((r) => r.topicId), at, region, current);
+  const now = entriesByTopic(current, region);
   return {
     computedAt: at.toISOString(),
     compared,
     entries: rows.map(({ name, reason, ...row }) => {
       const was = previous.get(row.topicId);
+      const { label, summary } = displayText({ ...row, name, reason }, now.get(row.topicId));
       return {
         ...row,
-        ...displayText({ ...row, name, reason }),
+        label,
+        summary,
         score: row.score ?? 0,
         change: was === undefined ? null : was - row.rank,
         platforms: platforms.get(row.topicId) ?? [],
@@ -208,6 +242,7 @@ export interface TopicDetail {
   slug: string;
   label: string;
   summary: string | null;
+  firstLabel: string | null; // the stored label, when the page shows the topic's current name instead
   firstSeen: string;
   lastSeen: string;
   currentRank: number | null; // in the newest combined top 10
@@ -270,10 +305,11 @@ export async function topicDetail(db: Db, slug: string, region: View = DEFAULT_V
     })
     .sort((a, b) => getSource(b.sourceId).weight - getSource(a.sourceId).weight || a.name.localeCompare(b.name));
 
-  const platforms = await platformRanks(db, [topic.id], at, region);
+  const listed = await currentEntries(db, at);
+  const platforms = await platformRanks(db, [topic.id], at, region, listed);
   return {
     slug: topic.slug,
-    ...displayText(topic),
+    ...displayText(topic, entriesByTopic(listed, region).get(topic.id)),
     firstSeen: topic.firstSeen.toISOString(),
     lastSeen: topic.lastSeen.toISOString(),
     currentRank: current?.rank ?? null,
