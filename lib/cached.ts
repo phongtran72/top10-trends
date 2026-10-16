@@ -36,14 +36,14 @@ export const getDashboard = unstable_cache(
   { tags: [TRENDS_TAG], revalidate: 3600 },
 );
 
-export const getCombinedTop = unstable_cache(async (view: View) => read((db) => combinedTop(db, view)), ["combined-top-v2"], {
+export const getCombinedTop = unstable_cache(async (view: View) => read((db) => combinedTop(db, view)), ["combined-top-v3"], {
   tags: [TRENDS_TAG],
   revalidate: 3600,
 });
 
 export const getTopicDetail = unstable_cache(
   async (slug: string, view: View) => read((db) => topicDetail(db, slug, view)),
-  ["topic-detail-v1"],
+  ["topic-detail-v2"],
   { tags: [TRENDS_TAG], revalidate: 3600 },
 );
 
