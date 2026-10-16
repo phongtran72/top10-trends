@@ -9,7 +9,7 @@ import { rankRun } from "@/pipeline/rank";
 import { upsertSources } from "@/pipeline/sources";
 import { WORD_EMBEDDER_THRESHOLD, wordEmbedder } from "@/pipeline/test-embedder";
 import { platformList } from "./queries";
-import { combinedTop, recentTopTopics, topicDetail } from "./topic-queries";
+import { combinedTop, currentName, recentTopTopics, topicDetail } from "./topic-queries";
 
 let t: Awaited<ReturnType<typeof createTestDb>>;
 const t0 = new Date("2026-10-07T12:07:00Z");
@@ -84,6 +84,38 @@ describe("Claude's names", () => {
     ]);
     expect(await topicDetail(t.db, "world-series-20261007")).toMatchObject({ label: "World Series", summary: "The Dodgers won the series." });
     await t.db.update(topics).set({ name: null, reason: null }).where(eq(topics.slug, "world-series-20261007"));
+  });
+});
+
+describe("a label that no longer fits", () => {
+  const entry = (sourceId: SourceId, rank: number, title: string, region?: Region) => ({ topicId: 1, sourceId, rank, title, region });
+
+  it("gives way to the best-ranked current lead entry, in the platform's own wording", () => {
+    expect(currentName("Jake Paul", [entry("youtube", 1, "Jake Bauers highlights"), entry("x", 4, "Jake Bauers"), entry("google_trends", 2, "jake bauers stats", "us")])).toBe(
+      "jake bauers stats",
+    );
+    expect(currentName("La Granja Duelo", [entry("x", 3, "#LaGranjaAsamblea", "us")])).toBe("La Granja Asamblea");
+  });
+
+  it("stays while any current entry has its name, or when nothing current comes from a lead source", () => {
+    expect(currentName("world series", [entry("x", 9, "World Series", "us"), entry("bluesky", 1, "Dodgers win it all")])).toBeNull();
+    expect(currentName("world series", [entry("youtube", 1, "Game 7 highlights", "us")])).toBeNull();
+    expect(currentName("world series", [])).toBeNull();
+    // X's Worldwide list only backs up other lists, so it never names a topic.
+    expect(currentName("world series", [entry("x", 1, "Dodgers", "global")])).toBeNull();
+  });
+
+  it("is shown on the home page and the topic page, which says what the topic was first listed as", async () => {
+    await t.db.update(topics).set({ label: "Jake Paul", summary: "An old headline" }).where(eq(topics.slug, "new-topic-20261008"));
+    try {
+      const top = await combinedTop(t.db);
+      expect(top?.entries.find((e) => e.slug === "new-topic-20261008")).toMatchObject({ label: "New topic", summary: null });
+      expect(await topicDetail(t.db, "new-topic-20261008")).toMatchObject({ label: "New topic", summary: null, firstLabel: "Jake Paul" });
+      // A topic whose label still fits shows it, with nothing about a first label.
+      expect(await topicDetail(t.db, "world-series-20261007")).toMatchObject({ label: "world series", firstLabel: null });
+    } finally {
+      await t.db.update(topics).set({ label: "New topic", summary: null }).where(eq(topics.slug, "new-topic-20261008"));
+    }
   });
 });
 

@@ -37,6 +37,7 @@ export default async function TopicPage({ params, searchParams }: PageProps<"/t/
       <p className={styles.kicker}>
         {detail.currentRank !== null ? `#${detail.currentRank} across platforms` : "Topic"} · first seen{" "}
         <RelativeTime iso={detail.firstSeen} />
+        {detail.firstLabel && <> as “{detail.firstLabel}”</>}
       </p>
       <h1 className="page-title">{detail.label}</h1>
       {detail.summary && <p className="lede">{detail.summary}</p>}
