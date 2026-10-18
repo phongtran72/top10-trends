@@ -93,8 +93,8 @@ describe("rankRun", () => {
     const snaps = await t.db.select().from(topicSnapshots);
     expect(snaps.map((s) => s.region)).toEqual(["global", "global", "us", "us"]);
     expect(snaps.filter((s) => s.region === "global").map((s) => [s.position, s.platformCount, s.ranks, s.newsCount, s.algoVersion])).toEqual([
-      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.q8.384/t0.80/r7"],
-      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.q8.384/t0.80/r7"],
+      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.fp32.384/t0.80/r7"],
+      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.fp32.384/t0.80/r7"],
     ]);
     expect(formatRankOutcome(outcome)[2]).toBe("   1. world series · 2.12 · google_trends #1, youtube #1, bluesky #2 · new");
   });
