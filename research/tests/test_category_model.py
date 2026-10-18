@@ -223,6 +223,27 @@ def test_an_archive_from_another_embedding_is_left_out(tmp_path, monkeypatch):
     assert cm.load_archive(archive) is None
 
 
+def test_an_archive_from_another_embedding_is_embedded_again_and_nothing_is_lost(tmp_path, monkeypatch):
+    archive = tmp_path / "category_archive"
+    cm.save_archive(archived_rows(["a", "b"], [0, 1]), np.eye(384, dtype="<f4")[:2], archive)
+    monkeypatch.setattr(cm, "pipeline_embedding", lambda: {"model": "another", "dtype": "fp32", "dimensions": 384, "prefix": "x"})
+    asked = []
+
+    def fake_embed(trends, name, segment, items, use_text):
+        asked.append((name, trends["title"].tolist(), trends["match_text"].tolist()))
+        filtered = pd.DataFrame({"id": trends["trend_id"], "kept": [True, False], "index": [0, None]})
+        return filtered, np.eye(384, dtype="<f4")[[7]]  # "b" is dropped by today's filters
+
+    monkeypatch.setattr(cm.echo, "embed", fake_embed)
+    rows, vectors = cm.load_archive(archive, name="reembed_test")
+    assert asked == [("reembed_test", ["a", "b"], [["a headline"], ["a headline"]])]  # titles and texts as archived
+    assert rows["key"].tolist() == ["a"] and vectors[0].argmax() == 7
+    assert cm.load_archive(archive) is None  # without a name it's still left out
+    assert cm.save_archive(archived_rows(["c"], [2]), np.eye(384, dtype="<f4")[[9]], archive, name="reembed_test") == 2
+    rows, _ = cm.load_archive(archive)  # written with the new embedding now
+    assert rows["key"].tolist() == ["a", "c"]
+
+
 def test_with_archive_adds_labeled_trends_the_lists_no_longer_hold(tmp_path):
     archive = tmp_path / "category_archive"
     cm.save_archive(archived_rows(["old", "now", "unlabeled"], [0, 5, 1]), np.eye(384, dtype="<f4")[:3], archive)
