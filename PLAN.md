@@ -250,6 +250,22 @@ Phase 5 turns the stored history into two things of equal weight, built on one d
   - *First look* (49 r7 hours to 2026-10-16 03:08 UTC, US view): 28 topics continue another, 2 recorded by the pipeline and 26 inferred by name ("us-iran", "s&p 500", "airport", "Midterm get-out-the-vote push"…). 834 topics make 825 stories, and the labels hardly move yet: successors seldom share an hour with the topic they continue.
   - *A link is as good as the join it replaces.* By name it's exact; by centroid it has the matcher's looseness (in its first live hours, two tennis players were linked to a tournament's topic, and "white" to "New White House press secretary"). The table takes centroid links as it takes centroid joins inside a topic, so a story and its chain follow one standard. The column doesn't say which rule made a link; research tells them apart by name when it needs to, and will measure the effect on a few weeks of r7 before asking for more in the schema.
   - *A caution:* a story whose first topic is from before r7 carries that topic's age, and r6's topics never ended ("us-iran" has been one story since 2026-09-30). Such stories leave the table as r7's own take over; until then, read `hours_since_first_seen` above 48 with care.
+- **The first table under r7** (2026-10-18; US view, 105 hours from 2026-10-14 03:07 UTC): 9,330 rows, 1,491 stories made of 1,594 topics.
+  - Breakout within 6 hours: 1.8% of training rows, 2.1% of test rows. Spread to a second platform: 2.2%. A median of 2 hours in the top 10. All about the same as under r6.
+  - 118 of r7's 2,440 topics continue an older one: 92 linked by the pipeline, 26 inferred by name.
+  - From 2026-10-16 02:07 UTC, 36% of rows carry the classifier's category; stories that began earlier have none. Too few breakouts yet to say whether category matters.
+- **A rebuild under r7, checked against live** (2026-10-18). The 105 r7 hours were replayed from the stored lists in memory and compared hour by hour by the platform ranks each topic holds, after 48 hours of warm-up:
+
+  | US view | Hours | Same topics | Top 10 identical | 9 of 10 the same | Multi-platform topic-hours identical |
+  | --- | --- | --- | --- | --- | --- |
+  | Day 3 (2026-10-16 03:00 to 10-17 03:00 UTC) | 24 | 96% | 6 | 15 | 99 of 111 |
+  | Day 4 | 24 | 95% | 12 | 10 | 78 of 93 |
+  | After day 4 | 9 | 97% | 5 | 4 | 35 of 35 |
+
+  - Closer than under r6 (93% of topics, top 10 identical in 53% of hours), not identical. The Global view is the same within a point or two.
+  - A topic made in one hour shapes the topics after it, so a difference seeded early can carry on even though no topic takes members past 48 hours.
+  - So the rule stays: rebuilt hours train a model and never score one.
+  - The planned rebuild replaces the live rows. Research keeps its own copy of the live snapshots and topics (`research/data/live_<date>_*.pkl`, not in git, no YouTube; first taken 2026-10-18), and takes a last one just before the rebuild, so the live r7 hours can still score.
 - **A rebuild under r6, from the training table's side** (2026-10-13; the decision is the web-app session's review and the owner's):
   - *Which rebuilt hours would be like live ones.* For the US view, the hours from 2026-10-02 18:07 UTC on: the lists stored Bluesky's status (from 2026-10-01 15:07) and the match text (from 2026-10-02 18:07) by then, and the US view doesn't use the UK, Canada and Australia feeds that start on 2026-10-04 06:07. For the Global view, only from 2026-10-04 06:07 UTC.
   - *Which would not.* Before 2026-10-02 18:07 UTC there's no match text, so Google's titles would match on their words alone: more Google–X merges, a quarter of the added ones wrong (`research/findings/matching.md`), fewer Bluesky–Google ones, and no `news_count`. Before 2026-10-01 15:07 there's no Bluesky status either, before 12:07 that day no Reddit, and before 2026-09-30 22:08 no X.
