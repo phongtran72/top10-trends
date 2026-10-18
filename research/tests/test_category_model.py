@@ -244,6 +244,17 @@ def test_an_archive_from_another_embedding_is_embedded_again_and_nothing_is_lost
     assert rows["key"].tolist() == ["a", "c"]
 
 
+def test_re_embedding_survives_the_filters_dropping_every_archived_trend(tmp_path, monkeypatch):
+    archive = tmp_path / "category_archive"
+    cm.save_archive(archived_rows(["a"], [0]), np.eye(384, dtype="<f4")[:1], archive)
+    monkeypatch.setattr(cm, "pipeline_embedding", lambda: {"model": "another", "dtype": "fp32", "dimensions": 384, "prefix": "x"})
+    # embed-titles writes no "index" column when it keeps nothing
+    monkeypatch.setattr(cm.echo, "embed", lambda trends, *a: (pd.DataFrame({"id": trends["trend_id"], "kept": False}), np.zeros((0, 384))))
+    rows, vectors = cm.load_archive(archive, name="reembed_test")
+    assert rows.empty and vectors.shape == (0, 384)
+    assert cm.save_archive(archived_rows(["b"], [1]), np.eye(384, dtype="<f4")[[3]], archive, name="reembed_test") == 1
+
+
 def test_with_archive_adds_labeled_trends_the_lists_no_longer_hold(tmp_path):
     archive = tmp_path / "category_archive"
     cm.save_archive(archived_rows(["old", "now", "unlabeled"], [0, 5, 1]), np.eye(384, dtype="<f4")[:3], archive)

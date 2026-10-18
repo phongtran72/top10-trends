@@ -179,6 +179,8 @@ def load_vectors(out: Path) -> tuple[pd.DataFrame, np.ndarray]:
 
 def kept_trends(trend_table: pd.DataFrame, filtered: pd.DataFrame, vectors: np.ndarray) -> tuple[pd.DataFrame, np.ndarray]:
     """The trends the filters kept, in the same order as their vectors."""
+    if "index" not in filtered or not filtered["kept"].any():  # the filters dropped every trend
+        return trend_table.iloc[0:0].reset_index(drop=True), np.zeros((0, DIMENSIONS), dtype=np.float32)
     kept = filtered[filtered["kept"]].sort_values("index")
     table = trend_table.set_index("trend_id").loc[kept["id"]].reset_index()
     return table, vectors[kept["index"].astype(int).to_numpy()]
