@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import os from "node:os";
 import path from "node:path";
 import type { TrendItem } from "@/collectors/types";
 import { normalize, type SplitOptions } from "@/lib/text";
@@ -11,7 +13,7 @@ import { normalize, type SplitOptions } from "@/lib/text";
 // are never stored (invariant 4); topic centroids are.
 
 export const EMBEDDING_MODEL = "nomic-ai/nomic-embed-text-v1.5";
-export const EMBEDDING_DTYPE = "q8"; // the 137 MB quantized weights
+export const EMBEDDING_DTYPE = "fp32"; // the 548 MB full-precision weights: the same vectors on any CPU (the 8-bit ones were not)
 // The model's 768 numbers cut to 384 (Matryoshka), which scored the same as
 // the full size and keeps topics.centroid at real[384].
 export const EMBEDDING_DIMENSIONS = 384;
@@ -29,11 +31,12 @@ export type Embedder = (texts: readonly string[]) => Promise<number[][]>;
 // about 0.2 s more per run.
 const BATCH = 1;
 
-export async function createEmbedder(): Promise<Embedder> {
+// `dtype` other than the pipeline's own is for comparisons in replays only.
+export async function createEmbedder(dtype: typeof EMBEDDING_DTYPE | "q8" = EMBEDDING_DTYPE): Promise<Embedder> {
   // Imported here so the website and the tests never load the model runtime.
   const { env, pipeline } = await import("@huggingface/transformers");
   env.cacheDir = MODEL_CACHE_DIR;
-  const extractor = await pipeline("feature-extraction", EMBEDDING_MODEL, { dtype: EMBEDDING_DTYPE });
+  const extractor = await pipeline("feature-extraction", EMBEDDING_MODEL, { dtype });
   return async (texts) => {
     const vectors: number[][] = [];
     for (let i = 0; i < texts.length; i += BATCH) {
@@ -43,6 +46,18 @@ export async function createEmbedder(): Promise<Embedder> {
     }
     return vectors;
   };
+}
+
+// A fixed text embedded once per run and logged with the machine's CPU, so
+// runs whose vectors differ can be told apart: on 2026-10-18 the 8-bit
+// model's vectors turned out to depend on the machine a run lands on.
+export const PROBE_TEXT = "probe: the same text every hour";
+
+export async function describeEmbedder(embed: Embedder, cpu = os.cpus()[0]?.model?.trim() || "unknown"): Promise<string> {
+  const [vector] = await embed([PROBE_TEXT]);
+  const head = vector.slice(0, 3).map((x) => x.toFixed(6)).join(", ");
+  const hash = createHash("sha1").update(Buffer.from(new Float64Array(vector).buffer)).digest("hex").slice(0, 8);
+  return `embedder: ${EMBEDDING_DTYPE} on ${cpu}; probe ${hash} (${head})`;
 }
 
 // Matryoshka truncation as nomic's model card does it: layer norm over all of

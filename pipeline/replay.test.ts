@@ -73,7 +73,7 @@ describe("tuning in a scratch copy", () => {
     expect([strict.oldEntries, strict.bigTopics]).toEqual([0, 0]);
     const snaps = await scratch.db.select().from(topicSnapshots);
     expect(snaps).not.toHaveLength(0);
-    expect(new Set(snaps.map((s) => s.algoVersion))).toEqual(new Set(["nomic-embed-text-v1.5.q8.384/t0.80/r7+replay"]));
+    expect(new Set(snaps.map((s) => s.algoVersion))).toEqual(new Set(["nomic-embed-text-v1.5.fp32.384/t0.80/r7+replay"]));
 
     await resetDerived(scratch.db);
     expect(await scratch.db.select().from(topics)).toHaveLength(0);
