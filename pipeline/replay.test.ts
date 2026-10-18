@@ -52,6 +52,23 @@ describe("loadSlots", () => {
   });
 });
 
+describe("the time a replayed hour runs at", () => {
+  it("is the earliest list start in the hour, or the time a caller gives", async () => {
+    const db = await createTestDb();
+    try {
+      await copyLists(live.db, db.db);
+      const slots = await loadSlots(db.db);
+      const embedder = memoEmbedder(wordEmbedder);
+      const shifted = (slot: { at: Date }) => new Date(slot.at.getTime() - 25_000);
+      await replaySlots(db.db, slots, { threshold: 0.8, embedder, blocklist: new Set(), nowFor: shifted });
+      const taken = new Set((await db.db.select().from(topicSnapshots)).map((s) => s.takenAt.getTime()));
+      expect(taken).toEqual(new Set(slots.map((slot) => shifted(slot).getTime())));
+    } finally {
+      await db.close();
+    }
+  });
+});
+
 describe("tuning in a scratch copy", () => {
   it("copies the lists and replays them at each threshold", async () => {
     await expect(copyLists(live.db, scratch.db)).resolves.toBe(8);

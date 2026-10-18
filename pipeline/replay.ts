@@ -106,6 +106,9 @@ export async function replaySlots(
     nameMatch?: boolean;
     maxTopicAgeHours?: number;
     categorize?: Categorizer;
+    // The time each hour runs at. By default the earliest list start in the
+    // hour; a comparison with live rows can pass the live run's own start.
+    nowFor?: (slot: Slot) => Date;
     onSlot?: (index: number) => void;
   },
 ): Promise<{ created: number }> {
@@ -115,7 +118,7 @@ export async function replaySlots(
       db,
       results: slot.results,
       itemIds: slot.itemIds,
-      now: slot.at,
+      now: options.nowFor?.(slot) ?? slot.at,
       embedder: options.embedder,
       blocklist: options.blocklist,
       threshold: options.threshold,
