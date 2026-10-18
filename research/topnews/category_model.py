@@ -108,7 +108,7 @@ def save_archive(table: pd.DataFrame, vectors: np.ndarray, archive: Path = ARCHI
     (`training_set`'s rows; a trend in both takes the newer row). Labels aren't kept here: they're joined
     from the label store when read, so corrections still apply. Returns the number of trends archived. An
     archive made with another embedding is re-embedded first (vector files `name`), so no trend is lost."""
-    held = load_archive(archive, name=name)
+    held = load_archive(archive, name=name, skip=set(zip(table["source_id"], table["key"])))
     rows = table[ARCHIVED].reset_index(drop=True)
     if held is not None:
         old_rows, old_vectors = held
@@ -129,24 +129,31 @@ def save_archive(table: pd.DataFrame, vectors: np.ndarray, archive: Path = ARCHI
     return len(rows)
 
 
-def load_archive(archive: Path = ARCHIVE, name: str | None = None) -> tuple[pd.DataFrame, np.ndarray] | None:
+def load_archive(
+    archive: Path = ARCHIVE, name: str | None = None, skip: set | None = None
+) -> tuple[pd.DataFrame, np.ndarray] | None:
     """The archived trends and their vectors, or None when there is no archive. When its vectors were made
     with another embedding than the pipeline's, its titles and texts are embedded again (vector files
-    `name`, under research/data/), as the pipeline embeds them now; without a `name` it's left out."""
+    `name`, under research/data/), as the pipeline embeds them now; without a `name` it's left out.
+    Trends in `skip` (source and key) are left out of what's returned, and so never embedded again."""
     meta_file = Path(f"{archive}.json")
     if not meta_file.exists():
         return None
     meta = json.loads(meta_file.read_text(encoding="utf-8"))
     rows = pd.DataFrame(meta["rows"], columns=ARCHIVED)
     rows["first_seen"] = pd.to_datetime(rows["first_seen"], utc=True)
+    wanted = np.array([(s, k) not in (skip or set()) for s, k in zip(rows["source_id"], rows["key"])], dtype=bool)
     if meta["embedding"] != pipeline_embedding():
         if name is None:
             print(f"{meta_file.name}: made with another embedding, left out")
             return None
-        print(f"{meta_file.name}: made with another embedding, embedding its {len(rows)} trends again")
+        rows = rows[wanted].reset_index(drop=True)
+        if rows.empty:
+            return rows, np.zeros((0, pipeline_embedding()["dimensions"]), dtype="<f4")
+        print(f"{meta_file.name}: made with another embedding, embedding {len(rows)} of its trends again")
         return reembed(rows, name)
     vectors = np.fromfile(f"{archive}.f32", dtype="<f4").reshape(-1, meta["embedding"]["dimensions"])
-    return rows, vectors
+    return rows[wanted].reset_index(drop=True), vectors[wanted]
 
 
 def reembed(rows: pd.DataFrame, name: str) -> tuple[pd.DataFrame, np.ndarray]:
@@ -165,7 +172,7 @@ def with_archive(
     """`training_set`'s rows plus the archived labeled trends that the stored lists no longer hold, with
     their current labels, oldest first. An archived trend whose label was removed is left out. With a
     `name`, an archive from another embedding is embedded again (see load_archive)."""
-    held = load_archive(archive, name=name)
+    held = load_archive(archive, name=name, skip=set(zip(table["source_id"], table["key"])))
     if held is None:
         return table, vectors
     rows, archived_vectors = held
