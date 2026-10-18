@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+import os from "node:os";
 import path from "node:path";
 import type { TrendItem } from "@/collectors/types";
 import { normalize, type SplitOptions } from "@/lib/text";
@@ -43,6 +45,18 @@ export async function createEmbedder(): Promise<Embedder> {
     }
     return vectors;
   };
+}
+
+// A fixed text embedded once per run and logged with the machine's CPU, so
+// runs whose vectors differ can be told apart: on 2026-10-18 the 8-bit
+// model's vectors turned out to depend on the machine a run lands on.
+export const PROBE_TEXT = "probe: the same text every hour";
+
+export async function describeEmbedder(embed: Embedder, cpu = os.cpus()[0]?.model?.trim() || "unknown"): Promise<string> {
+  const [vector] = await embed([PROBE_TEXT]);
+  const head = vector.slice(0, 3).map((x) => x.toFixed(6)).join(", ");
+  const hash = createHash("sha1").update(Buffer.from(new Float64Array(vector).buffer)).digest("hex").slice(0, 8);
+  return `embedder: ${EMBEDDING_DTYPE} on ${cpu}; probe ${hash} (${head})`;
 }
 
 // Matryoshka truncation as nomic's model card does it: layer norm over all of
