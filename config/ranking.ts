@@ -95,5 +95,7 @@ export const FETCH_RUN_RETENTION_DAYS = 90;
 // YouTube add UK, Canada and Australia feeds, which count in Global only.
 // r6: an item joins a topic that has exactly its name, before vectors are
 // compared (pipeline/match.ts). r7: a topic takes no new member once it is
-// 48 hours old (MAX_TOPIC_AGE_HOURS).
-export const RANKING_VERSION = "r7";
+// 48 hours old (MAX_TOPIC_AGE_HOURS). r8: full-precision embeddings (the
+// same vectors on every machine), ages and the topic window counted in
+// whole clock hours, and live runs embedding the extra text as stored.
+export const RANKING_VERSION = "r8";

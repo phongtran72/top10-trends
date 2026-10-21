@@ -40,7 +40,7 @@ describe("describeEmbedder", () => {
     };
     const line = await describeEmbedder(embed, "Test CPU 9000");
     expect(asked).toEqual([PROBE_TEXT]);
-    expect(line).toMatch(/^embedder: q8 on Test CPU 9000; probe [0-9a-f]{8} \(0\.123456, -0\.500000, 0\.250000\)$/);
+    expect(line).toMatch(/^embedder: \w+ on Test CPU 9000; probe [0-9a-f]{8} \(0\.123456, -0\.500000, 0\.250000\)$/);
     // The same vector gives the same line; a vector one step away does not.
     expect(await describeEmbedder(embed, "Test CPU 9000")).toBe(line);
     expect(await describeEmbedder(async () => [[0.1234564, -0.5, 0.25, 0.7500001]], "Test CPU 9000")).not.toBe(line);
