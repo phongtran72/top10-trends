@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
-import { count } from "drizzle-orm";
-import { rankings, topicSnapshots, topics } from "@/db/schema";
+import { count, max } from "drizzle-orm";
+import { fetchRuns, rankings, topicSnapshots, topics } from "@/db/schema";
 import { MAX_TOPIC_AGE_HOURS } from "@/config/ranking";
 import { createTestDb as createScratchDb } from "@/db/test-db";
 import { createEmbedder } from "@/lib/embed";
@@ -160,6 +160,7 @@ async function rebuildInMemory(argv: readonly string[], threshold: number) {
       await new Promise((resolve) => setTimeout(resolve, Math.max(0, when.getTime() - Date.now())));
     }
     // Then the hours stored since, whose lists are final by now.
+    const copiedAt = new Date();
     const added = await copyLists(live.db, scratch.db, firstEnd);
     const rest = (await loadSlots(scratch.db)).filter((slot) => slot.at.getTime() >= firstEnd.getTime());
     await replaySlots(scratch.db, rest, { ...options, nowFor: liveTimeOf(await liveRunStarts(live.db)) });
@@ -171,6 +172,13 @@ async function rebuildInMemory(argv: readonly string[], threshold: number) {
       log(`rehearsal only, nothing written; ${Math.round((Date.now() - started) / 60_000)} min in all`);
       return;
     }
+    // Swap only between two hourly runs: from :29 (after the catch-up tries) to
+    // :57, and only if no run has started since the last copy, so the swap never
+    // drops an hour the build doesn't have.
+    const minute = new Date().getUTCMinutes();
+    if (minute < 29 || minute > 57) throw new Error(`not swapping at :${String(minute).padStart(2, "0")}; the build is ready, so run it again with a new --swap-at`);
+    const [newest] = await live.db.select({ at: max(fetchRuns.startedAt) }).from(fetchRuns);
+    if (newest?.at && newest.at.getTime() > copiedAt.getTime()) throw new Error("a run started after the last copy; not swapping");
     const names = await saveNames(live.db);
     const swapStarted = Date.now();
     const counts = await swapDerived(live.db, scratch.db);
