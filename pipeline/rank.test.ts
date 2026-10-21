@@ -3,7 +3,9 @@ import { getSource, planSources, type SourceId } from "@/collectors/registry";
 import type { Region, TrendItem } from "@/collectors/types";
 import { rankings, topicItems, topicSnapshots, topics } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
-import { writeResults, type ListResult } from "./collect";
+import { embeddingText } from "@/lib/embed";
+import { plainWords } from "@/lib/text";
+import { storedMatchText, writeResults, type ListResult } from "./collect";
 import { platformList } from "@/lib/queries";
 import { contextFor, formatRankOutcome, labelFor, rankRun } from "./rank";
 import { upsertSources } from "./sources";
@@ -93,8 +95,8 @@ describe("rankRun", () => {
     const snaps = await t.db.select().from(topicSnapshots);
     expect(snaps.map((s) => s.region)).toEqual(["global", "global", "us", "us"]);
     expect(snaps.filter((s) => s.region === "global").map((s) => [s.position, s.platformCount, s.ranks, s.newsCount, s.algoVersion])).toEqual([
-      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.fp32.384/t0.80/r7"],
-      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.fp32.384/t0.80/r7"],
+      [1, 2, { google_trends: 1, bluesky: 2 }, 1, "nomic-embed-text-v1.5.fp32.384/t0.80/r8"],
+      [2, 1, { bluesky: 3 }, 0, "nomic-embed-text-v1.5.fp32.384/t0.80/r8"],
     ]);
     expect(formatRankOutcome(outcome)[2]).toBe("   1. world series · 2.12 · google_trends #1, youtube #1, bluesky #2 · new");
   });
@@ -351,6 +353,23 @@ describe("category model", () => {
     const outcome = await runOnce(day, [list("google_trends", "us", day, [{ title: "willow parade" }])]);
     expect(outcome.categories).toBeUndefined();
     expect(formatRankOutcome(outcome).some((line) => line.startsWith("categories"))).toBe(false);
+  });
+});
+
+describe("the text a live run embeds", () => {
+  it("is the extra text as stored, so a replay of the stored lists embeds the same", async () => {
+    const seen: string[] = [];
+    const recording = async (texts: readonly string[]) => {
+      seen.push(...texts);
+      return wordEmbedder(texts);
+    };
+    const at = new Date(Date.UTC(2026, 9, 23, 9, 7));
+    const raw = ["", "  Crews line up for the harbour race  ", "x".repeat(1200)];
+    const results = [list("google_trends", "us", at, [{ title: "kestrel regatta", matchText: raw }])];
+    await rankRun({ db: t.db, results, itemIds: await writeResults(t.db, results), now: at, embedder: recording, blocklist, threshold: WORD_EMBEDDER_THRESHOLD });
+    const stored = storedMatchText(raw) ?? undefined;
+    expect(stored).toEqual(["Crews line up for the harbour race", "x".repeat(1000)]);
+    expect(seen).toEqual([embeddingText({ title: "kestrel regatta", matchText: stored }, { keep: plainWords(["kestrel regatta", ...stored!]) })]);
   });
 });
 

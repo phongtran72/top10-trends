@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, gte, inArray, isNotNull, min } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNotNull, lt, min, sql } from "drizzle-orm";
 import { getSource, SOURCES, type SourceId } from "@/collectors/registry";
 import type { Region, TrendItem } from "@/collectors/types";
 import { DEFAULT_VIEW } from "@/config/ranking";
@@ -148,13 +148,20 @@ export function memoEmbedder(embed: Embedder): Embedder {
 
 // Copies sources and stored successful lists (with their ids) into another
 // database, such as an in-memory scratch copy for tuning.
-export async function copyLists(from: Db, to: Db, since?: Date): Promise<number> {
+export async function copyLists(from: Db, to: Db, since?: Date, until?: Date): Promise<number> {
   const sourceRows = await from.select().from(sources);
   if (sourceRows.length > 0) await to.insert(sources).values(sourceRows).onConflictDoNothing();
   const runRows = await from
     .select()
     .from(fetchRuns)
-    .where(and(eq(fetchRuns.status, "ok"), gt(fetchRuns.itemCount, 0), since ? gte(fetchRuns.startedAt, since) : undefined));
+    .where(
+      and(
+        eq(fetchRuns.status, "ok"),
+        gt(fetchRuns.itemCount, 0),
+        since ? gte(fetchRuns.startedAt, since) : undefined,
+        until ? lt(fetchRuns.startedAt, until) : undefined,
+      ),
+    );
   let items = 0;
   for (let i = 0; i < runRows.length; i += 500) {
     const chunk = runRows.slice(i, i + 500);
@@ -200,6 +207,62 @@ export async function restoreNames(db: Db, saved: readonly SavedName[]): Promise
     restored += rows.length;
   }
   return restored;
+}
+
+// The start of each live run, by clock hour (UTC hour number → time): the
+// latest heartbeat in the hour, which is the start of the run whose lists the
+// hour's slot keeps (the latest list per source wins). A rebuild runs each hour
+// at that time (`nowFor`), so rebuilt topics carry the live runs' times and
+// every rule that counts time decides as the live run did.
+export async function liveRunStarts(db: Db): Promise<Map<number, Date>> {
+  const rows = await db
+    .select({ at: fetchRuns.startedAt })
+    .from(fetchRuns)
+    .where(and(eq(fetchRuns.sourceId, "heartbeat"), eq(fetchRuns.status, "ok")));
+  const byHour = new Map<number, Date>();
+  for (const { at } of rows) {
+    const hour = Math.floor(at.getTime() / HOUR);
+    const seen = byHour.get(hour);
+    if (!seen || at.getTime() > seen.getTime()) byHour.set(hour, at);
+  }
+  return byHour;
+}
+
+export function liveTimeOf(starts: ReadonlyMap<number, Date>): (slot: Slot) => Date {
+  return (slot) => starts.get(Math.floor(slot.at.getTime() / HOUR)) ?? slot.at;
+}
+
+export interface SwapCounts {
+  topics: number;
+  topicItems: number;
+  rankings: number;
+  snapshots: number;
+}
+
+// Replaces the derived rows in `target` (production) with those built in
+// `source` (a rebuild in memory), in one transaction: the site, the hourly run
+// and research see either the old history or the new one, never a mix, and a
+// failure leaves the old rows as they were. Ids are kept, so the stored lists'
+// links stay valid, and the id sequences continue after the new rows.
+export async function swapDerived(target: Db, source: Db, batch = 1000): Promise<SwapCounts> {
+  const topicRows = await source.select().from(topics).orderBy(asc(topics.id));
+  const itemRows = await source.select().from(topicItems);
+  const rankingRows = await source.select().from(rankings).orderBy(asc(rankings.id));
+  const snapshotRows = await source.select().from(topicSnapshots);
+  await target.transaction(async (tx) => {
+    await tx.delete(topicSnapshots);
+    await tx.delete(rankings);
+    await tx.delete(topicItems);
+    await tx.delete(topics);
+    // Topics in id order: a topic's continues link always points to an older one.
+    for (let i = 0; i < topicRows.length; i += batch) await tx.insert(topics).values(topicRows.slice(i, i + batch));
+    for (let i = 0; i < itemRows.length; i += batch) await tx.insert(topicItems).values(itemRows.slice(i, i + batch));
+    for (let i = 0; i < rankingRows.length; i += batch) await tx.insert(rankings).values(rankingRows.slice(i, i + batch));
+    for (let i = 0; i < snapshotRows.length; i += batch) await tx.insert(topicSnapshots).values(snapshotRows.slice(i, i + batch));
+    await tx.execute(sql`select setval(pg_get_serial_sequence('topics', 'id'), coalesce((select max(id) from topics), 0) + 1, false)`);
+    await tx.execute(sql`select setval(pg_get_serial_sequence('rankings', 'id'), coalesce((select max(id) from rankings), 0) + 1, false)`);
+  });
+  return { topics: topicRows.length, topicItems: itemRows.length, rankings: rankingRows.length, snapshots: snapshotRows.length };
 }
 
 // Deletes everything the rank step derives, so it can be rebuilt from the lists.

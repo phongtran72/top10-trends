@@ -3,7 +3,7 @@ import { TOPIC_WINDOW_HOURS } from "@/config/ranking";
 import { topicItems, topics, trendItems } from "@/db/schema";
 import { nameKey, slugify } from "@/lib/text";
 import type { Db } from "./db";
-import type { MatchResult, Topic } from "./match";
+import { hourStart, type MatchResult, type Topic } from "./match";
 
 // Loading and saving topics for matching.
 
@@ -11,7 +11,8 @@ import type { MatchResult, Topic } from "./match";
 // replaying past hours), with how many items shaped each centroid and the
 // names of their members from those hours (for matching by name).
 export async function loadRecentTopics(db: Db, now: Date, hours = TOPIC_WINDOW_HOURS): Promise<Topic[]> {
-  const since = new Date(now.getTime() - hours * 60 * 60 * 1000);
+  // Counted in whole clock hours, like a topic's age (pipeline/match.ts).
+  const since = new Date(hourStart(now) - hours * 60 * 60 * 1000);
   const rows = await db
     .select({
       id: topics.id,
