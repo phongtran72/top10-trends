@@ -6,9 +6,6 @@ export interface Env {
 
 // The hourly start. The other crons in wrangler.toml are catch-up tries.
 export const PRIMARY_CRON = "7 * * * *";
-// A run takes about a minute and its job is cut off at 10, so a run this old
-// that still hasn't finished is stuck.
-const STUCK_AFTER_MINUTES = 8;
 
 // The fields read from GitHub's list of workflow runs.
 export interface CollectRun {
@@ -44,16 +41,18 @@ export function listCollectRuns(env: Env, fetcher: typeof fetch = fetch): Promis
   return fetcher(`${workflowUrl(env)}/runs?per_page=10`, { headers: headers(env) });
 }
 
-// Whether the clock hour of `now` (UTC) already has a run that succeeded, or
-// one young enough to still be on its way. A dry run started by hand counts
-// too: GitHub's list doesn't tell the two apart.
+// Whether the clock hour of `now` (UTC) already has a run that succeeded or
+// hasn't finished yet, however long it has been queued or running: during
+// GitHub's Actions incident of 2026-10-19 the 16:07 run sat unfinished until
+// 16:30, and starting more runs beside it gave that hour three. So a catch-up
+// try starts a run only when the hour has none, or every one failed or was
+// cancelled. A dry run started by hand counts too: GitHub's list doesn't
+// tell the two apart.
 export function hourCovered(runs: readonly CollectRun[], now: Date): boolean {
   const hourStart = Math.floor(now.getTime() / 3_600_000) * 3_600_000;
   return runs.some((run) => {
-    const created = Date.parse(run.created_at);
-    if (!(created >= hourStart)) return false;
-    if (run.status === "completed") return run.conclusion === "success";
-    return now.getTime() - created < STUCK_AFTER_MINUTES * 60_000;
+    if (!(Date.parse(run.created_at) >= hourStart)) return false;
+    return run.status !== "completed" || run.conclusion === "success";
   });
 }
 
