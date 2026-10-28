@@ -163,6 +163,19 @@ describe("the age limit", () => {
     expect(result.topics.find((t) => t.id === 1)?.changed).toBe(false);
   });
 
+  it("counts ages in whole clock hours, so a few seconds of start time never decide it", () => {
+    const old = aged(1, X, "2026-10-06T12:07:59Z");
+    const at = (time: string) => ({ ...options, now: new Date(time) });
+    const lead = () => item("google_trends", "lead", 1, NEAR_X);
+    // Two days on, a run that starts a moment earlier or later in the same hour decides the same.
+    for (const time of ["2026-10-08T12:07:45Z", "2026-10-08T12:08:05Z", "2026-10-08T12:27:30Z"]) {
+      const item1 = lead();
+      expect(matchItems([item1], [old], at(time)).assignments.get(item1.key)?.id).toBe(1);
+    }
+    const later = lead();
+    expect(matchItems([later], [old], at("2026-10-08T13:07:30Z")).assignments.get(later.key)?.isNew).toBe(true);
+  });
+
   it("keeps a topic open through its 48th hour", () => {
     const old = aged(1, X, "2026-10-06T12:07:00Z");
     const lead = item("google_trends", "lead", 1, NEAR_X);
