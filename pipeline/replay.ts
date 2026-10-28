@@ -109,11 +109,14 @@ export async function replaySlots(
     // The time each hour runs at. By default the earliest list start in the
     // hour; a comparison with live rows can pass the live run's own start.
     nowFor?: (slot: Slot) => Date;
+    // Awaited before each hour, so a long rebuild can step aside (see scripts/replay.ts).
+    beforeSlot?: () => Promise<void>;
     onSlot?: (index: number) => void;
   },
 ): Promise<{ created: number }> {
   let created = 0;
   for (const [index, slot] of slots.entries()) {
+    await options.beforeSlot?.();
     const outcome = await rankRun({
       db,
       results: slot.results,

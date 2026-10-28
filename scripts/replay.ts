@@ -115,6 +115,16 @@ async function tune(argv: readonly string[]) {
 
 const HOUR_MS = 60 * 60 * 1000;
 
+// A long build on the owner's PC waits out :18 to :26 past each hour, so it
+// never competes with Trend Forecaster's run at :20.
+async function stepAside(log: (line: string) => void): Promise<void> {
+  const minute = new Date().getUTCMinutes();
+  if (minute < 18 || minute > 26) return;
+  const wait = (27 - minute) * 60_000 - new Date().getUTCSeconds() * 1000;
+  log(`pausing ${Math.round(wait / 1000)} s for the :20 run`);
+  await new Promise((resolve) => setTimeout(resolve, wait));
+}
+
 // The next time it is `hh:mm` UTC, from now.
 function nextAt(hhmm: string, now = new Date()): Date {
   const match = /^(\d{1,2}):(\d{2})$/.exec(hhmm);
@@ -148,7 +158,7 @@ async function rebuildInMemory(argv: readonly string[], threshold: number) {
       log(`the ${lost} will be dropped (--accept-loss)`);
     }
     const embedder = memoEmbedder(await createEmbedder());
-    const options = { threshold, embedder, blocklist: loadBlocklist(), categorize: loadCategorizer(log) };
+    const options = { threshold, embedder, blocklist: loadBlocklist(), categorize: loadCategorizer(log), beforeSlot: () => stepAside(log) };
     // First every hour whose lists are final: those before the current hour.
     const firstEnd = new Date(Math.floor(Date.now() / HOUR_MS) * HOUR_MS);
     log(`copied ${await copyLists(live.db, scratch.db, undefined, firstEnd)} stored items before ${firstEnd.toISOString()}`);
