@@ -83,58 +83,59 @@ describe("the time a replayed hour runs at", () => {
 });
 
 describe("a rebuild in memory", () => {
+  // Each test database takes about a second to start (PGlite and every
+  // migration), and longer on CI with every test file running at once, so they
+  // start here, under the hook timeout, and the tests time only their own work.
+  let beats: Awaited<ReturnType<typeof createTestDb>>;
+  let target: Awaited<ReturnType<typeof createTestDb>>;
+  let built: Awaited<ReturnType<typeof createTestDb>>;
+  beforeAll(async () => {
+    [beats, target, built] = await Promise.all([createTestDb(), createTestDb(), createTestDb()]);
+  });
+  afterAll(async () => {
+    await Promise.all([beats.close(), target.close(), built.close()]);
+  });
+
   it("runs each hour at its live run's start: the latest heartbeat in the hour", async () => {
-    const db = await createTestDb();
-    try {
-      await upsertSources(db.db, planSources({ collectors: new Set(), disabled: [], env: {} }));
-      const beat = (at: Date) => ({ sourceId: "heartbeat", region: "global", startedAt: at, finishedAt: at, status: "ok", itemCount: 0 });
-      await db.db.insert(fetchRuns).values([beat(hour(10, 8)), beat(hour(11, 8)), beat(hour(11, 18)), beat(hour(11, 28))]);
-      const starts = await liveRunStarts(db.db);
-      expect(starts.get(Math.floor(hour(11).getTime() / 3_600_000))?.toISOString()).toBe(hour(11, 28).toISOString());
-      const timeOf = liveTimeOf(starts);
-      expect(timeOf({ at: hour(10, 7) } as Parameters<typeof timeOf>[0]).toISOString()).toBe(hour(10, 8).toISOString());
-      // An hour with no heartbeat keeps its earliest list start.
-      expect(timeOf({ at: hour(12, 7) } as Parameters<typeof timeOf>[0]).toISOString()).toBe(hour(12, 7).toISOString());
-    } finally {
-      await db.close();
-    }
+    await upsertSources(beats.db, planSources({ collectors: new Set(), disabled: [], env: {} }));
+    const beat = (at: Date) => ({ sourceId: "heartbeat", region: "global", startedAt: at, finishedAt: at, status: "ok", itemCount: 0 });
+    await beats.db.insert(fetchRuns).values([beat(hour(10, 8)), beat(hour(11, 8)), beat(hour(11, 18)), beat(hour(11, 28))]);
+    const starts = await liveRunStarts(beats.db);
+    expect(starts.get(Math.floor(hour(11).getTime() / 3_600_000))?.toISOString()).toBe(hour(11, 28).toISOString());
+    const timeOf = liveTimeOf(starts);
+    expect(timeOf({ at: hour(10, 7) } as Parameters<typeof timeOf>[0]).toISOString()).toBe(hour(10, 8).toISOString());
+    // An hour with no heartbeat keeps its earliest list start.
+    expect(timeOf({ at: hour(12, 7) } as Parameters<typeof timeOf>[0]).toISOString()).toBe(hour(12, 7).toISOString());
   });
 
   it("swaps its rows in for the old ones in one go, keeping ids, and new topics continue after them", async () => {
-    const target = await createTestDb();
-    const built = await createTestDb();
-    try {
-      // The same stored lists in both, derived differently: the target from its first hour only, the build from every hour.
-      await copyLists(live.db, target.db);
-      await copyLists(live.db, built.db);
-      const embedder = memoEmbedder(wordEmbedder);
-      await replaySlots(target.db, (await loadSlots(target.db)).slice(0, 1), { threshold: 0.99, embedder, blocklist: new Set() });
-      await replaySlots(built.db, await loadSlots(built.db), { threshold: 0.8, embedder, blocklist: new Set() });
-      const before = (db: typeof target) =>
-        Promise.all([db.db.select().from(topics), db.db.select().from(topicItems), db.db.select().from(rankings), db.db.select().from(topicSnapshots)]);
-      const [builtTopics, builtItems, builtRankings, builtSnapshots] = await before(built);
-      expect((await target.db.select().from(rankings)).length).toBeLessThan(builtRankings.length);
+    // The same stored lists in both, derived differently: the target from its first hour only, the build from every hour.
+    await copyLists(live.db, target.db);
+    await copyLists(live.db, built.db);
+    const embedder = memoEmbedder(wordEmbedder);
+    await replaySlots(target.db, (await loadSlots(target.db)).slice(0, 1), { threshold: 0.99, embedder, blocklist: new Set() });
+    await replaySlots(built.db, await loadSlots(built.db), { threshold: 0.8, embedder, blocklist: new Set() });
+    const before = (db: typeof target) =>
+      Promise.all([db.db.select().from(topics), db.db.select().from(topicItems), db.db.select().from(rankings), db.db.select().from(topicSnapshots)]);
+    const [builtTopics, builtItems, builtRankings, builtSnapshots] = await before(built);
+    expect((await target.db.select().from(rankings)).length).toBeLessThan(builtRankings.length);
 
-      const counts = await swapDerived(target.db, built.db, 2);
-      expect(counts).toEqual({ topics: builtTopics.length, topicItems: builtItems.length, rankings: builtRankings.length, snapshots: builtSnapshots.length });
-      const [afterTopics, afterItems, afterRankings, afterSnapshots] = await before(target);
-      const sortById = <T extends { id: number }>(rows: T[]) => [...rows].sort((a, b) => a.id - b.id);
-      expect(sortById(afterTopics)).toEqual(sortById(builtTopics));
-      expect(afterItems.length).toBe(builtItems.length);
-      expect(sortById(afterRankings)).toEqual(sortById(builtRankings));
-      expect(afterSnapshots.length).toBe(builtSnapshots.length);
+    const counts = await swapDerived(target.db, built.db, 2);
+    expect(counts).toEqual({ topics: builtTopics.length, topicItems: builtItems.length, rankings: builtRankings.length, snapshots: builtSnapshots.length });
+    const [afterTopics, afterItems, afterRankings, afterSnapshots] = await before(target);
+    const sortById = <T extends { id: number }>(rows: T[]) => [...rows].sort((a, b) => a.id - b.id);
+    expect(sortById(afterTopics)).toEqual(sortById(builtTopics));
+    expect(afterItems.length).toBe(builtItems.length);
+    expect(sortById(afterRankings)).toEqual(sortById(builtRankings));
+    expect(afterSnapshots.length).toBe(builtSnapshots.length);
 
-      // The next topic the target makes takes the next free id.
-      const maxId = Math.max(...builtTopics.map((t) => t.id));
-      const [next] = await target.db
-        .insert(topics)
-        .values({ slug: "after-the-swap", label: "after the swap", summary: null, centroid: builtTopics[0].centroid, firstSeen: hour(13), lastSeen: hour(13) })
-        .returning({ id: topics.id });
-      expect(next.id).toBe(maxId + 1);
-    } finally {
-      await target.close();
-      await built.close();
-    }
+    // The next topic the target makes takes the next free id.
+    const maxId = Math.max(...builtTopics.map((t) => t.id));
+    const [next] = await target.db
+      .insert(topics)
+      .values({ slug: "after-the-swap", label: "after the swap", summary: null, centroid: builtTopics[0].centroid, firstSeen: hour(13), lastSeen: hour(13) })
+      .returning({ id: topics.id });
+    expect(next.id).toBe(maxId + 1);
   });
 });
 

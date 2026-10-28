@@ -48,12 +48,13 @@ import { revalidateSite } from "@/pipeline/revalidate";
 //     Read-only: builds the whole history in memory from the stored lists, each
 //     hour at its live run's start, and says what it built and how long it took.
 //
-//   npm run replay -- rebuild --threshold 0.86 --in-memory --swap-at 14:30 --yes
+//   npm run replay -- rebuild --threshold 0.86 --in-memory --swap-at 14:30 --yes [--accept-loss]
 //     The same build; then, at that time (UTC, after the hour's catch-up tries),
 //     it adds the hours stored since and swaps the result into
 //     SESSION_DATABASE_URL in one transaction, between two hourly runs, so no
 //     hour is missed. With SITE_URL and REVALIDATE_SECRET set it refreshes the
-//     site's cache after the swap.
+//     site's cache after the swap. --accept-loss lets it drop derived hours
+//     older than the oldest stored list, which a rebuild can no longer redo.
 
 function option(argv: readonly string[], name: string): string | undefined {
   const index = argv.indexOf(`--${name}`);
@@ -137,9 +138,14 @@ async function rebuildInMemory(argv: readonly string[], threshold: number) {
   const started = Date.now();
   const log = (line: string) => console.log(`rebuild: ${new Date().toISOString().slice(11, 19)} ${line}`);
   try {
+    // Once the oldest stored lists are purged (28 days), a rebuild can't reach
+    // back as far as the derived history does. --accept-loss lets it drop those
+    // first hours, which the plan of 2026-10-21 accepts for the first two days.
     const check = await rebuildCheck(live.db);
     if (!check.safe) {
-      throw new Error(`refusing: derived data goes back to ${check.oldestDerived?.toISOString()} but stored lists only to ${check.oldestList?.toISOString()}`);
+      const lost = `derived history from ${check.oldestDerived?.toISOString()} to ${check.oldestList?.toISOString()}`;
+      if (!argv.includes("--accept-loss")) throw new Error(`refusing: the stored lists no longer cover the ${lost}; add --accept-loss to drop it`);
+      log(`the ${lost} will be dropped (--accept-loss)`);
     }
     const embedder = memoEmbedder(await createEmbedder());
     const options = { threshold, embedder, blocklist: loadBlocklist(), categorize: loadCategorizer(log) };
