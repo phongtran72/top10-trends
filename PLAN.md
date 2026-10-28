@@ -403,6 +403,11 @@ Outside items are linked to topics with the same embedding model. Each source is
 - **No rule beats the majority answer.** The Kaplan–Meier median of the time left matches it on each list: Google and Bluesky trends are gone within the hour, and the others stay. That majority answer is the bar.
 - **Rules learned in the daytime miss the evening,** so lifespan models need hour of day as a feature.
 - **The breakout rule can't be scored until 6 hours of every list follow a forecast hour.**
+- **Scored on two held-out weeks under r7** (2026-10-28, 2026-10-14 03:07 to 10-28 02:08 UTC). These are the bars for the models (5.6), which re-score the same rules on their own held-out weeks under r8:
+  - *Lifespan per list:* a Bluesky topic's age beats the more common answer by 19, 9 and 5 points at 1, 2 and 3 hours. Hacker News and Reddit gain 6 and 4 points at 3 hours. Elsewhere the more common answer is the bar.
+  - *Breakout within 6 hours* (1.9% of story-hours): the best simple rule, "at position 4 to 6 now", is right 17% of the time against a 60% target, and PLAN.md's rule 19% but on only 22 of 189 breakout stories. A right alert comes a median of 1 hour early.
+  - *Spread to a second platform:* the best rule is right 4% of the time.
+  - *Time left in the top 10:* the median for the topic's position (3, 2 or 1 hours) is off by 1.9 hours on average.
 
 **A language-model forecaster as a feature: moved** (2026-10-01). The experiment planned here as task 5.13 asked OpenForecaster-8B, with plain Qwen3.5-9B as a control, whether a news topic would have major new developments in 3 days, and added that probability to the lifespan model. Trend Forecaster now runs it, on the same GPU and with the same questions-by-time scoring. If its probability helps, the pipeline can later import it as a nightly feature file, never through a paid API.
 
