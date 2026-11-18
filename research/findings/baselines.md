@@ -122,7 +122,7 @@ The first two weeks under one set of ranking rules: r7 ran from 2026-10-14 03:07
 
 **Time left in the combined top 10** (learned on week 1, scored on 1,635 week-2 rows with a known answer; 43 more are censored): the training median of 2 hours is off by 2.0 hours on average, the median for the topic's position (3, 2 and 1 hours, as on r6) by 1.9, and "one more hour" by 2.3. 64% are still there an hour later, 43% two hours later, 27% three and 11% six: a little longer than on r6.
 
-**What this closes:** 5.5 is scored on two held-out weeks under one set of rules, with precision, lead time and lifespan error. The models (5.6) are planned to train on r8 hours, so 5.6 re-scores these rules on its own held-out weeks. r8 isn't live yet: the 2026-10-29 rebuild stopped before its swap and wrote nothing, so r7 carries on. The r7 hours are saved locally by `topnews.live_copy` before any rebuild.
+**What this closes:** 5.5 is scored on two held-out weeks under one set of rules, with precision, lead time and lifespan error. The models (5.6) are planned to train on r8 hours, so 5.6 re-scores these rules on its own held-out weeks. r8 went live with the 2026-11-18 22:07 UTC run, with no rebuild: the 2026-10-29 rebuild had stopped before its swap, and the owner then chose to switch without one. r7's live hours (2026-10-14 03:07 to 11-18 21:08 UTC) stay in the database.
 
 ## Limits
 
