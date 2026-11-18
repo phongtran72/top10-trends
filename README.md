@@ -56,7 +56,7 @@ Every list links back to its source. Stored items are deleted after 28 days.
 | [Bluesky](https://bsky.app) | Trending topics | Bluesky's public API |
 | [Mastodon](https://mastodon.social/explore/tags) | Trending hashtags on mastodon.social | Mastodon's public API |
 | [YouTube](https://www.youtube.com) | Most popular videos in the US, UK, Canada and Australia | [YouTube Data API](https://developers.google.com/youtube/v3/docs/videos/list); never kept longer than 28 days or in the permanent history |
-| [Reddit](https://www.reddit.com/r/popular/) | Post titles from r/popular | Its public Atom feed |
+| [Reddit](https://www.reddit.com/r/popular/) | Post titles from r/popular, until 2026-11-17 | Its public Atom feed, which Reddit ended in November 2026; off since |
 | [Twitch](https://www.twitch.tv/directory) | Top games and categories | [Twitch Helix API](https://dev.twitch.tv/docs/api/reference/#get-top-games) |
 | [Hacker News](https://news.ycombinator.com) | Top stories | The [Hacker News API](https://github.com/HackerNews/API) |
 | [TikTok](https://www.tiktok.com) | Top US hashtags of the week (shown on its page, not counted in the combined list) | An [Apify](https://apify.com) actor, once a day |

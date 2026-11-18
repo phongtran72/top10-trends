@@ -46,7 +46,7 @@ TikTok's actor also returns each hashtag's 7-day daily popularity curve (0–100
 | --- | --- | --- | --- | --- | --- |
 | 2026-09-30 22:07 | X | First pipeline run (Worldwide and US) | Hourly at :07 | 20 trends per region | Live |
 | 2026-10-04 06:07 | Google Trends, YouTube | UK, Canada and Australia feeds added beside the US one | Hourly at :07 | 10 trends and 25 videos per country | Live |
-| 2026-10-01 12:07 | Reddit | First pipeline run (r/popular's public feed) | Hourly at :07 | 25 posts | Live |
+| 2026-10-01 12:07 | Reddit | First pipeline run (r/popular's public feed) | Hourly at :07 | 25 posts | Off since 2026-11-18: the last list was at 17:07 UTC on 2026-11-17, then Reddit ended its public feeds (task 4.11) |
 | 2026-10-01 06:00 | TikTok | First scheduled run of data_xplorer/tiktok-trends (test runs on 2026-09-30 21:22 with 15 hashtags and 21:47 with 30) | Daily at 06:00 | 30 US hashtags | 7 days |
 | 2026-10-01 07:00 | Pinterest | First scheduled run of automation-lab/pinterest-trends-scraper (test run on 2026-09-30 21:55) | Mondays and Thursdays at 07:00 | 25 growing US keywords | 30 days |
 | 2026-10-01 07:23 (from 2026-10-05) | Pinterest | The first scheduled run, at exactly 07:00 on 2026-10-01, failed: Pinterest rate-limited it (HTTP 429). Moved off the hour; lists until 2026-10-05 come from the 2026-09-30 test run | Mondays and Thursdays at 07:23 | 25 growing US keywords | 30 days |
@@ -276,7 +276,7 @@ The source cadence log (Data sources) has every change with its time: cut analys
 
 Between refreshes the same list repeats in every hourly fetch, so those sources' hour-to-hour changes aren't signal. Instagram's `posts` metric is an all-time media count, not trending volume, so it isn't momentum either. X can have `skipped` runs with the reason `daily cap`: those hours have no X ranks, not low ones.
 
-Reddit joined on 2026-10-01 as a corroborating source, with its first list in the 12:07 UTC run: the 25 hot posts of r/popular, read every hour from its public feed. It has no metric, and research follows a post by its url, which holds the post id. As with every source that joins late, its first list is censored: what it showed before then is unknown.
+Reddit joined on 2026-10-01 as a corroborating source, with its first list in the 12:07 UTC run: the 25 hot posts of r/popular, read every hour from its public feed. It has no metric, and research follows a post by its url, which holds the post id. As with every source that joins late, its first list is censored: what it showed before then is unknown. Reddit ended its public RSS feeds in November 2026: from the 18:07 UTC run on 2026-11-17 every feed answered 404 "Not Found" (r/popular, r/all, r/worldnews and the front page alike; third-party reports date the shutdown to 2026-11-13), so Reddit is off from 2026-11-18 (`DISABLED_SOURCES=reddit`, task 4.11). Its last list is censored the same way at the other end.
 
 **What the lists are** (RQ5 first look, 2026-09-30, `research/findings/rq5-rhythms.md`):
 - **Google Trends:** its feed is the 10 *newest* US trends, newest first, not the 10 biggest. Its rank is age, and a trend leaves the feed when 10 newer ones start, which takes under an hour on a busy afternoon. Since task 2.12 the combined score and snapshots rank Google over a 3-hour window by searches (Ranking › Google Trends window), while `trend_items` keeps the feed's own order. Two consequences for research:
