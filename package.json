@@ -15,6 +15,7 @@
     "pipeline": "tsx pipeline/run.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
+    "backfill-apify": "tsx scripts/backfill-apify.ts",
     "eval": "tsx scripts/eval.ts",
     "replay": "tsx scripts/replay.ts"
   },

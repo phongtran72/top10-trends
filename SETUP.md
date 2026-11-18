@@ -68,9 +68,9 @@ Hobby is for personal, non-commercial use. Adding ads or sponsors means moving t
 
 In the repo: **Settings › Secrets and variables › Actions**. Add each value from the table below under **Secrets** or **Variables** as listed. For `REVALIDATE_SECRET`, generate a random string of 32 or more characters and use the same value in Vercel. To pause a source without a code change, list its id in the `DISABLED_SOURCES` variable.
 
-## 9. Reddit (nothing to set up)
+## 9. Reddit (off since 2026-11-18)
 
-Reddit refused the Data API request on 2026-10-01, so the collector reads r/popular's public Atom feed, which needs no account, key or variable. To turn Reddit off, add `reddit` to `DISABLED_SOURCES`. If Reddit's [Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy) approval ever comes through, the API would add scores and NSFW flags.
+Reddit refused the Data API request on 2026-10-01, so the collector read r/popular's public Atom feed, which needs no account, key or variable. Reddit ended its public RSS feeds in November 2026: from the 18:07 UTC run on 2026-11-17 every feed answered 404 "Not Found" (r/popular, r/all, r/worldnews and the front page alike; third-party reports date the shutdown to 2026-11-13), so Reddit is off from 2026-11-18 (`DISABLED_SOURCES=reddit`, task 4.11). The GitHub variable `DISABLED_SOURCES` holds `reddit`; removing it turns the collector back on if a feed ever returns. If Reddit's [Responsible Builder Policy](https://support.reddithelp.com/hc/en-us/articles/42728983564564-Responsible-Builder-Policy) approval ever comes through, the API would add scores and NSFW flags.
 
 ## 10. X (open the account in week 1; add in phase 3)
 

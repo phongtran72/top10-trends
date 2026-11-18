@@ -31,7 +31,7 @@ config/               ranking.ts (weights, thresholds, caps), costs.ts, blocklis
 scripts/              one-off tools such as eval.ts
 research/             phase 5: Python notebooks, findings/ write-ups, requirements (never imported by the site or pipeline)
 worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.json
-.github/workflows/    ci.yml, collect.yml, migrate.yml, deploy-worker.yml
+.github/workflows/    ci.yml, collect.yml, migrate.yml, deploy-worker.yml, eval.yml, backfill-apify.yml
 ```
 
 ## Commands
@@ -41,6 +41,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 - `npm run pipeline`: full run against `SESSION_DATABASE_URL`.
 - `npm test`: unit tests. Tests never touch the network; they use fixtures.
 - `npm run db:generate` and `npm run db:migrate`: create and apply Drizzle migrations (against `SESSION_DATABASE_URL`).
+- `npm run backfill-apify -- --from 2026-11-12T09:00Z --to 2026-11-18T21:00Z [--write]`: recover the lists TikTok, Instagram and Pinterest missed when their fetches failed with Apify's 401, from the runs Apify still keeps (about 10 days). Run it from the manual `backfill-apify` workflow, which has the token; without `--write` it only prints (task 4.12).
 - `npm run eval -- --hours 5`: print the combined list and its clusters for 5 random past runs (from phase 2).
 - `npm run replay -- tune`: replay the stored lists at several matching thresholds in memory (read-only; `--no-age-limit` and `--no-name-match` turn a rule off to compare). `npm run replay -- rebuild --threshold X --yes` rebuilds topics, rankings and snapshots in the database from stored lists; it deletes derived data first, so confirm with the human before running it against production. `--in-memory --rehearse` builds the whole history in memory and writes nothing; `--in-memory --swap-at HH:MM --yes` builds it, then swaps it in at that UTC time in one transaction, between two hourly runs.
 
@@ -71,7 +72,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 - If nextjs.org is blocked from a cloud session, use the docs bundled in the installed package (`node_modules/next/dist/docs/`).
 - Cloud sessions reach only allowed hosts. When a request is blocked, name the host so the human can allow it (SETUP.md §1).
 - Pushing `.github/workflows/*` from a cloud session can be refused for lack of workflow permission. Commit workflow files separately; if the push is refused, move them to `ci/workflows/` and ask the human to create each file through GitHub's web editor.
-- Reddit refused Data API access (2026-10-01), so the collector reads r/popular's public Atom feed with the normal collector User-Agent: titles and post ids only, no scores or NSFW flags. The XML parser ignores attributes, so the post link is built from the entry's `id`, not its `<link href>`.
+- Reddit refused Data API access (2026-10-01), so the collector read r/popular's public Atom feed with the normal collector User-Agent: titles and post ids only, no scores or NSFW flags. Reddit ended its public feeds in November 2026 (every feed 404 since 2026-11-17), so Reddit is off (`DISABLED_SOURCES=reddit`, task 4.11); the collector stays in case a feed returns. The XML parser ignores attributes, so the post link is built from the entry's `id`, not its `<link href>`.
 - Bluesky's trends endpoints are "unspecced": `link` is a relative path, `status` is free text (seen: `trending`, `saturating`, `cooling`, `stale`) and `topic` is an opaque id. Validate with zod so a schema change fails only that source.
 - YouTube's `chart=mostPopular` has no worldwide option and, since July 2025, draws from the music, movies and gaming charts.
 - Google Trends' "Trending now" RSS is per country with no worldwide feed, and each item's `<link>` is only the feed URL. It lists the 10 newest trends, not the biggest, so the pipeline, the platform page and the dashboard rank its last 3 hours by approximate traffic (`lib/window.ts`, PLAN.md › Ranking › Google Trends window).
