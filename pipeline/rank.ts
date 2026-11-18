@@ -5,7 +5,7 @@ import { embeddingText, type Embedder } from "@/lib/embed";
 import { describeError } from "@/lib/errors";
 import { plainWords, prettyLabel } from "@/lib/text";
 import { mergeWindows, rankWindow, WINDOWED_SOURCES, type MergedPlace } from "@/lib/window";
-import type { ListResult } from "./collect";
+import { storedMatchText, type ListResult } from "./collect";
 import type { Db } from "./db";
 import { categorizeNewTopics, type CategoryOutcome, type Categorizer } from "./category";
 import { filterItems, type Dropped } from "./filter";
@@ -108,9 +108,12 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
   // Unscored sources (TikTok) keep their own page list but aren't matched to topics.
   const matchable = keptByList.filter(({ list }) => !UNSCORED_SOURCES.has(list.source.id)).flatMap((k) => k.kept);
   // A run written as one word in this run's news (a brand like "Flydubai") stays whole in hashtags.
-  const keep = plainWords(matchable.flatMap((item) => [item.title, ...(item.matchText ?? [])]));
+  // The extra text as it is stored (trimmed, at most 5 of 1,000 characters), so a
+  // replay of the stored lists embeds exactly what the live run embedded (r8).
+  const textOf = new Map(matchable.map((item) => [item, storedMatchText(item.matchText) ?? undefined]));
+  const keep = plainWords(matchable.flatMap((item) => [item.title, ...(textOf.get(item) ?? [])]));
   const regionOf = new Map(matchable.map((item) => [keyOf.get(item)!, item.region]));
-  const vectors = await input.embedder(matchable.map((item) => embeddingText(item, { keep })));
+  const vectors = await input.embedder(matchable.map((item) => embeddingText({ title: item.title, matchText: textOf.get(item) }, { keep })));
   const items: MatchItem[] = matchable.map((item, index) => {
     const source = getSource(item.source);
     return {
@@ -121,7 +124,7 @@ export async function rankRun(input: RankInput): Promise<RankOutcome> {
       rank: runRank.get(item) ?? item.rank,
       weight: source.weight,
       title: item.title,
-      matchText: item.matchText,
+      matchText: textOf.get(item),
       vector: vectors[index],
     };
   });

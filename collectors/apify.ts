@@ -6,7 +6,7 @@ import { requireKey } from "./util";
 // scrape them on schedules set up in Apify (SETUP.md §12). Their collectors
 // only read the latest successful run's dataset: free, fast and well inside
 // the 30-second budget, since the scraping itself happens on Apify's side.
-const API = "https://api.apify.com/v2";
+export const APIFY_API = "https://api.apify.com/v2";
 
 const LastRun = z.object({
   data: z.object({
@@ -24,11 +24,11 @@ export async function latestApifyItems(
   { http, env, now }: CollectorContext,
 ): Promise<unknown> {
   const headers = { Authorization: `Bearer ${requireKey(env, "APIFY_TOKEN")}` };
-  const run = LastRun.parse(await http.getJson(`${API}/acts/${actor}/runs/last?status=SUCCEEDED`, { headers }));
+  const run = LastRun.parse(await http.getJson(`${APIFY_API}/acts/${actor}/runs/last?status=SUCCEEDED`, { headers }));
   const finished = run.data.finishedAt ? new Date(run.data.finishedAt) : null;
   const ageHours = finished ? (now.getTime() - finished.getTime()) / 3_600_000 : Infinity;
   if (ageHours > options.maxAgeHours) {
     throw new Error(`latest ${options.label} run finished ${Math.round(ageHours)} h ago; check the Apify schedule`);
   }
-  return http.getJson(`${API}/datasets/${run.data.defaultDatasetId}/items?clean=true`, { headers });
+  return http.getJson(`${APIFY_API}/datasets/${run.data.defaultDatasetId}/items?clean=true`, { headers });
 }

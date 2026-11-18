@@ -214,6 +214,24 @@ The owner said yes to the classifier's own columns on 2026-10-14 (PLAN.md › *W
 
 **Still to do.** The web-app session's migration and pipeline step. Then step 4: add the category to the training table and keep it only if the forecasts improve.
 
+## c2: the same model on full-precision vectors (2026-10-18)
+
+**Why.** The pipeline's 8-bit embedding model gives different vectors on different CPUs. Of 617 topics seen in a single fetch from 12 to 18 October, only 27% have a live vector equal to the one this PC computes from the same stored text; the rest differ by a cosine of 0.97 to 0.99. GitHub's hosted runners are a mix of CPUs, and the 8-bit kernels take different paths on them. The full-precision (fp32) model gives the same vectors on any CPU, so the pipeline is moving to it. c1 was trained on 8-bit vectors and its loader refuses any other, so it is retrained as c2.
+
+**c1 on the live vectors, meanwhile.** On the 443 topics whose live vector differs, c1 gives the same answer 93% of the time; the rest are answer-or-not flips near its threshold, and whenever both answer the category is the same. On 229 topics the pipeline categorized, its category equals c1 on the live vector in every case.
+
+**c2.** The same recipe on the same 2,724 labeled trends, embedded with fp32 (`python -m topnews.category_model --version c2`). It chose the same settings: C = 10 with the platform, answering at 0.7.
+
+| | c1 (8-bit vectors) | c2 (fp32) |
+| --- | --- | --- |
+| Rolling score, checked trends with a stored text: answered / right | 67% / 96% (599) | 67% / 96% (611) |
+| Rolling score, all checked trends | 45% / 90% | 46% / 91% |
+| Week-later test, with a stored text (169) | 68% / 97% | 70% / 95% |
+| Week-later test, all (296) | 57% / 89% | 59% / 89% |
+
+- **The two are the same model in effect.** The differences are within the margin of a few hundred trends, and both meet the targets.
+- **c2 ships only together with the pipeline's switch to fp32.** Its file records the fp32 embedding, and the loader refuses a mismatch.
+
 ## What it means
 
 - **As first written (2026-10-01), before the stored text:** not ready to ship. It misses both targets, by 2 points on accuracy and 13 on coverage. The sections dated 2026-10-04 to 2026-10-14 above overtake this list.

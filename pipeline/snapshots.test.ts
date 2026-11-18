@@ -85,8 +85,8 @@ describe("X's two lists in a snapshot", () => {
 
 describe("snapshot metadata", () => {
   it("names the method that made a row", () => {
-    expect(algoVersion(0.86)).toBe("nomic-embed-text-v1.5.q8.384/t0.86/r7");
-    expect(algoVersion(0.8, true)).toBe("nomic-embed-text-v1.5.q8.384/t0.80/r7+replay");
+    expect(algoVersion(0.86)).toBe("nomic-embed-text-v1.5.fp32.384/t0.86/r8");
+    expect(algoVersion(0.8, true)).toBe("nomic-embed-text-v1.5.fp32.384/t0.80/r8+replay");
   });
 
   it("records each topic's news count, defaulting to 0", () => {

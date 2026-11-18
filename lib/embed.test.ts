@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cosine, createEmbedder, embeddingText, matryoshka, unitVector } from "./embed";
+import { cosine, createEmbedder, describeEmbedder, embeddingText, matryoshka, PROBE_TEXT, unitVector } from "./embed";
 
 describe("embeddingText", () => {
   it("joins the normalized title and up to two headlines", () => {
@@ -28,6 +28,22 @@ describe("matryoshka", () => {
     expect(a).toBeCloseTo(-0.9487, 4);
     expect(b).toBeCloseTo(-0.3162, 4);
     expect(matryoshka(Array.from({ length: 768 }, (_, i) => Math.sin(i)))).toHaveLength(384);
+  });
+});
+
+describe("describeEmbedder", () => {
+  it("names the machine and gives a fixed text's vector, so runs can be compared", async () => {
+    const asked: string[] = [];
+    const embed = async (texts: readonly string[]) => {
+      asked.push(...texts);
+      return [[0.1234564, -0.5, 0.25, 0.75]];
+    };
+    const line = await describeEmbedder(embed, "Test CPU 9000");
+    expect(asked).toEqual([PROBE_TEXT]);
+    expect(line).toMatch(/^embedder: \w+ on Test CPU 9000; probe [0-9a-f]{8} \(0\.123456, -0\.500000, 0\.250000\)$/);
+    // The same vector gives the same line; a vector one step away does not.
+    expect(await describeEmbedder(embed, "Test CPU 9000")).toBe(line);
+    expect(await describeEmbedder(async () => [[0.1234564, -0.5, 0.25, 0.7500001]], "Test CPU 9000")).not.toBe(line);
   });
 });
 

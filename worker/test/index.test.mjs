@@ -33,9 +33,20 @@ test("a failed run does not cover the hour", () => {
   assert.equal(hourCovered([run("15:07:36", "completed", "failure")], new Date(at("15:27:00"))), false);
 });
 
-test("a run still going covers the hour only while it is young", () => {
-  assert.equal(hourCovered([run("15:12:10", "in_progress")], new Date(at("15:17:00"))), true);
-  assert.equal(hourCovered([run("15:07:36", "queued")], new Date(at("15:17:00"))), false);
+test("a run that is queued or still going covers the hour, however long it has waited", () => {
+  // GitHub's incident of 2026-10-19: the 16:07 run didn't finish until 16:30.
+  assert.equal(hourCovered([run("16:07:31", "in_progress")], new Date(at("16:17:00"))), true);
+  assert.equal(hourCovered([run("16:07:31", "queued")], new Date(at("16:27:00"))), true);
+});
+
+test("a cancelled run does not cover the hour", () => {
+  assert.equal(hourCovered([run("16:07:31", "completed", "cancelled")], new Date(at("16:17:00"))), false);
+});
+
+test("a catch-up try starts nothing beside a run that is still queued", async () => {
+  const gh = github([run("16:07:31", "queued"), run("15:07:36", "completed", "success")]);
+  assert.equal(await onCron(CATCH_UP, at("16:17:00"), env, gh.fetcher), "covered");
+  assert.equal(gh.posts().length, 0);
 });
 
 test("the primary cron starts a run without reading the list", async () => {

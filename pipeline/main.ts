@@ -2,7 +2,7 @@ import { COLLECTORS } from "@/collectors/index";
 import { planSources, unknownSourceIds, type SourceId, type SourcePlan } from "@/collectors/registry";
 import type { Collector, Env, TrendItem } from "@/collectors/types";
 import { fetchRuns } from "@/db/schema";
-import { createEmbedder, type Embedder } from "@/lib/embed";
+import { createEmbedder, describeEmbedder, type Embedder } from "@/lib/embed";
 import { cleanEnv, pipelineEnv, type RawEnv } from "@/lib/env";
 import { describeError } from "@/lib/errors";
 import { createClaudeNamer } from "@/lib/claude";
@@ -113,6 +113,8 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
         categorize: (deps.loadCategorizer ?? loadCategorizer)(deps.log),
       });
       for (const line of formatRankOutcome(outcome)) deps.log(line);
+      // Which machine made this hour's vectors (a fixed text's vector and the CPU).
+      deps.log(await describeEmbedder(embedder).catch((error: unknown) => `embedder: probe failed: ${describeError(error)}`));
       return outcome.topTopicIds;
     } catch (error) {
       deps.log(`rank: failed: ${describeError(error)}`);

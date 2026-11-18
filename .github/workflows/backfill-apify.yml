@@ -1,0 +1,59 @@
+name: backfill-apify
+
+# Recovers the lists the Apify-backed sources (TikTok, Instagram, Pinterest)
+# missed while their fetches failed on our side, from the runs Apify still
+# keeps (task 4.12). Started by hand. Without "write" it only prints what it
+# would store; with it, each failed hour gets the list a live run would have
+# read then. It never touches topics or snapshots.
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: First hour to recover, UTC (for example 2026-11-12T09:00Z)
+        required: true
+        type: string
+      to:
+        description: End, not included, UTC (for example 2026-11-18T21:00Z)
+        required: true
+        type: string
+      write:
+        description: Store the recovered lists (otherwise print only)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# See collect.yml (task 4.10).
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+
+concurrency:
+  group: backfill-apify
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Recover missed lists
+        env:
+          SESSION_DATABASE_URL: ${{ secrets.SESSION_DATABASE_URL }}
+          APIFY_TOKEN: ${{ secrets.APIFY_TOKEN }}
+          COLLECTOR_USER_AGENT: ${{ vars.COLLECTOR_USER_AGENT }}
+          FROM: ${{ inputs.from }}
+          TO: ${{ inputs.to }}
+          WRITE: ${{ inputs.write }}
+        run: |
+          if [ "$WRITE" = "true" ]; then
+            npm run backfill-apify -- --from "$FROM" --to "$TO" --write
+          else
+            npm run backfill-apify -- --from "$FROM" --to "$TO"
+          fi
