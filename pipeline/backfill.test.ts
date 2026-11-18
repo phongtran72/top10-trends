@@ -94,6 +94,8 @@ describe("recovering a failed hour", () => {
       { source: "instagram", region: "global", rank: 1, title: "invented topic one", url: "https://www.instagram.com/popular/invented-topic-one/" },
       { source: "instagram", region: "global", rank: 2, title: "invented topic two", url: "https://www.instagram.com/popular/invented-topic-two/" },
     ];
+    expect(await recoverHour(t.db, hours[0], [])).toBe(0);
+    expect(await missedHours(t.db, at("2026-11-12T00:00:00Z"), at("2026-11-19T00:00:00Z"))).toHaveLength(1);
     expect(await recoverHour(t.db, hours[0], items)).toBe(2);
     expect(await recoverHour(t.db, hours[0], items)).toBe(0);
 

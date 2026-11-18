@@ -121,16 +121,18 @@ export async function missedHours(db: Db, from: Date, to: Date): Promise<MissedH
 }
 
 // Stores a recovered list under the failed hour's own fetch_runs row, with
-// that hour's time, and appends the note. Returns the items stored: 0 when the
-// row is no longer a failed, unrecovered one, so a second pass changes nothing.
+// that hour's time, and appends the note. Returns the items stored: 0 for an
+// empty list (the row is left as it is) and when the row is no longer a
+// failed, unrecovered one, so a second pass changes nothing.
 export async function recoverHour(db: Db, hour: MissedHour, items: readonly TrendItem[]): Promise<number> {
+  if (items.length === 0) return 0;
   return db.transaction(async (tx) => {
     const [row] = await tx
       .update(fetchRuns)
       .set({ itemCount: items.length, error: `${hour.error}${RECOVERED_NOTE}` })
       .where(and(eq(fetchRuns.id, hour.runId), eq(fetchRuns.status, "error"), notLike(fetchRuns.error, `%${RECOVERED_NOTE}%`)))
       .returning({ id: fetchRuns.id });
-    if (!row || items.length === 0) return 0;
+    if (!row) return 0;
     await tx.insert(trendItems).values(items.map((item) => itemRow(item, hour.runId, hour.finishedAt)));
     return items.length;
   });
