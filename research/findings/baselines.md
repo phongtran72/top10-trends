@@ -1,6 +1,6 @@
 # Baselines (task 5.5)
 
-**Status: scored on two weeks, and on the live training table (2026-10-13, below). As first written (2026-10-01):** These are the rules any forecast model has to beat. The lifespan rules are scored; the breakout rule needs more data first.
+**Status: scored on two held-out weeks under r7, one set of rules (2026-10-28, below); before that on two weeks of lists and the r6 table (2026-10-13). As first written (2026-10-01):** These are the rules any forecast model has to beat. The lifespan rules are scored; the breakout rule needs more data first.
 - Task 5.5's version is scored on the latest 2 weeks held out, once the dataset (5.2) has them.
 - Re-run `notebooks/07_baselines.ipynb` as the data grows.
 
@@ -81,6 +81,48 @@ Stored lists from 2026-09-30 to 2026-10-13 UTC. The rules learn on the first nin
 - **The best simple rule is right about a quarter of the time,** against a target of 60%. A model has a long way to go, and the bar it has to beat is "position 4 to 6", not the rule in the plan.
 
 **Time left in the combined top 10** (same table, 521 test rows with a known answer): always answering the training median of 2 hours is off by 1.6 hours on average; the median for the topic's position (3 hours in the top 3, 2 at 4 to 6, 1 at 7 to 10) by 1.5; "one more hour" by 1.8. 61% are still there an hour later, 40% two hours later, 24% three and 8% six.
+
+## Re-run on two weeks of r7 (2026-10-28)
+
+The first two weeks under one set of ranking rules: r7 ran from 2026-10-14 03:07 UTC with no missed hour, 338 runs to 2026-10-28 02:08 UTC.
+
+**Lifespan per list.** Learned on the stored lists before r7 (2026-09-30 11:32 to 10-14 03:00 UTC) and scored on r7's two weeks: 36,097 forecasts. The lists don't depend on the ranking rules, so the earlier lists are fair training data.
+
+| List | k | More common answer | Median time left at its age | As long again |
+| --- | --- | --- | --- | --- |
+| Bluesky | 1 h | 51% | **70%** | 68% |
+| Bluesky | 2 h | 65% | **73%** | 73% |
+| Bluesky | 3 h | 73% | **78%** | 78% |
+| Hacker News | 3 h | 51% | **57%** | 56% |
+| Reddit | 3 h | 62% | **65%** | 64% |
+| X, US | 3 h | 71% | 70% | 62% |
+| X, worldwide | 3 h | 81% | 81% | 74% |
+| Mastodon | 3 h | 83% | 83% | 70% |
+
+- **The Bluesky result holds on held-out weeks:** a topic's age beats the more common answer by 19, 9 and 5 points at 1, 2 and 3 hours (9, 17 and 10 points when one missed fetch is allowed).
+- **Hacker News and Reddit gain a little at 3 hours** (6 and 4 points). X, Mastodon, Twitch and Google's feeds don't: there the more common answer is still the bar. A US Google trend is gone an hour later 95% of the time.
+- On the stays that ended, "one more hour" has the smallest error in hours on every list, but that score favours short stays (*How to score a lifespan fairly*).
+
+**Breakout within 6 hours, on the r7 training table.** US view, one row per story and hour (a story carries on across the 48-hour topic limit): 31,442 rows, 4,594 stories. 1.9% of the rows with a known answer break out (554 rows, 189 stories). The rules learn nothing, so they're scored on both weeks:
+
+| Rule | Alerts | Right | Of breakout rows, caught | Breakout stories warned | Median lead |
+| --- | --- | --- | --- | --- | --- |
+| On 2 platforms now, first seen under 2 hours ago (PLAN.md's rule) | 172 | 19% | 6% | 22 of 189 | 1 h |
+| On 2 platforms now | 913 | 15% | 25% | 47 | 2 h |
+| At position 4 to 6 now | 917 | 17% | 29% | 99 | 1 h |
+| At position 4 to 10 now | 2,209 | 12% | 47% | 141 | 1 h |
+| Climbed in the last hour, in the top 20 | 1,681 | 7% | 23% | | |
+
+- **The best simple rule is right about one time in six,** against a 60% target. The 27% that "position 4 to 6" scored on r6 came from 145 alerts over three days; on 917 alerts over two weeks it's 17%. Week 2 alone (from 2026-10-21 03:00 UTC) gives the same order, one or two points lower.
+- **PLAN.md's rule is now as precise as the best one** (19%, against 4% on r6), but it fires rarely and warns only 22 of the 189 stories that broke out.
+- **A right alert comes about one run early:** the median lead is 1 hour (2 for "on 2 platforms now"), the mean 1.6 to 2.3 hours. A model's lead time is judged against that.
+- **The classifier's category alone says nothing:** rows with one break out at 1.7%, rows without at 2.0%.
+
+**Spread to a second platform within 6 hours** (week 2, 1.9% of the rows on one platform): the best rule, "in the top 10 now", is right 4% of the time and catches 17%. "On X now" and "first seen under an hour ago" do worse than the base rate. Spread is harder to call than breakout.
+
+**Time left in the combined top 10** (learned on week 1, scored on 1,635 week-2 rows with a known answer; 43 more are censored): the training median of 2 hours is off by 2.0 hours on average, the median for the topic's position (3, 2 and 1 hours, as on r6) by 1.9, and "one more hour" by 2.3. 64% are still there an hour later, 43% two hours later, 27% three and 11% six: a little longer than on r6.
+
+**What this closes:** 5.5 is scored on two held-out weeks under one set of rules, with precision, lead time and lifespan error. The models (5.6) are planned to train on r8 hours, so 5.6 re-scores these rules on its own held-out weeks. r8 went live with the 2026-11-18 22:07 UTC run, with no rebuild: the 2026-10-29 rebuild had stopped before its swap, and the owner then chose to switch without one. r7's live hours (2026-10-14 03:07 to 11-18 21:08 UTC) stay in the database.
 
 ## Limits
 
