@@ -23,6 +23,16 @@ import { nameKey } from "@/lib/text";
 // so the same name used to become two topics.
 // Pure: persistence lives in pipeline/topics.ts.
 
+const HOUR_MS = 60 * 60 * 1000;
+
+// The start of the clock hour `at` falls in (UTC). Ages and the topic window
+// are counted in whole hours from there (r8): counted to the second, whether a
+// topic was still open in the run two days on came down to a few seconds of
+// start time, and a replay could decide differently from the live run.
+export function hourStart(at: Date): number {
+  return Math.floor(at.getTime() / HOUR_MS) * HOUR_MS;
+}
+
 export interface MatchItem {
   key: number; // stable id for the caller (the trend_items id in a full run)
   sourceId: SourceId;
@@ -98,7 +108,8 @@ export function matchItems(items: readonly MatchItem[], existing: readonly Topic
     topic.names?.add(name);
     if (!byName.has(name)) byName.set(name, topic);
   };
-  const oldest = options.now.getTime() - (options.maxTopicAgeHours ?? MAX_TOPIC_AGE_HOURS) * 60 * 60 * 1000;
+  // Open while the run's clock hour is at most 48 hours after the topic's first.
+  const oldest = hourStart(options.now) - (options.maxTopicAgeHours ?? MAX_TOPIC_AGE_HOURS) * HOUR_MS;
   const open = (topic: Topic) => topic.firstSeen.getTime() >= oldest;
   const oldestFirst = [...topics].sort((a, b) => a.firstSeen.getTime() - b.firstSeen.getTime() || (a.id ?? Infinity) - (b.id ?? Infinity));
   for (const topic of oldestFirst) if (open(topic)) for (const name of [...(topic.names ?? [])]) claim(name, topic);

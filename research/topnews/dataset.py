@@ -141,12 +141,13 @@ def name_key(text: str) -> str:
     return re.sub(r"[\W_]+", "", str(text).lower())
 
 
-def story_roots(topics: pd.DataFrame) -> pd.Series:
+def story_roots(topics: pd.DataFrame, infer: bool = True) -> pd.Series:
     """For each topic id, the first topic of its story: follow `continues_topic_id` back to a topic that
     continues none. For r7 topics first seen before the column was written, the link is inferred as the
     pipeline makes it by name: the newest topic with the same name that was 48 hours old or more when the
     new one started, and still seen in the 48 hours before. (The pipeline also links by centroid; research
-    infers by name only, for those two days.)"""
+    infers by name only, for those two days.) `infer=False` takes the recorded links alone, as for a
+    rebuilt history, where every link was recorded."""
     ids = topics["id"].to_numpy()
     link = pd.Series(np.nan, index=ids, dtype="float64")
     if "continues_topic_id" in topics:
@@ -155,7 +156,7 @@ def story_roots(topics: pd.DataFrame) -> pd.Series:
     last = pd.to_datetime(topics.get("last_seen", topics["first_seen"]), utc=True).dt.tz_localize(None).to_numpy()
     keys = topics["label"].map(name_key).to_numpy() if "label" in topics else np.array([""] * len(topics))
     window = (first >= R7_START.tz_localize(None).to_datetime64()) & (first < LINKS_FROM.tz_localize(None).to_datetime64())
-    window &= "label" in topics
+    window &= infer and "label" in topics
     by_key: dict[str, list[int]] = {}
     for i in np.argsort(first, kind="stable"):
         by_key.setdefault(keys[i], []).append(i)
@@ -349,7 +350,7 @@ def build(
     The table's `region` column says which view it was built from; `topic_id` is a story's first topic."""
     picked, chosen = select_family(snaps, family_name)
     picked, _ = select_view(picked, view)
-    roots = story_roots(topics)
+    roots = story_roots(topics, infer=chosen.endswith("/r7"))  # only the live r7 days lack recorded links
     picked = merge_stories(picked, roots)
     table = features(picked, topics).merge(labels(picked), on=KEY, how="left")
     table["model_category"] = story_categories(table, topics, roots).to_numpy()
