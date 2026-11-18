@@ -99,9 +99,28 @@ export function storedMatchText(texts: readonly string[] | undefined): string[] 
   return kept.length > 0 ? kept : null;
 }
 
+// One trend_items row for an item of a saved list. Only the columns in
+// PLAN.md › Data model are stored.
+export function itemRow(item: TrendItem, runId: number, fetchedAt: Date) {
+  return {
+    runId,
+    sourceId: item.source,
+    region: item.region,
+    rank: item.rank,
+    title: item.title.slice(0, 500),
+    url: item.url,
+    metricValue: item.metricValue ?? null,
+    metricLabel: item.metricLabel ?? null,
+    // Only Bluesky sets flags.status. Lists are saved before the filters, so the label is kept for
+    // every item, including the stale ones the rank step drops.
+    status: item.flags?.status?.trim().toLowerCase().slice(0, 32) || null,
+    matchText: storedMatchText(item.matchText),
+    fetchedAt,
+  };
+}
+
 // One fetch_runs row per source and region, plus that list's trend_items in
-// one batch. Only the columns in PLAN.md › Data model are stored. Returns each
-// saved item's trend_items id, for topic matching.
+// one batch. Returns each saved item's trend_items id, for topic matching.
 export async function writeResults(db: Db, results: readonly ListResult[]): Promise<Map<TrendItem, number>> {
   const ids = new Map<TrendItem, number>();
   for (const result of results) {
@@ -121,23 +140,7 @@ export async function writeResults(db: Db, results: readonly ListResult[]): Prom
       if (result.status !== "ok" || result.items.length === 0) return;
       const inserted = await tx
         .insert(trendItems)
-        .values(
-          result.items.map((item) => ({
-            runId: run.id,
-            sourceId: item.source,
-            region: item.region,
-            rank: item.rank,
-            title: item.title.slice(0, 500),
-            url: item.url,
-            metricValue: item.metricValue ?? null,
-            metricLabel: item.metricLabel ?? null,
-            // Only Bluesky sets flags.status. Lists are saved before the filters, so the label is kept for
-            // every item, including the stale ones the rank step drops.
-            status: item.flags?.status?.trim().toLowerCase().slice(0, 32) || null,
-            matchText: storedMatchText(item.matchText),
-            fetchedAt: result.finishedAt,
-          })),
-        )
+        .values(result.items.map((item) => itemRow(item, run.id, result.finishedAt)))
         .returning({ id: trendItems.id, rank: trendItems.rank });
       // Ranks are unique within a list.
       const idByRank = new Map(inserted.map((row) => [row.rank, row.id]));

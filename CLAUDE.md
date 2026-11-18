@@ -31,7 +31,7 @@ config/               ranking.ts (weights, thresholds, caps), costs.ts, blocklis
 scripts/              one-off tools such as eval.ts
 research/             phase 5: Python notebooks, findings/ write-ups, requirements (never imported by the site or pipeline)
 worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.json
-.github/workflows/    ci.yml, collect.yml, migrate.yml, deploy-worker.yml
+.github/workflows/    ci.yml, collect.yml, migrate.yml, deploy-worker.yml, eval.yml, backfill-apify.yml
 ```
 
 ## Commands
@@ -41,6 +41,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 - `npm run pipeline`: full run against `SESSION_DATABASE_URL`.
 - `npm test`: unit tests. Tests never touch the network; they use fixtures.
 - `npm run db:generate` and `npm run db:migrate`: create and apply Drizzle migrations (against `SESSION_DATABASE_URL`).
+- `npm run backfill-apify -- --from 2026-11-12T09:00Z --to 2026-11-18T21:00Z [--write]`: recover the lists TikTok, Instagram and Pinterest missed when their fetches failed with Apify's 401, from the runs Apify still keeps (about 10 days). Run it from the manual `backfill-apify` workflow, which has the token; without `--write` it only prints (task 4.12).
 - `npm run eval -- --hours 5`: print the combined list and its clusters for 5 random past runs (from phase 2).
 - `npm run replay -- tune`: replay the stored lists at several matching thresholds in memory (read-only; `--no-age-limit` and `--no-name-match` turn a rule off to compare). `npm run replay -- rebuild --threshold X --yes` rebuilds topics, rankings and snapshots in the database from stored lists; it deletes derived data first, so confirm with the human before running it against production. `--in-memory --rehearse` builds the whole history in memory and writes nothing; `--in-memory --swap-at HH:MM --yes` builds it, then swaps it in at that UTC time in one transaction, between two hourly runs.
 
