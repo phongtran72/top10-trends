@@ -14,6 +14,13 @@ on:
 permissions:
   contents: read
 
+# npm ci runs onnxruntime-node's install script, which on Linux downloads its
+# CUDA binaries from api.nuget.org. Everything here embeds on the CPU (whose
+# binaries ship in the package), and that download timed out in four hourly
+# runs in November, failing them (task 4.10).
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+
 jobs:
   eval:
     runs-on: ubuntu-latest
