@@ -172,6 +172,8 @@ def test_story_roots_follow_the_chain_and_infer_a_link_by_name_before_the_column
     assert roots.to_dict() == {1: 1, 2: 1, 3: 1, 4: 4, 5: 5, 6: 6, 7: 7}
     before_r7 = topics.assign(first_seen=topics["first_seen"] - pd.to_timedelta(30, unit="D"))
     assert dataset.story_roots(before_r7)[2] == 2  # no inference outside r7's first two days
+    assert dataset.story_roots(topics, infer=False)[2] == 2  # a rebuilt history's links are all recorded
+    assert dataset.story_roots(topics, infer=False)[3] == 2  # and are still followed
 
 
 def test_a_story_is_one_series_through_the_age_limit():

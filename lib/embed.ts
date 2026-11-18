@@ -13,7 +13,7 @@ import { normalize, type SplitOptions } from "@/lib/text";
 // are never stored (invariant 4); topic centroids are.
 
 export const EMBEDDING_MODEL = "nomic-ai/nomic-embed-text-v1.5";
-export const EMBEDDING_DTYPE = "q8"; // the 137 MB quantized weights
+export const EMBEDDING_DTYPE = "fp32"; // the 547 MB full-precision weights: the same vectors on every machine (r8; the 8-bit ones were not)
 // The model's 768 numbers cut to 384 (Matryoshka), which scored the same as
 // the full size and keeps topics.centroid at real[384].
 export const EMBEDDING_DIMENSIONS = 384;
@@ -31,11 +31,12 @@ export type Embedder = (texts: readonly string[]) => Promise<number[][]>;
 // about 0.2 s more per run.
 const BATCH = 1;
 
-export async function createEmbedder(): Promise<Embedder> {
+// `dtype` other than the pipeline's own is for comparisons in replays only.
+export async function createEmbedder(dtype: typeof EMBEDDING_DTYPE | "q8" = EMBEDDING_DTYPE): Promise<Embedder> {
   // Imported here so the website and the tests never load the model runtime.
   const { env, pipeline } = await import("@huggingface/transformers");
   env.cacheDir = MODEL_CACHE_DIR;
-  const extractor = await pipeline("feature-extraction", EMBEDDING_MODEL, { dtype: EMBEDDING_DTYPE });
+  const extractor = await pipeline("feature-extraction", EMBEDDING_MODEL, { dtype });
   return async (texts) => {
     const vectors: number[][] = [];
     for (let i = 0; i < texts.length; i += BATCH) {
