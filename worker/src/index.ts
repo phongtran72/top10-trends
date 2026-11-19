@@ -7,6 +7,18 @@ export interface Env {
 // The hourly start. The other crons in wrangler.toml are catch-up tries.
 export const PRIMARY_CRON = "7 * * * *";
 
+// Twice a day the last catch-up try also starts the `health` workflow (task
+// 4.13), which fails, and so emails the owner, when a list has been missing
+// for 6 hours or more. It reuses that cron rather than adding one: Workers Free
+// allows 5 cron triggers per account. The catch-up tries look only at collect's
+// runs, so a health run never covers or blocks an hour.
+export const HEALTH_CRON = "27 * * * *";
+export const HEALTH_HOURS_UTC: readonly number[] = [0, 12];
+
+export function healthDue(cron: string, scheduledTime: number): boolean {
+  return cron === HEALTH_CRON && HEALTH_HOURS_UTC.includes(new Date(scheduledTime).getUTCHours());
+}
+
 // The fields read from GitHub's list of workflow runs.
 export interface CollectRun {
   status: string | null;
@@ -14,8 +26,8 @@ export interface CollectRun {
   created_at: string;
 }
 
-function workflowUrl(env: Env): string {
-  return `https://api.github.com/repos/${env.GH_OWNER}/${env.GH_REPO}/actions/workflows/collect.yml`;
+function workflowUrl(env: Env, file = "collect.yml"): string {
+  return `https://api.github.com/repos/${env.GH_OWNER}/${env.GH_REPO}/actions/workflows/${file}`;
 }
 
 function headers(env: Env): Record<string, string> {
@@ -84,8 +96,45 @@ export async function onCron(cron: string, scheduledTime: number, env: Env, fetc
   return "dispatched";
 }
 
+// Starts one run of the `health` workflow on main.
+export async function onHealth(env: Env, fetcher: typeof fetch = fetch): Promise<"dispatched"> {
+  if (!env.GH_DISPATCH_TOKEN) {
+    throw new Error("GH_DISPATCH_TOKEN is not set; run the deploy-worker workflow (SETUP.md §6)");
+  }
+  const response = await fetcher(`${workflowUrl(env, "health.yml")}/dispatches`, {
+    method: "POST",
+    headers: { ...headers(env), "Content-Type": "application/json" },
+    body: JSON.stringify({ ref: "main" }),
+  });
+  if (!response.ok) {
+    const body = (await response.text()).slice(0, 300);
+    console.error(`health dispatch failed: ${response.status} ${body}`);
+    throw new Error(`health dispatch failed: ${response.status}`);
+  }
+  console.log("health dispatched");
+  return "dispatched";
+}
+
+// One cron firing: the collect start or catch-up try and, when it is due, the
+// health check. Neither stops the other; a failure in either fails the firing,
+// so it shows in the Worker's logs.
+export async function runCron(
+  cron: string,
+  scheduledTime: number,
+  env: Env,
+  fetcher: typeof fetch = fetch,
+): Promise<{ collect: "dispatched" | "covered"; health?: "dispatched" }> {
+  const [collect, health] = await Promise.allSettled([
+    onCron(cron, scheduledTime, env, fetcher),
+    healthDue(cron, scheduledTime) ? onHealth(env, fetcher) : Promise.resolve(undefined),
+  ]);
+  if (collect.status === "rejected") throw collect.reason;
+  if (health.status === "rejected") throw health.reason;
+  return health.value ? { collect: collect.value, health: health.value } : { collect: collect.value };
+}
+
 export default {
   async scheduled(controller, env) {
-    await onCron(controller.cron, controller.scheduledTime, env);
+    await runCron(controller.cron, controller.scheduledTime, env);
   },
 } satisfies ExportedHandler<Env>;

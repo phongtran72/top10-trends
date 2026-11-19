@@ -14,7 +14,7 @@ A personal, non-commercial website that shows the top 10 trending topics on each
 - Website: Next.js App Router, deployed on Vercel Hobby (personal, non-commercial use only).
 - Database: Postgres on Supabase Free, accessed with Drizzle ORM and the `postgres` (postgres-js) driver.
 - Pipeline: `pipeline/run.ts`, executed by GitHub Actions in `.github/workflows/collect.yml`, which has a `workflow_dispatch` trigger only (with a `dry_run` input).
-- Scheduler: a Cloudflare Workers Free cron in `worker/` calls GitHub's workflow-dispatch API once an hour, at minute 7; at minutes 17 and 27 it starts a catch-up run only when the hour has no good run. Never add a `schedule:` trigger to the workflow (GitHub delays or drops scheduled runs at busy times) and never use Vercel cron (Hobby runs crons at most once a day).
+- Scheduler: a Cloudflare Workers Free cron in `worker/` calls GitHub's workflow-dispatch API once an hour, at minute 7; at minutes 17 and 27 it starts a catch-up run only when the hour has no good run; at 00:27 and 12:27 UTC it also starts the `health` workflow, the missing-list alarm (task 4.13). Never add a `schedule:` trigger to the workflow (GitHub delays or drops scheduled runs at busy times) and never use Vercel cron (Hobby runs crons at most once a day).
 - Embeddings: `@huggingface/transformers` running `nomic-ai/nomic-embed-text-v1.5` (full precision, fp32, since `r8`: the 8-bit weights made different vectors on different machines; "clustering: " prefix, cut to 384 dimensions, English) inside the pipeline, one text at a time.
 - Tests: Vitest. TypeScript scripts run with tsx.
 - Research (phase 5): Python notebooks in `research/` (pandas, lifelines, statsmodels, LightGBM) for analysis and training only. They read Supabase through a read-only Postgres role. Production never runs Python: a trained model ships as a small JSON or ONNX file that the TypeScript pipeline loads. Exclude `research/` from the root tsconfig, ESLint and Vitest.
@@ -31,7 +31,7 @@ config/               ranking.ts (weights, thresholds, caps), costs.ts, blocklis
 scripts/              one-off tools such as eval.ts
 research/             phase 5: Python notebooks, findings/ write-ups, requirements (never imported by the site or pipeline)
 worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.json
-.github/workflows/    ci.yml, collect.yml, migrate.yml, deploy-worker.yml, eval.yml, backfill-apify.yml
+.github/workflows/    ci.yml, collect.yml, migrate.yml, deploy-worker.yml, eval.yml, backfill-apify.yml, health.yml
 ```
 
 ## Commands
@@ -42,6 +42,7 @@ worker/               Cloudflare Worker: src/index.ts, wrangler.toml, package.js
 - `npm test`: unit tests. Tests never touch the network; they use fixtures.
 - `npm run db:generate` and `npm run db:migrate`: create and apply Drizzle migrations (against `SESSION_DATABASE_URL`).
 - `npm run backfill-apify -- --from 2026-11-12T09:00Z --to 2026-11-18T21:00Z [--write]`: recover the lists TikTok, Instagram and Pinterest missed when their fetches failed with Apify's 401, from the runs Apify still keeps (about 10 days). Run it from the manual `backfill-apify` workflow, which has the token; without `--write` it only prints (task 4.12).
+- `npm run health`: the missing-list alarm (task 4.13): prints every list's state and exits 1 when one has had no stored list for 6 hours or more, or the hourly update has stopped. Read-only. The `health` workflow runs it twice a day, so GitHub emails the owner when it fails; `-- --test-alarm` fails on purpose to check the email.
 - `npm run eval -- --hours 5`: print the combined list and its clusters for 5 random past runs (from phase 2).
 - `npm run replay -- tune`: replay the stored lists at several matching thresholds in memory (read-only; `--no-age-limit` and `--no-name-match` turn a rule off to compare). `npm run replay -- rebuild --threshold X --yes` rebuilds topics, rankings and snapshots in the database from stored lists; it deletes derived data first, so confirm with the human before running it against production. `--in-memory --rehearse` builds the whole history in memory and writes nothing; `--in-memory --swap-at HH:MM --yes` builds it, then swaps it in at that UTC time in one transaction, between two hourly runs.
 
