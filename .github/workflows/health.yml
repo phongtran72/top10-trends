@@ -1,0 +1,48 @@
+name: health
+
+# The missing-list alarm (task 4.13). The Cloudflare Worker starts this twice a
+# day, at 00:27 and 12:27 UTC, with the owner's token. It fails when any list
+# has gone 6 hours or more without a stored list, or the hourly update has
+# stopped, and GitHub then emails the owner about the failed run (SETUP.md §6).
+# It never touches collect: the Worker's catch-up tries look only at collect's
+# own runs. Read-only. "test_alarm" fails on purpose, to check the email.
+on:
+  workflow_dispatch:
+    inputs:
+      test_alarm:
+        description: Fail on purpose, to check that GitHub's email arrives
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# See collect.yml (task 4.10).
+env:
+  ONNXRUNTIME_NODE_INSTALL: skip
+
+concurrency:
+  group: health
+  cancel-in-progress: false
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Check every list
+        env:
+          SESSION_DATABASE_URL: ${{ secrets.SESSION_DATABASE_URL }}
+          TEST_ALARM: ${{ inputs.test_alarm }}
+        run: |
+          if [ "$TEST_ALARM" = "true" ]; then
+            npm run health -- --test-alarm
+          else
+            npm run health
+          fi

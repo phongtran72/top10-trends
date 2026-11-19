@@ -92,7 +92,9 @@ export const topics = pgTable("topics", {
   // first run when its first item would have joined that topic had it not
   // passed the 48-hour age limit; never rewritten. Null for every other topic.
   continuesTopicId: bigint("continues_topic_id", { mode: "number" }).references((): AnyPgColumn => topics.id, { onDelete: "set null" }),
-  centroid: real("centroid").array(384).notNull(),
+  // Cleared (null) once the topic hasn't been seen for 7 days (task 4.15):
+  // only matching reads it, and only for topics seen in the last 48 hours.
+  centroid: real("centroid").array(384),
   firstSeen: timestamptz("first_seen").notNull(),
   lastSeen: timestamptz("last_seen").notNull(),
 }).enableRLS();

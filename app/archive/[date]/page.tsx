@@ -91,7 +91,7 @@ export default async function ArchiveDay({ params, searchParams }: PageProps<"/a
       />
 
       {lists.length === 0 ? (
-        <p className={styles.empty}>No {VIEW_NAMES[view]} top 10 was recorded on this day.</p>
+        <p className={styles.empty}>No {VIEW_NAMES[view]} top 10 is stored for this day. The archive keeps the last 7 days.</p>
       ) : chosen ? (
         <>
           <section className={styles.section} aria-labelledby="combined">
@@ -126,7 +126,7 @@ export default async function ArchiveDay({ params, searchParams }: PageProps<"/a
                 ))}
               </div>
             ) : (
-              <p className={styles.empty}>Platform lists are kept for 28 days, so this hour&apos;s are no longer stored.</p>
+              <p className={styles.empty}>Platform lists are kept for 2 days, so this hour&apos;s are no longer stored.</p>
             )}
           </section>
         </>

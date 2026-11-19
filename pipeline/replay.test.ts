@@ -1,8 +1,10 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { getSource, planSources, type SourceId } from "@/collectors/registry";
 import type { Region } from "@/collectors/types";
 import { fetchRuns, rankings, topicItems, topicSnapshots, topics, trendItems } from "@/db/schema";
 import { createTestDb } from "@/db/test-db";
+import { RECOVERED_NOTE } from "./backfill";
 import { writeResults, type ListResult } from "./collect";
 import {
   copyLists,
@@ -170,6 +172,53 @@ describe("tuning in a scratch copy", () => {
     expect(unmatched.crossPlatform.map((t) => [t.label, Object.keys(t.titles).sort()])).toEqual([
       ["world series", ["bluesky", "google_trends"]],
     ]);
+  });
+});
+
+describe("lists recovered later (task 4.12)", () => {
+  it("are copied as stored lists, so a rebuild ranks them; a plain failure isn't, and the live row stays as it was", async () => {
+    const from = await createTestDb();
+    const to = await createTestDb();
+    try {
+      await upsertSources(from.db, planSources({ collectors: new Set(), disabled: [], env: {} }));
+      await writeResults(from.db, [list("google_trends", "us", hour(10), ["world series"])]);
+      const failed = (sourceId: SourceId, region: Region, itemCount: number, error: string) => ({
+        sourceId,
+        region,
+        startedAt: hour(10),
+        finishedAt: hour(10),
+        status: "error",
+        itemCount,
+        error,
+      });
+      const [recovered] = await from.db
+        .insert(fetchRuns)
+        .values([
+          failed("instagram", "global", 1, `401 api.apify.com: Unauthorized${RECOVERED_NOTE}`),
+          failed("pinterest", "us", 0, "401 api.apify.com: Unauthorized"),
+        ])
+        .returning({ id: fetchRuns.id });
+      await from.db.insert(trendItems).values({
+        runId: recovered.id,
+        sourceId: "instagram",
+        region: "global",
+        rank: 1,
+        title: "world series",
+        url: "https://www.instagram.com/popular/world-series/",
+        fetchedAt: hour(10),
+      });
+
+      expect(await copyLists(from.db, to.db)).toBe(2);
+      const copied = await to.db.select({ sourceId: fetchRuns.sourceId, status: fetchRuns.status }).from(fetchRuns);
+      expect(copied.map((run) => `${run.sourceId} ${run.status}`).sort()).toEqual(["google_trends ok", "instagram ok"]);
+      const [slot] = await loadSlots(to.db);
+      expect(slot.results.map((result) => result.source.id).sort()).toEqual(["google_trends", "instagram"]);
+      const [still] = await from.db.select({ status: fetchRuns.status }).from(fetchRuns).where(eq(fetchRuns.id, recovered.id));
+      expect(still.status).toBe("error");
+    } finally {
+      await from.close();
+      await to.close();
+    }
   });
 });
 

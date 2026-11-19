@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { PRIMARY_CRON, hourCovered, onCron } from "../src/index.ts";
+import { HEALTH_CRON, PRIMARY_CRON, healthDue, hourCovered, onCron, onHealth, runCron } from "../src/index.ts";
 
 // Plain Node tests (npm test in worker/): the Worker is its own package and
 // has no Vitest. Synthetic runs only; nothing here touches the network.
@@ -94,4 +94,44 @@ test("a missing token is an error before any request", async () => {
   const gh = github([]);
   await assert.rejects(onCron(PRIMARY_CRON, at("15:07:00"), { ...env, GH_DISPATCH_TOKEN: "" }, gh.fetcher), /GH_DISPATCH_TOKEN is not set/);
   assert.equal(gh.calls.length, 0);
+});
+
+// The missing-list alarm (task 4.13): twice a day the :27 try also starts the health workflow.
+const atDay = (day, time) => Date.parse(`2026-11-${day}T${time}Z`);
+
+test("the health check is due only at the :27 try of 00 and 12 UTC", () => {
+  assert.equal(healthDue(HEALTH_CRON, atDay("19", "00:27:00")), true);
+  assert.equal(healthDue(HEALTH_CRON, atDay("19", "12:27:00")), true);
+  assert.equal(healthDue(HEALTH_CRON, atDay("19", "13:27:00")), false);
+  assert.equal(healthDue(CATCH_UP, atDay("19", "00:17:00")), false);
+  assert.equal(healthDue(PRIMARY_CRON, atDay("19", "12:07:00")), false);
+});
+
+test("the health start posts to the health workflow, with the token in a header", async () => {
+  const gh = github([]);
+  assert.equal(await onHealth(env, gh.fetcher), "dispatched");
+  assert.equal(gh.posts().length, 1);
+  assert.equal(gh.calls[0].url, "https://api.github.com/repos/owner/repo/actions/workflows/health.yml/dispatches");
+  assert.equal(gh.calls[0].headers.Authorization, "Bearer test-token");
+});
+
+test("at 12:27 a covered hour still gets its health check, and other hours don't", async () => {
+  const runs = [run("12:07:36", "completed", "success")].map((r) => ({ ...r, created_at: r.created_at.replace("2026-10-07", "2026-11-19") }));
+  const due = github(runs);
+  assert.deepEqual(await runCron(HEALTH_CRON, atDay("19", "12:27:00"), env, due.fetcher), { collect: "covered", health: "dispatched" });
+  assert.deepEqual(due.posts().map((call) => call.url.split("/").at(-2)), ["health.yml"]);
+  const other = github([run("13:07:36", "completed", "success")].map((r) => ({ ...r, created_at: r.created_at.replace("2026-10-07", "2026-11-19") })));
+  assert.deepEqual(await runCron(HEALTH_CRON, atDay("19", "13:27:00"), env, other.fetcher), { collect: "covered" });
+  assert.equal(other.posts().length, 0);
+});
+
+test("a collect list that can't be read doesn't stop the health check, and the firing still fails", async () => {
+  const gh = github([], { listStatus: 503 });
+  await assert.rejects(runCron(HEALTH_CRON, atDay("19", "00:27:00"), env, gh.fetcher), /could not be read: 503/);
+  assert.deepEqual(gh.posts().map((call) => call.url.split("/").at(-2)), ["health.yml"]);
+});
+
+test("a refused health start fails the firing after the collect try", async () => {
+  const gh = github([run("00:07:36", "completed", "success")].map((r) => ({ ...r, created_at: r.created_at.replace("2026-10-07", "2026-11-19") })), { dispatchStatus: 500 });
+  await assert.rejects(runCron(HEALTH_CRON, atDay("19", "00:27:00"), env, gh.fetcher), /health dispatch failed: 500/);
 });

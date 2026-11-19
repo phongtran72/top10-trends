@@ -17,6 +17,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "backfill-apify": "tsx scripts/backfill-apify.ts",
     "eval": "tsx scripts/eval.ts",
+    "health": "tsx scripts/health.ts",
     "replay": "tsx scripts/replay.ts"
   },
   "dependencies": {

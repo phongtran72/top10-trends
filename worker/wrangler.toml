@@ -3,6 +3,9 @@
 # Minute 7 is the hourly start. Minutes 17 and 27 are catch-up tries: each
 # starts a run only when the hour has none that worked (src/index.ts). Both
 # land before half past, so a caught-up run still belongs to its hour.
+# At 00:27 and 12:27 UTC the minute-27 cron also starts .github/workflows/
+# health.yml, the missing-list alarm (task 4.13); no extra cron, since
+# Workers Free allows 5 per account.
 # Deployed by .github/workflows/deploy-worker.yml.
 name = "top10-trends-cron"
 main = "src/index.ts"

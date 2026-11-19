@@ -1,10 +1,11 @@
-import { and, asc, eq, gt, gte, inArray, isNotNull, lt, min, sql } from "drizzle-orm";
+import { and, asc, eq, gt, gte, inArray, isNotNull, like, lt, min, or, sql } from "drizzle-orm";
 import { getSource, SOURCES, type SourceId } from "@/collectors/registry";
 import type { Region, TrendItem } from "@/collectors/types";
 import { DEFAULT_VIEW } from "@/config/ranking";
 import { fetchRuns, rankings, sources, topicItems, topicSnapshots, topics, trendItems } from "@/db/schema";
 import type { Embedder } from "@/lib/embed";
 import { nameKey } from "@/lib/text";
+import { RECOVERED_NOTE } from "./backfill";
 import type { Categorizer } from "./category";
 import type { ListResult } from "./collect";
 import type { Db } from "./db";
@@ -149,8 +150,13 @@ export function memoEmbedder(embed: Embedder): Embedder {
   };
 }
 
-// Copies sources and stored successful lists (with their ids) into another
-// database, such as an in-memory scratch copy for tuning.
+// Copies sources and stored lists (with their ids) into another database,
+// such as an in-memory scratch copy for tuning or a rebuild. A stored list is
+// a run that worked, or a failed hour whose list was recovered later (task
+// 4.12): that row stays `error` in the database, because the live run ranked
+// the hour without it, but the copy marks it `ok`, so everything that reads
+// the copy (loadSlots, and the rank step's 3-hour window) counts it, and a
+// rebuild ranks those hours as if the list had come on time.
 export async function copyLists(from: Db, to: Db, since?: Date, until?: Date): Promise<number> {
   const sourceRows = await from.select().from(sources);
   if (sourceRows.length > 0) await to.insert(sources).values(sourceRows).onConflictDoNothing();
@@ -159,7 +165,7 @@ export async function copyLists(from: Db, to: Db, since?: Date, until?: Date): P
     .from(fetchRuns)
     .where(
       and(
-        eq(fetchRuns.status, "ok"),
+        or(eq(fetchRuns.status, "ok"), and(eq(fetchRuns.status, "error"), like(fetchRuns.error, `%${RECOVERED_NOTE}%`))),
         gt(fetchRuns.itemCount, 0),
         since ? gte(fetchRuns.startedAt, since) : undefined,
         until ? lt(fetchRuns.startedAt, until) : undefined,
@@ -168,7 +174,7 @@ export async function copyLists(from: Db, to: Db, since?: Date, until?: Date): P
   let items = 0;
   for (let i = 0; i < runRows.length; i += 500) {
     const chunk = runRows.slice(i, i + 500);
-    await to.insert(fetchRuns).values(chunk);
+    await to.insert(fetchRuns).values(chunk.map((run) => (run.status === "ok" ? run : { ...run, status: "ok" })));
     const itemRows = await from
       .select()
       .from(trendItems)

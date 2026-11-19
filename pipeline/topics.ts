@@ -1,4 +1,4 @@
-import { and, count, eq, gt, inArray, lte } from "drizzle-orm";
+import { and, count, eq, gt, inArray, isNotNull, lte } from "drizzle-orm";
 import { TOPIC_WINDOW_HOURS } from "@/config/ranking";
 import { topicItems, topics, trendItems } from "@/db/schema";
 import { nameKey, slugify } from "@/lib/text";
@@ -9,21 +9,25 @@ import { hourStart, type MatchResult, type Topic } from "./match";
 
 // Topics seen in the last 48 hours (and created by then, which matters when
 // replaying past hours), with how many items shaped each centroid and the
-// names of their members from those hours (for matching by name).
+// names of their members from those hours (for matching by name). A centroid
+// is cleared only after 7 days unseen (task 4.15), so every topic in the
+// window has one; a topic without one is left out rather than matched.
 export async function loadRecentTopics(db: Db, now: Date, hours = TOPIC_WINDOW_HOURS): Promise<Topic[]> {
   // Counted in whole clock hours, like a topic's age (pipeline/match.ts).
   const since = new Date(hourStart(now) - hours * 60 * 60 * 1000);
-  const rows = await db
-    .select({
-      id: topics.id,
-      label: topics.label,
-      summary: topics.summary,
-      centroid: topics.centroid,
-      firstSeen: topics.firstSeen,
-      lastSeen: topics.lastSeen,
-    })
-    .from(topics)
-    .where(and(gt(topics.lastSeen, since), lte(topics.firstSeen, now)));
+  const rows = (
+    await db
+      .select({
+        id: topics.id,
+        label: topics.label,
+        summary: topics.summary,
+        centroid: topics.centroid,
+        firstSeen: topics.firstSeen,
+        lastSeen: topics.lastSeen,
+      })
+      .from(topics)
+      .where(and(gt(topics.lastSeen, since), lte(topics.firstSeen, now), isNotNull(topics.centroid)))
+  ).filter((row): row is typeof row & { centroid: number[] } => row.centroid !== null);
   if (rows.length === 0) return [];
   const counts = await db
     .select({ topicId: topicItems.topicId, items: count() })

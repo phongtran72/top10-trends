@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { getSource, type SourceId } from "@/collectors/registry";
 import type { Region } from "@/collectors/types";
-import { ITEM_RETENTION_DAYS, type View } from "@/config/ranking";
+import { COMBINED_RANKING_RETENTION_DAYS, PLATFORM_RANKING_RETENTION_DAYS, type View } from "@/config/ranking";
 import { archiveDay, archiveDays, archivePlatformLists } from "@/lib/archive-queries";
 import { buildDashboard, DASHBOARD_WINDOW_HOURS } from "@/lib/dashboard";
 import { failingSources } from "@/lib/alerts";
@@ -64,11 +64,11 @@ export const getArchiveDays = unstable_cache(async () => read((db) => archiveDay
 });
 
 // A day's combined top 10s for one view, and whether that day's per-platform
-// lists are still stored (items are purged after 28 days).
+// lists are still stored (they are kept 2 days, task 4.16).
 export const getArchiveDay = unstable_cache(
   async (date: string, view: View) => {
     const lists = await read((db) => archiveDay(db, date, view));
-    const oldestKept = Date.now() - ITEM_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+    const oldestKept = Date.now() - PLATFORM_RANKING_RETENTION_DAYS * 24 * 60 * 60 * 1000;
     return { lists, platformListsKept: lists.some((list) => Date.parse(list.at) > oldestKept) };
   },
   ["archive-day-v1"],
@@ -80,9 +80,10 @@ export const getArchivePlatformLists = unstable_cache(async (at: string) => read
   revalidate: 3600,
 });
 
-// Topics for sitemap.xml: those in a combined top 10 in the last 28 days.
+// Topics for sitemap.xml: those in a combined top 10 in the last 7 days, as
+// far back as combined rankings are kept (task 4.16).
 export const getSitemapTopics = unstable_cache(
-  async () => read((db) => recentTopTopics(db, new Date(Date.now() - ITEM_RETENTION_DAYS * 24 * 60 * 60 * 1000))),
+  async () => read((db) => recentTopTopics(db, new Date(Date.now() - COMBINED_RANKING_RETENTION_DAYS * 24 * 60 * 60 * 1000))),
   ["sitemap-topics-v1"],
   { tags: [TRENDS_TAG], revalidate: 3600 },
 );
