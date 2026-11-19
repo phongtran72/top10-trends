@@ -108,3 +108,14 @@ describe("saveMatches", () => {
     expect(await t.db.select().from(topicItems)).toHaveLength(3);
   });
 });
+
+describe("a topic whose centroid was cleared", () => {
+  it("is left out of matching, though it is in the window", async () => {
+    // Centroids are cleared only after 7 days unseen (task 4.15), so this can't
+    // happen in a live run; if it ever did, the topic is skipped, not matched.
+    await t.db.insert(topics).values({ slug: "cleared-20261008", label: "Cleared", centroid: null, firstSeen: hoursAgo(3), lastSeen: hoursAgo(1) });
+    const loaded = await loadRecentTopics(t.db, now);
+    expect(loaded.map((topic) => topic.label)).not.toContain("Cleared");
+    expect(loaded.every((topic) => topic.centroid.length === 384)).toBe(true);
+  });
+});
