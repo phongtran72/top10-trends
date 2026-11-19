@@ -5,9 +5,10 @@ import { rankings, topics, trendItems } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { PLATFORM_ROWS_REGION } from "@/pipeline/score";
 
-// Queries behind /archive (task 4.1): past combined top 10s, hour by hour, and
-// each platform's list for an hour while its items are still stored (28
-// days). Days are UTC days. Plain JSON results, so they can be cached.
+// Queries behind /archive (task 4.1): past combined top 10s, hour by hour, for
+// the last 7 days, and each platform's list for an hour of the last 2 days
+// (task 4.16: rankings are kept that long). Days are UTC days. Plain JSON
+// results, so they can be cached.
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

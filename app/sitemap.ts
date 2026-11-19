@@ -5,7 +5,7 @@ import { getArchiveDays, getSitemapTopics } from "@/lib/cached";
 import { siteUrl } from "@/lib/site-url";
 
 // sitemap.xml (task 4.2): the home page, each platform, the archive's days and
-// the topics that were in a combined top 10 in the last 28 days. It renders
+// the topics that were in a combined top 10 in the last 7 days. It renders
 // per request (never at build time) from cached data.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await connection();

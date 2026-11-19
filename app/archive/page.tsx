@@ -20,7 +20,7 @@ export default async function ArchiveIndex() {
   return (
     <>
       <h1 className="page-title">Archive</h1>
-      <p className="lede">Every hourly top 10 across platforms, by day. Days are UTC days.</p>
+      <p className="lede">Every hourly top 10 across platforms from the last 7 days, by day. Days are UTC days.</p>
 
       {days.length > 0 ? (
         <ul className={styles.days}>

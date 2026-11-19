@@ -89,6 +89,12 @@ export const FETCH_RUN_RETENTION_DAYS = 90;
 // 4.15): matching reads only topics seen in the last 48 hours, and the
 // centroids of older topics were a third of the database's weekly growth.
 export const CENTROID_RETENTION_DAYS = 7;
+// Rankings are the site's alone (task 4.16): per-platform rows serve the
+// platform and topic pages (their newest 3 hours) and the archive's platform
+// lists; combined rows serve the archive and the topic page's 7-day chart.
+// Research and Trend Forecaster read snapshots and items instead.
+export const PLATFORM_RANKING_RETENTION_DAYS = 2;
+export const COMBINED_RANKING_RETENTION_DAYS = 7;
 
 // Bump when weights, filters, windows, grace or scoring change, so analyses
 // of stored snapshots can tell methods apart (topic_snapshots.algo_version).

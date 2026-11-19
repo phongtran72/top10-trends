@@ -13,7 +13,7 @@ Live at **[top10-trends.vercel.app](https://top10-trends.vercel.app)**.
 | [Home](https://top10-trends.vercel.app/) | The combined top 10 across platforms, for a Global or a United States view, then each platform's top 3, what is new, what is climbing and what has stayed longest |
 | [A platform](https://top10-trends.vercel.app/p/google-trends) | That platform's own top 10, in its own order, each linking to its source. Platforms with several feeds (Google Trends and YouTube by country, X for the US and worldwide) have a tab for each |
 | A topic | Where the topic is trending now, its place across platforms over the last 7 days, and links to it on each platform |
-| [Archive](https://top10-trends.vercel.app/archive) | Every hourly top 10 since the site began, day by day, and each platform's list for any hour of the last 28 days |
+| [Archive](https://top10-trends.vercel.app/archive) | Every hourly top 10 of the last 7 days, day by day, and each platform's list for any hour of the last 2 days |
 | [Status](https://top10-trends.vercel.app/status) | When each source last worked, its success rate, and what the site costs to run this month |
 
 | A topic | A day in the archive |

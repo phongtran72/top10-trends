@@ -155,8 +155,8 @@ export async function runPipeline(argv: readonly string[], rawEnv: RawEnv, deps:
       if (curves) deps.log(curves);
       await name(db, await rank(results, db, itemIds));
       const purged = await purge(db, startedAt);
-      if (purged.items > 0 || purged.runs > 0 || purged.centroids > 0) {
-        deps.log(`purged: ${purged.items} items, ${purged.runs} runs; cleared ${purged.centroids} centroids`);
+      if (purged.items > 0 || purged.runs > 0 || purged.rankings > 0 || purged.centroids > 0) {
+        deps.log(`purged: ${purged.items} items, ${purged.runs} runs, ${purged.rankings} rankings; cleared ${purged.centroids} centroids`);
       }
       await writeHeartbeat(db, startedAt, now());
     }
