@@ -40,13 +40,16 @@ import { revalidateSite } from "@/pipeline/revalidate";
 //
 //   npm run replay -- rebuild --threshold 0.6 --yes
 //     Writes: deletes topics, rankings and snapshots in SESSION_DATABASE_URL
-//     and rebuilds them from every stored list (the backfill). Refuses if that
+//     and rebuilds them from every stored list (the backfill), leaving out lists
+//     recovered later (task 4.12), which the database keeps as `error`. Refuses if that
 //     would lose history the stored lists no longer cover. The hourly run must
 //     be paused while it works, hour by hour, in the database.
 //
 //   npm run replay -- rebuild --threshold 0.86 --in-memory --rehearse
 //     Read-only: builds the whole history in memory from the stored lists, each
 //     hour at its live run's start, and says what it built and how long it took.
+//     Like tune, it works on a copy, which counts lists recovered later (task
+//     4.14), so a rebuilt hour ranks them as if they had come on time.
 //
 //   npm run replay -- rebuild --threshold 0.86 --in-memory --swap-at 14:30 --yes [--accept-loss]
 //     The same build; then, at that time (UTC, after the hour's catch-up tries),
